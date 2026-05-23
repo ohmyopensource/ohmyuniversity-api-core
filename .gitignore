@@ -1,0 +1,107 @@
+# ================================
+# OhMyUniversity! - Core - .gitgnore
+# ================================
+
+# ================================
+# Java
+# ================================
+*.class
+*.jar
+*.war
+*.ear
+*.iml
+*.log
+*.jfm
+*.class
+*.db
+*.hprof
+
+# ================================
+# STS
+# ================================
+bin/
+tmp/
+*.tmp
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# ================================
+# NetBeans
+# ================================
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# ================================
+# IntelliJ IDEA
+# ================================
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+target/
+*.log
+
+# ================================
+# VS Code
+# ================================
+.vscode/*
+
+# ================================
+# Maven
+# ================================
+HELP.md
+target/
+!**/src/main/**/target/
+!**/src/test/**/target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# ================================
+# Gradle
+# ================================
+.gradle/
+build/
+!gradle-wrapper.jar
+
+# ================================
+# Mac / Linux
+# ================================
+.DS_Store
+Thumbs.db
+
+# ================================
+# SpringBoot
+# ================================
+spring.log
+logs/
+*.pid
+*.h2.db
+*.h2.*
+hs_err_pid*
+
+# ================================
+# ENV Files
+# ================================
+.env
+.env.*
+*.env
+!.env.example
