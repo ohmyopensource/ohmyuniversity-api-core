@@ -6,6 +6,9 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+ # autoconfigure:
+      #exclude:
+    # - org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration
 
 management:
   otlp:
@@ -15,6 +18,15 @@ management:
   tracing:
     export:
       enabled: false
+
+omu:
+  jwt:
+    secret: test_secret_key_must_be_at_least_32_chars_long
+    expiration-ms: 900000
+  universities:
+    UNIMOL:
+      name: Università degli Studi del Molise
+      base-url: https://unimol.esse3.cineca.it/e3rest/api
 
 logging:
   level:

@@ -32,3 +32,15 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+# JWT configuration
+omu:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-ms: ${JWT_EXPIRATION_MS:900000}       # 15 minutes default
+
+  # List of Registered universities
+  universities:
+    UNIMOL:
+      name: Università degli Studi del Molise
+      base-url: https://unimol.esse3.cineca.it/e3rest/api
