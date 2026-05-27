@@ -7,17 +7,23 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
  * Spring Security configuration for the core microservice.
  *
- * Auth endpoints are public — all other endpoints require a valid OhMyU JWT.
- * JWT validation is handled by the Spring Security OAuth2 Resource Server
- * configured with our own signing key.
+ * Auth endpoints are public. All other endpoints require a valid OhMyU JWT
+ * validated by {@link JwtAuthenticationFilter}.
  */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+  private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+  public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+  }
 
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -25,14 +31,12 @@ public class SecurityConfig {
         .csrf(AbstractHttpConfigurer::disable)
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
-            // Auth endpoints — public, no token required
             .requestMatchers("/api/auth/**").permitAll()
-            // Actuator health — public
             .requestMatchers("/actuator/health").permitAll()
-            // Swagger — public in dev, disabled in prod via YAML
             .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-            // Everything else — requires valid OhMyU JWT
-            .anyRequest().authenticated());
+            .anyRequest().authenticated())
+        .addFilterBefore(jwtAuthenticationFilter,
+            UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
   }

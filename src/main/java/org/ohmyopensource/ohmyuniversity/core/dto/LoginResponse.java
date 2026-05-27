@@ -42,6 +42,13 @@ public class LoginResponse {
     private String matricola;
     private String corsoNome;
     private String corsoCodice;
+
+    /**
+     * Cineca degree course ID — needed as cdsId parameter for GET /api/carriera/appelli.
+     * Sourced from trattiCarriera.dettaglioTratto.cdsId in the Cineca login response.
+     */
+    private Long cdsId;
+
     private String tipoCorsoCod;
     private String statusStudente;
     private String statusDescrizione;
@@ -70,6 +77,9 @@ public class LoginResponse {
 
     public String getCorsoCodice() { return corsoCodice; }
     public void setCorsoCodice(String corsoCodice) { this.corsoCodice = corsoCodice; }
+
+    public Long getCdsId() { return cdsId; }
+    public void setCdsId(Long cdsId) { this.cdsId = cdsId; }
 
     public String getTipoCorsoCod() { return tipoCorsoCod; }
     public void setTipoCorsoCod(String tipoCorsoCod) { this.tipoCorsoCod = tipoCorsoCod; }

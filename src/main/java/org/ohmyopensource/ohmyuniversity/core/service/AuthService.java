@@ -2,7 +2,6 @@ package org.ohmyopensource.ohmyuniversity.core.service;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaLoginResponse;
@@ -63,13 +62,11 @@ public class AuthService {
    */
   @Transactional
   public LoginResponse login(LoginRequest request) {
-    // 1. Resolve university config
     UniversityRegistry.UniversityConfig uniConfig =
         universityRegistry.resolve(request.getUniversityId())
             .orElseThrow(() -> new IllegalArgumentException(
                 "Unknown university: " + request.getUniversityId()));
 
-    // 2. Authenticate against Cineca
     CinecaLoginResponse cinecaResponse = cinecaClient.login(
         uniConfig.baseUrl(),
         request.getUsername(),
@@ -81,7 +78,6 @@ public class AuthService {
     log.info("AuthService: login successful for user='{}' at university='{}'",
         cinecaUser.getUserId(), request.getUniversityId());
 
-    // 3. Find or create OmuUser (keyed by codiceFiscale)
     OmuUser omuUser = userRepository.findByCodiceFiscale(codiceFiscale)
         .orElseGet(() -> {
           OmuUser newUser = new OmuUser();
@@ -91,7 +87,6 @@ public class AuthService {
     omuUser.setLastLoginAt(Instant.now());
     userRepository.save(omuUser);
 
-    // 4. Upsert UniversityConnection
     connectionRepository.findByUserIdAndUniversityIdAndUsernameCineca(
             omuUser.getId(), request.getUniversityId(), request.getUsername())
         .orElseGet(() -> {
@@ -104,7 +99,6 @@ public class AuthService {
           return connectionRepository.save(conn);
         });
 
-    // 5. Store Cineca tokens in Redis (never in DB)
     String omuUserId = omuUser.getId().toString();
     if (cinecaResponse.getJwt() != null) {
       sessionStore.storeCinecaJwt(omuUserId, request.getUniversityId(),
@@ -115,14 +109,11 @@ public class AuthService {
           cinecaResponse.getAuthToken());
     }
 
-    // 6. Build career profiles from trattiCarriera
     List<TrattoCarriera> tratti = cinecaUser.getTrattiCarriera();
     List<ProfiloCarriera> profili = tratti == null ? List.of() : tratti.stream()
         .map(t -> toProfiloCarriera(t, request.getUniversityId(), uniConfig.name()))
         .toList();
 
-    // 7. Pick the first active profile as default for the JWT
-    // The student can switch profiles later without re-logging in
     TrattoCarriera defaultTratte = tratti != null && !tratti.isEmpty() ? tratti.get(0) : null;
 
     String accessToken = jwtService.issue(
@@ -133,7 +124,6 @@ public class AuthService {
         defaultTratte != null ? defaultTratte.getMatId() : null,
         defaultTratte != null ? defaultTratte.getMatricola() : null);
 
-    // 8. Generate and store refresh token
     String refreshToken = jwtService.generateRefreshToken();
     sessionStore.storeRefreshToken(refreshToken, omuUserId);
 
@@ -163,7 +153,7 @@ public class AuthService {
   /**
    * Issues a new access token using a valid refresh token.
    * If the Cineca JWT is still valid in Redis it is reused.
-   * If it is expired, it is refreshed via the Cineca API.
+   * If it is expired, the user must re-login to get a fresh Cineca session.
    *
    * @param refreshToken the OhMyU refresh token
    * @param universityId the university to refresh the session for
@@ -178,25 +168,13 @@ public class AuthService {
     OmuUser omuUser = userRepository.findById(java.util.UUID.fromString(omuUserId))
         .orElseThrow(() -> new IllegalArgumentException("User not found: " + omuUserId));
 
-    // Get or refresh Cineca JWT
     Optional<String> cinecaJwt = sessionStore.getCinecaJwt(omuUserId, universityId);
     if (cinecaJwt.isEmpty()) {
-      // Cineca JWT expired — try to refresh it
-      UniversityRegistry.UniversityConfig uniConfig =
-          universityRegistry.resolve(universityId)
-              .orElseThrow(() -> new IllegalArgumentException("Unknown university: "
-                  + universityId));
-
-      // At this point we can't refresh without a valid Cineca JWT
-      // The user must re-login to get a fresh Cineca session
       log.warn("AuthService: Cineca JWT expired for user={} — re-login required", omuUserId);
       throw new IllegalArgumentException(
           "Cineca session expired — please log in again");
     }
 
-    // Issue new OhMyU access token
-    // We keep the same claims since the profile hasn't changed
-    // A full profile reload would require calling Cineca again
     UniversityConnection conn = connectionRepository
         .findByUserId(omuUser.getId())
         .stream()
@@ -205,9 +183,6 @@ public class AuthService {
         .orElseThrow(() -> new IllegalArgumentException(
             "No connection found for university: " + universityId));
 
-    // Re-issue with same profile data (stuId/matId stored in current JWT)
-    // For simplicity we issue without stuId/matId here — the client still has the old token
-    // A full refresh with career data would require an extra Cineca call
     return jwtService.issue(
         omuUserId,
         omuUser.getCodiceFiscale(),
@@ -241,6 +216,7 @@ public class AuthService {
       p.setAnnoCorso(t.getDettaglioTratto().getAnnoCorso());
       p.setDurataAnni(t.getDettaglioTratto().getDurataAnni());
       p.setAnnoAccademico(t.getDettaglioTratto().getAaIscrId());
+      p.setCdsId(t.getCdsId());
     }
 
     return p;
