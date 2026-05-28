@@ -30,13 +30,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Service responsible for orchestrating career-related operations against
- * Cineca ESSE3 APIs.
+ * Service responsible for orchestrating career-related operations against Cineca ESSE3 APIs.
  *
- * Every request retrieves live academic data using the authenticated
- * Cineca session associated with the current OhMyUniversity user.
+ * <p>Every request retrieves live academic data using the authenticated Cineca session associated
+ * with the current OhMyUniversity user.
  *
- * No academic information is persisted locally inside the application.
+ * <p>No academic information is persisted locally inside the application.
  */
 @Service
 public class CarrieraService {
@@ -56,9 +55,9 @@ public class CarrieraService {
   /**
    * Creates a new career service instance.
    *
-   * @param cinecaClient Cineca career API client
-   * @param sessionStore Cineca session storage service
-   * @param universityRegistry university configuration registry
+   * @param cinecaClient         Cineca career API client
+   * @param sessionStore         Cineca session storage service
+   * @param universityRegistry   university configuration registry
    * @param connectionRepository repository used to resolve Cineca connections
    */
   public CarrieraService(
@@ -115,7 +114,9 @@ public class CarrieraService {
     for (CinecaMedia m : medie) {
       String tipo = m.getTipoMediaCod();
       Integer base = m.getBase();
-      if (tipo == null || base == null) continue;
+      if (tipo == null || base == null) {
+        continue;
+      }
 
       if (TIPO_MEDIA_ARITMETICA.equals(tipo) && base == 30) {
         response.setMediaAritmetica(m.getMedia());
@@ -194,8 +195,8 @@ public class CarrieraService {
    * Retrieves all available exam sessions for the specified activity.
    *
    * @param principal authenticated OhMyUniversity principal
-   * @param cdsId course identifier
-   * @param adId teaching activity identifier
+   * @param cdsId     course identifier
+   * @param adId      teaching activity identifier
    * @return available exam sessions response
    */
   public AppelloResponse getAppelli(OmuPrincipal principal, Long cdsId, Long adId) {
@@ -217,9 +218,9 @@ public class CarrieraService {
   /**
    * Retrieves the student's exam booking history.
    *
-   * The Cineca password is provided at request time and is never persisted.
+   * <p>The Cineca password is provided at request time and is never persisted.
    *
-   * @param principal authenticated OhMyUniversity principal
+   * @param principal      authenticated OhMyUniversity principal
    * @param cinecaPassword Cineca password provided by the client
    * @return booking history response
    */

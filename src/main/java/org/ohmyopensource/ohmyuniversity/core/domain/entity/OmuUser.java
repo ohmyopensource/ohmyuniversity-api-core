@@ -19,20 +19,19 @@ import java.util.UUID;
 /**
  * Core identity entity representing a stable OhMyUniversity user.
  *
- * This entity is NOT a replica of Cineca or university-specific data.
- * It represents a unified person identity across multiple universities.
+ * <p>This entity is NOT a replica of Cineca or university-specific data. It represents a unified
+ * person identity across multiple universities.
  *
- * The main identifier is the Italian fiscal code (codice fiscale),
- * which acts as the cross-university linking key.
+ * <p>The main identifier is the Italian fiscal code (codice fiscale), which acts as the
+ * cross-university linking key.
  *
- * Responsibilities:
+ * <p>Responsibilities:
  * - Provide a stable internal user identity
  * - Link multiple UniversityConnection records
  * - Track authentication metadata (creation, last login)
  *
- * No academic or career data is stored in this entity.
- * All student-related information is retrieved dynamically from Cineca APIs
- * and optionally cached externally (e.g., Redis).
+ * <p>No academic or career data is stored in this entity. All student-related information is
+ * retrieved dynamically from Cineca APIs and optionally cached externally (e.g., Redis).
  */
 @Entity
 @Table(name = "omu_user")
@@ -74,8 +73,8 @@ public class OmuUser {
   /**
    * List of university-specific connections associated with this user.
    *
-   * Represents the relationship between the global user identity
-   * and multiple Cineca/university accounts.
+   * <p>Represents the relationship between the global user identity and multiple Cineca/university
+   * accounts.
    */
   @OneToMany(mappedBy = "user", cascade = CascadeType.ALL,
       fetch = FetchType.LAZY, orphanRemoval = true)

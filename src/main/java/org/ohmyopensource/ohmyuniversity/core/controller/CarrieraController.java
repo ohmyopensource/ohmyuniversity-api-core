@@ -26,14 +26,13 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Controller responsible for exposing all student career-related APIs.
  *
- * This layer is a thin orchestration layer:
+ * <p>This layer is a thin orchestration layer:
  * - extracts identity from JWT (OmuPrincipal)
  * - delegates business logic to CarrieraService
  * - maps Cineca failures into HTTP responses
  *
- * Important architectural note:
- * All data is fetched in real-time from Cineca ESSE3.
- * No academic data is persisted in this service.
+ * <p>Important architectural note: All data is fetched in real-time from Cineca ESSE3. No academic
+ * data is persisted in this service.
  */
 @RestController
 @RequestMapping("/api/carriera")
@@ -58,17 +57,16 @@ public class CarrieraController {
   /**
    * Retrieves the student's transcript (libretto).
    *
-   * This endpoint calls Cineca ESSE3 in real-time and returns all exam records
-   * associated with the authenticated student (derived from JWT principal).
+   * <p>This endpoint calls Cineca ESSE3 in real-time and returns all exam records associated with
+   * the authenticated student (derived from JWT principal).
    *
    * @param principal authenticated user extracted from JWT containing:
-   *                   - stuId
-   *                   - matId
-   *                   - universityId
-   *
-   * @return 200 OK with {@link LibrettoResponse} containing all transcript rows
-   *         401 Unauthorized if Cineca session has expired or JWT is invalid
-   *         503 Service Unavailable if Cineca ESSE3 is unreachable
+   *                  - stuId
+   *                  - matId
+   *                  - universityId
+   * @return 200 OK with {@link LibrettoResponse} containing all transcript rows 401 Unauthorized if
+   *     Cineca session has expired or JWT is invalid 503 Service Unavailable if Cineca ESSE3 is
+   *     unreachable
    */
   @GetMapping("/libretto")
   public ResponseEntity<LibrettoResponse> getLibretto(
@@ -87,17 +85,15 @@ public class CarrieraController {
   /**
    * Retrieves computed academic averages for the authenticated student.
    *
-   * Includes:
+   * <p>Includes:
    * - arithmetic mean
    * - weighted mean (ECTS-based)
    * - projected graduation score
    * - CFU progress metrics
    *
    * @param principal authenticated user extracted from JWT
-   *
-   * @return 200 OK with {@link MediaResponse}
-   *         401 if Cineca session expired
-   *         503 if Cineca service is unavailable
+   * @return 200 OK with {@link MediaResponse} 401 if Cineca session expired 503 if Cineca service
+   *     is unavailable
    */
   @GetMapping("/medie")
   public ResponseEntity<MediaResponse> getMedia(
@@ -116,14 +112,12 @@ public class CarrieraController {
   /**
    * Retrieves the student's study plan (piano di studi).
    *
-   * Returns all planned courses and their status (passed, pending, etc.)
-   * as provided by Cineca piani-service.
+   * <p>Returns all planned courses and their status (passed, pending, etc.) as provided by Cineca
+   * piani-service.
    *
    * @param principal authenticated user extracted from JWT
-   *
-   * @return 200 OK with {@link PianoStudioResponse}
-   *         401 if Cineca session expired or JWT invalid
-   *         503 if Cineca service is unreachable
+   * @return 200 OK with {@link PianoStudioResponse} 401 if Cineca session expired or JWT invalid
+   *     503 if Cineca service is unreachable
    */
   @GetMapping("/piano")
   public ResponseEntity<PianoStudioResponse> getPiano(
@@ -142,19 +136,17 @@ public class CarrieraController {
   /**
    * Retrieves available exam sessions (appelli) for a specific course.
    *
-   * This endpoint requires:
+   * <p>This endpoint requires:
    * - cdsId (degree course ID)
    * - adId (teaching activity ID)
    *
-   * These are used to query Cineca calesa-service for available exam dates.
+   * <p>These are used to query Cineca calesa-service for available exam dates.
    *
    * @param principal authenticated user extracted from JWT
-   * @param cdsId degree course identifier (Cineca cdsId)
-   * @param adId teaching activity identifier (Cineca adId)
-   *
-   * @return 200 OK with {@link AppelloResponse}
-   *         401 if Cineca session expired
-   *         503 if Cineca service is unavailable
+   * @param cdsId     degree course identifier (Cineca cdsId)
+   * @param adId      teaching activity identifier (Cineca adId)
+   * @return 200 OK with {@link AppelloResponse} 401 if Cineca session expired 503 if Cineca service
+   *     is unavailable
    */
   @GetMapping("/appelli")
   public ResponseEntity<AppelloResponse> getAppelli(
@@ -175,21 +167,18 @@ public class CarrieraController {
   /**
    * Retrieves full exam booking history for the student.
    *
-   * This endpoint requires the Cineca password because the underlying
-   * calesa-service does not support JWT-only authentication and requires
-   * session-level authentication (JSESSIONID + Basic Auth).
+   * <p>This endpoint requires the Cineca password because the underlying calesa-service does not
+   * support JWT-only authentication and requires session-level authentication (JSESSIONID + Basic
+   * Auth).
    *
-   * SECURITY NOTE:
-   * The password is transmitted in the request body and is never persisted,
+   * <p>SECURITY NOTE: The password is transmitted in the request body and is never persisted,
    * cached, or logged.
    *
    * @param principal authenticated user extracted from JWT
-   * @param request request body containing Cineca password
-   *
-   * @return 200 OK with {@link PrenotazioneResponse}
-   *         400 Bad Request if password is missing or empty
-   *         401 Unauthorized if Cineca authentication fails
-   *         503 Service Unavailable if Cineca is unreachable
+   * @param request   request body containing Cineca password
+   * @return 200 OK with {@link PrenotazioneResponse} 400 Bad Request if password is missing or
+   *     empty 401 Unauthorized if Cineca authentication fails 503 Service Unavailable if Cineca is
+   *     unreachable
    */
   @PostMapping("/prenotazioni")
   public ResponseEntity<PrenotazioneResponse> getPrenotazioni(
@@ -214,15 +203,12 @@ public class CarrieraController {
   /**
    * Retrieves student badge information if available.
    *
-   * The badge contains university-issued identification data such as RFID,
-   * enrollment status, and course metadata.
+   * <p>The badge contains university-issued identification data such as RFID, enrollment status,
+   * and course metadata.
    *
    * @param principal authenticated user extracted from JWT
-   *
-   * @return 200 OK with {@link BadgeResponse}
-   *         404 Not Found if no badge is associated with the student
-   *         401 if Cineca session expired
-   *         503 if Cineca service is unavailable
+   * @return 200 OK with {@link BadgeResponse} 404 Not Found if no badge is associated with the
+   *     student 401 if Cineca session expired 503 if Cineca service is unavailable
    */
   @GetMapping("/badge")
   public ResponseEntity<BadgeResponse> getBadge(

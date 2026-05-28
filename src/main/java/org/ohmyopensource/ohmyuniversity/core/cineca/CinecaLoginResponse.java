@@ -7,18 +7,18 @@ import java.util.List;
 /**
  * DTO mapping the response from Cineca ESSE3 GET /login.
  *
- * This is the root authentication response returned by Cineca after a successful login.
- * It is a pure integration-layer DTO and must NOT contain business logic.
+ * <p>This is the root authentication response returned by Cineca after a successful login. It is a
+ * pure integration-layer DTO and must NOT contain business logic.
  *
- * It includes:
+ * <p>It includes:
  * - authToken: session-based authentication token (legacy ESSE3 session mechanism)
  * - jwt: Cineca-issued JWT used for stateless authentication
  * - user: authenticated user profile containing personal data and career tracks
  *
- * All unknown fields returned by Cineca are ignored via:
+ * <p>All unknown fields returned by Cineca are ignored via:
  * {@code @JsonIgnoreProperties(ignoreUnknown = true)}
  *
- * This object is strictly transient and must never be persisted.
+ * <p>This object is strictly transient and must never be persisted.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class CinecaLoginResponse {
@@ -34,19 +34,25 @@ public class CinecaLoginResponse {
 
   // ============ Getters | Setters | Bool ============
 
-  public String getAuthToken() { return authToken; }
+  public String getAuthToken() {
+    return authToken;
+  }
 
-  public String getJwt() { return jwt; }
+  public String getJwt() {
+    return jwt;
+  }
 
-  public CinecaUser getUser() { return user; }
+  public CinecaUser getUser() {
+    return user;
+  }
 
   /**
    * Represents the authenticated user returned by Cineca ESSE3 login.
    *
-   * This is NOT a local application user, but a remote identity coming
-   * directly from the university system.
+   * <p>This is NOT a local application user, but a remote identity coming directly from the
+   * university system.
    *
-   * It contains personal data and academic career tracks.
+   * <p>It contains personal data and academic career tracks.
    */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaUser {
@@ -71,27 +77,39 @@ public class CinecaLoginResponse {
 
     // ============ Getters | Setters | Bool ============
 
-    public String getCodiceFiscale() { return codiceFiscale; }
+    public String getCodiceFiscale() {
+      return codiceFiscale;
+    }
 
-    public String getFirstName() { return firstName; }
+    public String getFirstName() {
+      return firstName;
+    }
 
-    public String getLastName() { return lastName; }
+    public String getLastName() {
+      return lastName;
+    }
 
-    public Long getPersId() { return persId; }
+    public Long getPersId() {
+      return persId;
+    }
 
-    public String getUserId() { return userId; }
+    public String getUserId() {
+      return userId;
+    }
 
-    public List<TrattoCarriera> getTrattiCarriera() { return trattiCarriera; }
+    public List<TrattoCarriera> getTrattiCarriera() {
+      return trattiCarriera;
+    }
   }
 
   /**
    * Represents a single academic career track (enrollment) in Cineca ESSE3.
    *
-   * A user can have multiple tracks:
+   * <p>A user can have multiple tracks:
    * - different degree programs
    * - multiple enrollments over time
    *
-   * Each track contains identifiers used to build internal application profiles.
+   * <p>Each track contains identifiers used to build internal application profiles.
    */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class TrattoCarriera {
@@ -128,31 +146,51 @@ public class CinecaLoginResponse {
 
     // ============ Getters | Setters | Bool ============
 
-    public Long getStuId() { return stuId; }
+    public Long getStuId() {
+      return stuId;
+    }
 
-    public Long getMatId() { return matId; }
+    public Long getMatId() {
+      return matId;
+    }
 
-    public String getMatricola() { return matricola; }
+    public String getMatricola() {
+      return matricola;
+    }
 
-    public Long getCdsId() { return cdsId; }
+    public Long getCdsId() {
+      return cdsId;
+    }
 
-    public String getCdsDes() { return cdsDes; }
+    public String getCdsDes() {
+      return cdsDes;
+    }
 
-    public String getStaStuCod() { return staStuCod; }
+    public String getStaStuCod() {
+      return staStuCod;
+    }
 
-    public String getStaStuDes() { return staStuDes; }
+    public String getStaStuDes() {
+      return staStuDes;
+    }
 
-    public String getStaMatCod() { return staMatCod; }
+    public String getStaMatCod() {
+      return staMatCod;
+    }
 
-    public String getStaMatDes() { return staMatDes; }
+    public String getStaMatDes() {
+      return staMatDes;
+    }
 
-    public DettaglioTratto getDettaglioTratto() { return dettaglioTratto; }
+    public DettaglioTratto getDettaglioTratto() {
+      return dettaglioTratto;
+    }
   }
 
   /**
    * Contains detailed metadata about the degree program within a career track.
    *
-   * This includes structural academic information such as:
+   * <p>This includes structural academic information such as:
    * - course code
    * - course type
    * - academic year progression
@@ -184,18 +222,32 @@ public class CinecaLoginResponse {
 
     // ============ Getters | Setters | Bool ============
 
-    public String getCdsCod() { return cdsCod; }
+    public String getCdsCod() {
+      return cdsCod;
+    }
 
-    public String getTipoCorsoCod() { return tipoCorsoCod; }
+    public String getTipoCorsoCod() {
+      return tipoCorsoCod;
+    }
 
-    public Integer getAnnoCorso() { return annoCorso; }
+    public Integer getAnnoCorso() {
+      return annoCorso;
+    }
 
-    public Integer getDurataAnni() { return durataAnni; }
+    public Integer getDurataAnni() {
+      return durataAnni;
+    }
 
-    public Integer getAaIscrId() { return aaIscrId; }
+    public Integer getAaIscrId() {
+      return aaIscrId;
+    }
 
-    public Integer getUltimoAnnoFlg() { return ultimoAnnoFlg; }
+    public Integer getUltimoAnnoFlg() {
+      return ultimoAnnoFlg;
+    }
 
-    public String getFacCod() { return facCod; }
+    public String getFacCod() {
+      return facCod;
+    }
   }
 }

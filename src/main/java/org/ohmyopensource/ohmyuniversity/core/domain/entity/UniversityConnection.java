@@ -17,14 +17,14 @@ import java.util.UUID;
 /**
  * Entity that links an OhMyUniversity user to a specific Cineca/ESSE3 account.
  *
- * A single user can have multiple university connections, each representing:
+ * <p>A single user can have multiple university connections, each representing:
  * - a different university tenant
  * - or multiple Cineca accounts within the same university context
  *
- * This entity does NOT store any authentication/session credentials.
+ * <p>This entity does NOT store any authentication/session credentials.
  * Cineca tokens (JWT, authToken) are stored in Redis with TTL and never persisted.
  *
- * Responsibilities:
+ * <p>Responsibilities:
  * - Map internal user identity to external Cineca account
  * - Store university metadata (id, name, base URL)
  * - Track connection lifecycle (creation, last usage)
@@ -51,7 +51,7 @@ public class UniversityConnection {
   /**
    * University tenant identifier used in Cineca context.
    *
-   * Example: UNIMOL, POLIMI, UNIROMA1
+   * <p>Example: UNIMOL, POLIMI, UNIROMA1
    */
   @NotBlank
   @Column(name = "university_id", nullable = false, length = 20)

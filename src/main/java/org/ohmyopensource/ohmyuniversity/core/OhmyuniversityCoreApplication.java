@@ -6,20 +6,19 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 /**
  * Entry point of the OhMyUniversity core microservice.
  *
- * Bootstraps the Spring Boot application and initializes the full
- * application context, including security, persistence, and external
- * integrations (Cineca clients, Redis, Kafka, etc.).
+ * <p>Bootstraps the Spring Boot application and initializes the full application context, including
+ * security, persistence, and external integrations (Cineca clients, Redis, Kafka, etc.).
  */
 @SpringBootApplication
 public class OhmyuniversityCoreApplication {
 
-	/**
-	 * Main method that starts the Spring Boot application.
-	 *
-	 * @param args command-line arguments
-	 */
-	public static void main(String[] args) {
-		SpringApplication.run(OhmyuniversityCoreApplication.class, args);
-	}
+  /**
+   * Main method that starts the Spring Boot application.
+   *
+   * @param args command-line arguments
+   */
+  public static void main(String[] args) {
+    SpringApplication.run(OhmyuniversityCoreApplication.class, args);
+  }
 
 }

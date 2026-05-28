@@ -8,16 +8,15 @@ import org.springframework.stereotype.Component;
 /**
  * Central registry of universities supported by OhMyUniversity.
  *
- * This component is populated via Spring Boot configuration properties
- * (prefix: "omu.universities") and provides a runtime lookup mechanism
- * for university-specific ESSE3 configurations.
+ * <p>This component is populated via Spring Boot configuration properties
+ * (prefix: "omu.universities") and provides a runtime lookup mechanism for university-specific
+ * ESSE3 configurations.
  *
- * Each university is identified by a short code (e.g. "UNIMOL") and maps to:
+ * <p>Each university is identified by a short code (e.g. "UNIMOL") and maps to:
  * - human-readable name
  * - Cineca ESSE3 base API URL
  *
- * This registry acts as the single source of truth for resolving
- * external university endpoints.
+ * <p>This registry acts as the single source of truth for resolving external university endpoints.
  */
 @Component
 @ConfigurationProperties(prefix = "omu")
@@ -42,7 +41,7 @@ public class UniversityRegistry {
   /**
    * Resolves a university configuration by its identifier.
    *
-   * Lookup is case-insensitive and returns an empty result if:
+   * <p>Lookup is case-insensitive and returns an empty result if:
    * - universityId is null
    * - university is not registered in configuration
    *
@@ -59,9 +58,10 @@ public class UniversityRegistry {
   /**
    * Immutable configuration model for a single university.
    *
-   * @param name human-readable university name
+   * @param name    human-readable university name
    * @param baseUrl ESSE3 REST API base URL
    */
   public record UniversityConfig(String name, String baseUrl) {
+
   }
 }

@@ -14,12 +14,11 @@ import org.springframework.stereotype.Service;
 /**
  * Service responsible for issuing and validating OhMyUniversity! JWT tokens.
  *
- * Access tokens contain user identity and active university profile claims.
- * Tokens are signed using an HMAC secret key configured through application
- * properties.
+ * <p>Access tokens contain user identity and active university profile claims. Tokens are signed
+ * using an HMAC secret key configured through application properties.
  *
- * Access token lifetime defaults to 15 minutes. Refresh token lifecycle
- * management is delegated to the dedicated Redis-based refresh token layer.
+ * <p>Access token lifetime defaults to 15 minutes. Refresh token lifecycle management is delegated
+ * to the dedicated Redis-based refresh token layer.
  */
 @Service
 public class OmuJwtService {
@@ -32,7 +31,7 @@ public class OmuJwtService {
   /**
    * Creates a new JWT service instance.
    *
-   * @param secret JWT signing secret
+   * @param secret       JWT signing secret
    * @param expirationMs access token expiration time in milliseconds
    */
   public OmuJwtService(
@@ -51,15 +50,15 @@ public class OmuJwtService {
   /**
    * Issues a signed JWT access token for the provided user context.
    *
-   * The generated token contains the authenticated OhMyUniversity user
-   * identifier together with the currently selected academic profile.
+   * <p>The generated token contains the authenticated OhMyUniversity user identifier together with
+   * the currently selected academic profile.
    *
-   * @param omuUserId unique OhMyUniversity user identifier
+   * @param omuUserId     unique OhMyUniversity user identifier
    * @param codiceFiscale user tax code
-   * @param universityId active university identifier
-   * @param stuId active Cineca career identifier
-   * @param matId active Cineca career segment identifier
-   * @param matricola active student registration number
+   * @param universityId  active university identifier
+   * @param stuId         active Cineca career identifier
+   * @param matId         active Cineca career segment identifier
+   * @param matricola     active student registration number
    * @return signed JWT access token
    */
   public String issue(
@@ -89,9 +88,8 @@ public class OmuJwtService {
   /**
    * Validates the provided JWT access token.
    *
-   * If validation succeeds, the parsed token claims are returned.
-   * The underlying JWT library throws an exception when the token is
-   * malformed, expired, or signed with an invalid key.
+   * <p>If validation succeeds, the parsed token claims are returned. The underlying JWT library
+   * throws an exception when the token is malformed, expired, or signed with an invalid key.
    *
    * @param token JWT token to validate
    * @return validated token claims
@@ -107,8 +105,8 @@ public class OmuJwtService {
   /**
    * Generates a cryptographically random refresh token identifier.
    *
-   * The generated value is composed of two UUIDs without dashes in order
-   * to increase entropy and reduce predictability.
+   * <p>The generated value is composed of two UUIDs without dashes in order to increase entropy and
+   * reduce predictability.
    *
    * @return generated refresh token
    */

@@ -12,17 +12,17 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 /**
  * Spring Security configuration for the core microservice.
  *
- * This configuration defines a stateless JWT-based security model where:
+ * <p>This configuration defines a stateless JWT-based security model where:
  * - Authentication is handled via OhMyUniversity JWT tokens
  * - No server-side session is maintained
  * - Requests are authorized based on JWT claims validated by {@link JwtAuthenticationFilter}
  *
- * Public endpoints:
+ * <p>Public endpoints:
  * - /api/auth/** (authentication flow)
  * - /actuator/health (health checks)
  * - /swagger-ui/** and /v3/api-docs/** (API documentation)
  *
- * All remaining endpoints require a valid authenticated principal.
+ * <p>All remaining endpoints require a valid authenticated principal.
  */
 @Configuration
 @EnableWebSecurity
@@ -33,8 +33,8 @@ public class SecurityConfig {
   // ============ Constructor ============
 
   /**
-   * Creates the security configuration and injects the JWT filter
-   * responsible for validating incoming requests.
+   * Creates the security configuration and injects the JWT filter responsible for validating
+   * incoming requests.
    */
   public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
     this.jwtAuthenticationFilter = jwtAuthenticationFilter;
@@ -45,7 +45,7 @@ public class SecurityConfig {
   /**
    * Configures the Spring Security filter chain.
    *
-   * Security rules:
+   * <p>Security rules:
    * - CSRF disabled (stateless REST API)
    * - Stateless session management
    * - Public access to authentication and documentation endpoints

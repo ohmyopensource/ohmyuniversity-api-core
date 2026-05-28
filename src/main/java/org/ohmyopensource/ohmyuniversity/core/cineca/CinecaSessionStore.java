@@ -10,16 +10,15 @@ import org.springframework.stereotype.Component;
 /**
  * Stores and manages Cineca and OhMyUniversity session tokens using Redis.
  *
- * This component acts as a transient session store:
+ * <p>This component acts as a transient session store:
  * - Cineca JWT and auth tokens are cached with a strict TTL
  * - OhMyU refresh tokens are mapped to internal user IDs
  *
- * No session-related data is persisted to the database.
- * All entries expire automatically based on their TTL, ensuring
- * alignment with Cineca session constraints and improving security.
+ * <p>No session-related data is persisted to the database. All entries expire automatically based
+ * on their TTL, ensuring alignment with Cineca session constraints and improving security.
  *
- * This design enforces stateless authentication at the application level,
- * while still supporting short-lived external sessions.
+ * <p>This design enforces stateless authentication at the application level, while still supporting
+ * short-lived external sessions.
  */
 @Component
 public class CinecaSessionStore {
@@ -52,9 +51,9 @@ public class CinecaSessionStore {
   /**
    * Stores a Cineca JWT for a specific user and university.
    *
-   * @param omuUserId internal user ID
+   * @param omuUserId    internal user ID
    * @param universityId university identifier
-   * @param jwt Cineca JWT token
+   * @param jwt          Cineca JWT token
    */
   public void storeCinecaJwt(String omuUserId, String universityId, String jwt) {
     String key = String.format(KEY_CINECA_JWT, omuUserId, universityId);
@@ -65,7 +64,7 @@ public class CinecaSessionStore {
   /**
    * Retrieves the Cineca JWT for a user and university.
    *
-   * @param omuUserId internal user ID
+   * @param omuUserId    internal user ID
    * @param universityId university identifier
    * @return optional JWT if present and not expired
    */
@@ -77,7 +76,7 @@ public class CinecaSessionStore {
   /**
    * Deletes the Cineca JWT for a user and university.
    *
-   * @param omuUserId internal user ID
+   * @param omuUserId    internal user ID
    * @param universityId university identifier
    */
   public void deleteCinecaJwt(String omuUserId, String universityId) {
@@ -87,9 +86,9 @@ public class CinecaSessionStore {
   /**
    * Stores Cineca auth/session token.
    *
-   * @param omuUserId internal user ID
+   * @param omuUserId    internal user ID
    * @param universityId university identifier
-   * @param authToken Cineca session token
+   * @param authToken    Cineca session token
    */
   public void storeCinecaAuthToken(String omuUserId, String universityId, String authToken) {
     String key = String.format(KEY_CINECA_AUTH, omuUserId, universityId);
@@ -99,7 +98,7 @@ public class CinecaSessionStore {
   /**
    * Retrieves Cineca auth/session token.
    *
-   * @param omuUserId internal user ID
+   * @param omuUserId    internal user ID
    * @param universityId university identifier
    * @return optional auth token if present
    */
@@ -112,7 +111,7 @@ public class CinecaSessionStore {
    * Stores a refresh token mapped to a user ID.
    *
    * @param refreshToken refresh token
-   * @param omuUserId internal user ID
+   * @param omuUserId    internal user ID
    */
   public void storeRefreshToken(String refreshToken, String omuUserId) {
     String key = String.format(KEY_OMU_REFRESH, refreshToken);
@@ -142,7 +141,7 @@ public class CinecaSessionStore {
   /**
    * Clears all session data for a user and university.
    *
-   * @param omuUserId internal user ID
+   * @param omuUserId    internal user ID
    * @param universityId university identifier
    */
   public void clearSession(String omuUserId, String universityId) {

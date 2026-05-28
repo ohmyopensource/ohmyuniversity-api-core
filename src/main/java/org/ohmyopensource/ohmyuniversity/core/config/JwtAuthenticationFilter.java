@@ -18,20 +18,19 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Spring Security filter that validates OhMyUniversity JWT tokens
- * and populates the SecurityContext with an authenticated principal.
+ * Spring Security filter that validates OhMyUniversity JWT tokens and populates the SecurityContext
+ * with an authenticated principal.
  *
- * This filter:
+ * <p>This filter:
  * - Extracts the Bearer token from the Authorization header
  * - Validates and parses JWT claims via OmuJwtService
  * - Builds an OmuPrincipal containing user and academic context
  * - Injects authentication into Spring Security context
  *
- * If the token is missing or invalid, the request proceeds unauthenticated.
- * Protected endpoints are enforced later by SecurityConfig.
+ * <p>If the token is missing or invalid, the request proceeds unauthenticated. Protected endpoints
+ * are enforced later by SecurityConfig.
  *
- * Note on JJWT behavior:
- * Numeric claims may be deserialized as Integer/Double internally,
+ * <p>Note on JJWT behavior: Numeric claims may be deserialized as Integer/Double internally,
  * therefore they must be safely converted using Number.longValue().
  */
 @Component
@@ -58,20 +57,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   /**
    * Intercepts every HTTP request and attempts JWT authentication.
    *
-   * Flow:
+   * <p>Flow:
    * 1. Extract Authorization header
    * 2. Validate Bearer token format
    * 3. Parse and validate JWT claims
    * 4. Build OmuPrincipal from claims
    * 5. Store authentication in SecurityContext
    *
-   * If validation fails, the request continues without authentication.
+   * <p>If validation fails, the request continues without authentication.
    *
-   * @param request incoming HTTP request
-   * @param response HTTP response
+   * @param request     incoming HTTP request
+   * @param response    HTTP response
    * @param filterChain remaining filter chain
    * @throws ServletException if servlet processing fails
-   * @throws IOException if I/O error occurs during filtering
+   * @throws IOException      if I/O error occurs during filtering
    */
   @Override
   protected void doFilterInternal(

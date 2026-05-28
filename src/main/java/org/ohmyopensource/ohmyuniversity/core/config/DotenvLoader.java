@@ -9,20 +9,18 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.PropertiesPropertySource;
 
 /**
- * Spring EnvironmentPostProcessor responsible for loading environment variables
- * from a local .env file into the Spring Environment.
+ * Spring EnvironmentPostProcessor responsible for loading environment variables from a local .env
+ * file into the Spring Environment.
  *
- * This component runs before the application context is initialized, ensuring
- * that placeholders defined in application.yaml (e.g. ${JWT_SECRET}) can be
- * resolved correctly at startup time.
+ * <p>This component runs before the application context is initialized, ensuring that placeholders
+ * defined in application.yaml (e.g. ${JWT_SECRET}) can be resolved correctly at startup time.
  *
- * The .env file is considered optional:
+ * <p>The .env file is considered optional:
  * - In local development, it provides convenience for configuration.
- * - In production/container environments (Docker, ECS, EKS), values are
- *   expected to be injected via the runtime environment instead.
+ * - In production/container environments (Docker, ECS, EKS), values are expected to be injected via
+ * the runtime environment instead.
  *
- * Any missing or malformed .env file is ignored silently to avoid blocking
- * application startup.
+ * <p>Any missing or malformed .env file is ignored silently to avoid blocking application startup.
  */
 public class DotenvLoader implements EnvironmentPostProcessor, Ordered {
 
@@ -31,8 +29,8 @@ public class DotenvLoader implements EnvironmentPostProcessor, Ordered {
   /**
    * List of environment keys explicitly loaded from the .env file.
    *
-   * These keys define the core runtime configuration required by the application,
-   * including database, cache, messaging, and security settings.
+   * <p>These keys define the core runtime configuration required by the application, including
+   * database, cache, messaging, and security settings.
    */
   private static final String[] ENV_KEYS = {
       "SPRING_PROFILES_ACTIVE",
@@ -48,15 +46,12 @@ public class DotenvLoader implements EnvironmentPostProcessor, Ordered {
       "JWT_REFRESH_EXPIRATION_MS"
   };
 
-  // ============ Constructor ============
-
   // ============ Override Methods ============
 
   /**
    * Defines loading priority of this environment processor.
    *
-   * A high precedence ensures .env values are available early in the
-   * Spring bootstrap lifecycle.
+   * <p>A high precedence ensures .env values are available early in the Spring bootstrap lifecycle.
    */
   @Override
   public int getOrder() {
@@ -66,13 +61,13 @@ public class DotenvLoader implements EnvironmentPostProcessor, Ordered {
   /**
    * Loads .env variables and injects them into the Spring Environment.
    *
-   * The process:
+   * <p>The process:
    * - loads .env file from working directory
    * - extracts predefined keys
    * - merges them into Spring PropertySources with highest priority
    *
-   * Failures are intentionally ignored to keep the application resilient
-   * in environments where .env is not present.
+   * <p>Failures are intentionally ignored to keep the application resilient in environments
+   * where .env is not present.
    */
   @Override
   public void postProcessEnvironment(
