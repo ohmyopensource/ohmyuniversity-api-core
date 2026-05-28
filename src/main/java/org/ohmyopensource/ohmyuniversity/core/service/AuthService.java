@@ -117,7 +117,8 @@ public class AuthService {
     connectionRepository.findByUserIdAndUniversityIdAndUsernameCineca(
             omuUser.getId(), request.getUniversityId(), request.getUsername())
         .ifPresentOrElse(
-            existing -> {},
+            existing -> {
+            },
             () -> {
               UniversityConnection conn = new UniversityConnection();
               conn.setUser(omuUser);
@@ -136,6 +137,10 @@ public class AuthService {
     if (cinecaResponse.getAuthToken() != null) {
       sessionStore.storeCinecaAuthToken(omuUserId, request.getUniversityId(),
           cinecaResponse.getAuthToken());
+    }
+    if (cinecaUser.getPersId() != null) {
+      sessionStore.storeCinecaPersId(omuUserId, request.getUniversityId(),
+          cinecaUser.getPersId());
     }
 
     List<TrattoCarriera> tratti = cinecaUser.getTrattiCarriera();
@@ -215,13 +220,15 @@ public class AuthService {
           "Cineca session expired — please log in again");
     }
 
-    UniversityConnection conn = connectionRepository
+    boolean connectionExists = connectionRepository
         .findByUserId(omuUser.getId())
         .stream()
-        .filter(c -> c.getUniversityId().equals(universityId))
-        .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException(
-            "No connection found for university: " + universityId));
+        .anyMatch(c -> c.getUniversityId().equals(universityId));
+
+    if (!connectionExists) {
+      throw new IllegalArgumentException(
+          "No connection found for university: " + universityId);
+    }
 
     return jwtService.issue(
         omuUserId,

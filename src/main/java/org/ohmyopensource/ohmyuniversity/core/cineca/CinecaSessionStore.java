@@ -17,7 +17,8 @@ import org.springframework.stereotype.Component;
  * <p>No session-related data is persisted to the database. All entries expire automatically based
  * on their TTL, ensuring alignment with Cineca session constraints and improving security.
  *
- * <p>This design enforces stateless authentication at the application level, while still supporting
+ * <p>This design enforces stateless authentication at the application level, while still
+ * supporting
  * short-lived external sessions.
  */
 @Component
@@ -27,10 +28,12 @@ public class CinecaSessionStore {
 
   private static final Duration CINECA_JWT_TTL = Duration.ofMinutes(14);
   private static final Duration CINECA_AUTH_TTL = Duration.ofMinutes(14);
+  private static final Duration CINECA_PERS_TTL = Duration.ofMinutes(14);
   private static final Duration OMU_REFRESH_TTL = Duration.ofDays(7);
 
   private static final String KEY_CINECA_JWT = "cineca:jwt:%s:%s";
   private static final String KEY_CINECA_AUTH = "cineca:auth:%s:%s";
+  private static final String KEY_CINECA_PERS = "cineca:pers:%s:%s";
   private static final String KEY_OMU_REFRESH = "omu:refresh:%s";
 
   private final StringRedisTemplate redis;
@@ -108,6 +111,44 @@ public class CinecaSessionStore {
   }
 
   /**
+   * Stores the Cineca person identifier (persId) in Redis for a specific user and university
+   * context.
+   *
+   * <p>The value is stored as a string with a TTL to avoid persistence beyond the validity of the
+   * Cineca session. This identifier is later used to resolve student-related operations without
+   * re-querying login data.
+   *
+   * @param omuUserId    internal OhMyUniversity user identifier
+   * @param universityId target university identifier (tenant)
+   * @param persId       Cineca person identifier to store
+   */
+  public void storeCinecaPersId(String omuUserId, String universityId, Long persId) {
+    String key = String.format(KEY_CINECA_PERS, omuUserId, universityId);
+    redis.opsForValue().set(key, persId.toString(), CINECA_PERS_TTL);
+    log.debug("CinecaSessionStore: stored Cineca persId={} for user={} uni={}",
+        persId, omuUserId, universityId);
+  }
+
+  /**
+   * Retrieves the Cineca person identifier (persId) from Redis.
+   *
+   * <p>The value is parsed from its string representation back into a Long. If no value is found or
+   * the key has expired, an empty Optional is returned.
+   *
+   * @param omuUserId    internal OhMyUniversity user identifier
+   * @param universityId target university identifier (tenant)
+   * @return optional containing the Cineca persId if present
+   */
+  public Optional<Long> getCinecaPersId(String omuUserId, String universityId) {
+    String key = String.format(KEY_CINECA_PERS, omuUserId, universityId);
+    String value = redis.opsForValue().get(key);
+    if (value == null) {
+      return Optional.empty();
+    }
+    return Optional.of(Long.parseLong(value));
+  }
+
+  /**
    * Stores a refresh token mapped to a user ID.
    *
    * @param refreshToken refresh token
@@ -147,6 +188,7 @@ public class CinecaSessionStore {
   public void clearSession(String omuUserId, String universityId) {
     deleteCinecaJwt(omuUserId, universityId);
     redis.delete(String.format(KEY_CINECA_AUTH, omuUserId, universityId));
+    redis.delete(String.format(KEY_CINECA_PERS, omuUserId, universityId));
     log.info("CinecaSessionStore: cleared session for user={} uni={}", omuUserId, universityId);
   }
 }

@@ -10,6 +10,7 @@ import org.ohmyopensource.ohmyuniversity.core.dto.MediaResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.PianoStudioResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneRequest;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.TasseResponse;
 import org.ohmyopensource.ohmyuniversity.core.service.CarrieraService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -193,6 +194,35 @@ public class CarrieraController {
     } catch (CinecaAuthException e) {
       log.warn("CarrieraController: Cineca auth failed for prenotazioni user={}",
           principal.omuUserId());
+      return ResponseEntity.status(401).build();
+    } catch (CinecaUnavailableException e) {
+      log.error("CarrieraController: Cineca unavailable — {}", e.getMessage());
+      return ResponseEntity.status(503).build();
+    }
+  }
+
+  /**
+   * Returns the student's tuition fee status.
+   *
+   * <p>Delegates to {@link CarrieraService#getTasse(OmuPrincipal)} which aggregates:
+   * - fee status summary (semaforo)
+   * - due and expired tuition items
+   * - full list of accounting charges
+   *
+   * <p>The authenticated user context is extracted from the JWT principal
+   * and passed directly to the service layer.
+   *
+   * @param principal authenticated OhMyUniversity user injected from security context
+   * @return HTTP 200 with fee status, 401 if Cineca session is expired, 503 if Cineca is
+   *     unavailable
+   */
+  @GetMapping("/tasse")
+  public ResponseEntity<TasseResponse> getTasse(
+      @AuthenticationPrincipal OmuPrincipal principal) {
+    try {
+      return ResponseEntity.ok(carrieraService.getTasse(principal));
+    } catch (CinecaAuthException e) {
+      log.warn("CarrieraController: Cineca session expired for user={}", principal.omuUserId());
       return ResponseEntity.status(401).build();
     } catch (CinecaUnavailableException e) {
       log.error("CarrieraController: Cineca unavailable — {}", e.getMessage());

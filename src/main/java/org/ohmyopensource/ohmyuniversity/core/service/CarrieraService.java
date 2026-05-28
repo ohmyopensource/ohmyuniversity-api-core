@@ -2,6 +2,7 @@ package org.ohmyopensource.ohmyuniversity.core.service;
 
 import java.util.List;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient;
+import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaAddebito;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaAppello;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaAttivitaPiano;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaBadge;
@@ -9,6 +10,7 @@ import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.Cineca
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaPianoDettaglio;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaPrenotazione;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaRigaLibretto;
+import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaSemaforo;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaTestataPiano;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaSessionStore;
@@ -25,6 +27,9 @@ import org.ohmyopensource.ohmyuniversity.core.dto.PianoStudioResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse.EsitoPrenotazione;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse.Prenotazione;
+import org.ohmyopensource.ohmyuniversity.core.dto.TasseResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.TasseResponse.Addebito;
+import org.ohmyopensource.ohmyuniversity.core.dto.TasseResponse.VoceTassa;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -241,6 +246,50 @@ public class CarrieraService {
   }
 
   /**
+   * Retrieves the student's tuition fee situation from Cineca.
+   *
+   * <p>Resolves the Cineca JWT and university ESSE3 base URL from the
+   * authenticated principal, then fetches:
+   * - the semaforo summary containing payment status and due amounts
+   * - the full list of accounting charges (addebiti)
+   *
+   * <p>The Cineca response is mapped into {@link TasseResponse},
+   * converting Cineca fee entries into internal DTOs.
+   *
+   * @param principal authenticated OhMyUniversity principal containing university and student
+   *                  identifiers
+   * @return aggregated tuition fee and accounting information
+   */
+  public TasseResponse getTasse(OmuPrincipal principal) {
+    String cinecaJwt = resolveCinecaJwt(principal);
+    String baseUrl = resolveBaseUrl(principal.universityId());
+
+    CinecaSemaforo semaforo = cinecaClient.getSemaforo(
+        baseUrl, cinecaJwt, principal.stuId());
+
+    List<CinecaAddebito> addebiti = cinecaClient.getAddebiti(
+        baseUrl, cinecaJwt, principal.stuId());
+
+    log.debug("CarrieraService: fetched tasse semaforo={} addebiti={} for stuId={}",
+        semaforo != null ? semaforo.getSemaforo() : "null",
+        addebiti.size(), principal.stuId());
+
+    TasseResponse response = new TasseResponse();
+
+    if (semaforo != null) {
+      response.setSemaforo(semaforo.getSemaforo());
+      response.setImportoDovuto(semaforo.getImportoDovuto());
+      response.setTasseScadute(semaforo.getTasseScadute() == null ? List.of() :
+          semaforo.getTasseScadute().stream().map(this::toVoceTassa).toList());
+      response.setTasseDovute(semaforo.getTasseDovute() == null ? List.of() :
+          semaforo.getTasseDovute().stream().map(this::toVoceTassa).toList());
+    }
+
+    response.setAddebiti(addebiti.stream().map(this::toAddebito).toList());
+    return response;
+  }
+
+  /**
    * Retrieves the student's digital university badge.
    *
    * @param principal authenticated OhMyUniversity principal
@@ -423,6 +472,66 @@ public class CarrieraService {
     }
 
     return pre;
+  }
+
+  /**
+   * Maps a Cineca fee entry (CinecaVoceTassa) into the internal application model (VoceTassa).
+   *
+   * <p>Performs a direct field-to-field mapping without transformations,
+   * preserving all financial and descriptive attributes provided by Cineca.
+   *
+   * @param v Cineca fee entry returned by the ESSE3 carrier service
+   * @return internal representation of a single fee item
+   */
+  private VoceTassa toVoceTassa(CinecaCarrieraClient.CinecaVoceTassa v) {
+    VoceTassa vt = new VoceTassa();
+    vt.setFattId(v.getFattId());
+    vt.setTassaId(v.getTassaId());
+    vt.setTassaCod(v.getTassaCod());
+    vt.setTassaDes(v.getTassaDes());
+    vt.setVoceId(v.getVoceId());
+    vt.setVoceCod(v.getVoceCod());
+    vt.setVoceDes(v.getVoceDes());
+    vt.setImportoVoce(v.getImportoVoce());
+    vt.setDataScadenza(v.getDataScadenza());
+    vt.setDataPagTollerataMax(v.getDataPagTollerataMax());
+    return vt;
+  }
+
+  /**
+   * Maps a Cineca accounting charge (CinecaAddebito) into the internal Addebito model used by the
+   * application.
+   *
+   * <p>This method performs a direct field-by-field mapping, preserving all
+   * billing, payment, and status information provided by Cineca without applying transformations or
+   * business logic.
+   *
+   * @param a Cineca accounting charge returned by the ESSE3 carrier service
+   * @return internal representation of a single accounting charge
+   */
+  private Addebito toAddebito(CinecaAddebito a) {
+    Addebito ad = new Addebito();
+    ad.setAaId(a.getAaId());
+    ad.setTassaDes(a.getTassaDes());
+    ad.setTassaCod(a.getTassaCod());
+    ad.setTipoTaxCod(a.getTipoTaxCod());
+    ad.setVoceDes(a.getVoceDes());
+    ad.setImportoVoce(a.getImportoVoce());
+    ad.setScadenzaAddebito(a.getScadenzaAddebito());
+    ad.setScadutoFlg(a.getScadutoFlg());
+    ad.setFattId(a.getFattId());
+    ad.setScadFattura(a.getScadFattura());
+    ad.setFattScadutaFlg(a.getFattScadutaFlg());
+    ad.setImportoFattura(a.getImportoFattura());
+    ad.setDataEmissione(a.getDataEmissione());
+    ad.setPagatoFlg(a.getPagatoFlg());
+    ad.setDataPagamento(a.getDataPagamento());
+    ad.setImportoPag(a.getImportoPag());
+    ad.setAnnullataFlg(a.getAnnullataFlg());
+    ad.setRataDes(a.getRataDes());
+    ad.setIuv(a.getIuv());
+    ad.setCodiceAvviso(a.getCodiceAvviso());
+    return ad;
   }
 
   /**
