@@ -21,7 +21,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Orchestrates the full authentication flow for OhMyUniversity.
+ * Service responsible for managing the authentication flow of OhMyUniversity.
+ *
+ * It handles:
+ * - Cineca authentication against ESSE3
+ * - User provisioning and persistence
+ * - University connection management
+ * - Cineca session storage (JWT + auth token)
+ * - OhMyU JWT access/refresh token issuance
+ *
+ * This service is a critical entry point for the system authentication layer
+ * and coordinates both external (Cineca) and internal (OhMyU) identity contexts.
  */
 @Service
 public class AuthService {
@@ -35,6 +45,21 @@ public class AuthService {
   private final UniversityConnectionRepository connectionRepository;
   private final UniversityRegistry universityRegistry;
 
+  // ============ Constructor ============
+
+  /**
+   * Constructs the authentication service and injects all required dependencies.
+   *
+   * This service depends on:
+   * - CinecaClient for external ESSE3 authentication
+   * - CinecaSessionStore for Redis-based session persistence
+   * - OmuJwtService for JWT creation and validation
+   * - OmuUserRepository for user persistence
+   * - UniversityConnectionRepository for Cineca account mapping
+   * - UniversityRegistry for resolving university configurations
+   *
+   * All dependencies are required and must be provided by the Spring context.
+   */
   public AuthService(
       CinecaClient cinecaClient,
       CinecaSessionStore sessionStore,
@@ -50,15 +75,21 @@ public class AuthService {
     this.universityRegistry = universityRegistry;
   }
 
+  // ============ Override Methods ============
+
+  // ============ Getters | Setters | Bool ============
+
+  // ============ Class Methods ============
+
   /**
-   * Authenticates a student against their university's ESSE3 instance
-   * and returns OhMyU tokens plus all available career profiles.
+   * Authenticates a user against Cineca ESSE3 and initializes an OhMyUniversity session.
    *
    * @param request login credentials and university identifier
-   * @return login response with access token, refresh token and profiles
+   * @return login response containing access token, refresh token and career profiles
+   *
    * @throws CinecaClient.CinecaAuthException if credentials are invalid
-   * @throws CinecaClient.CinecaUnavailableException if ESSE3 is unreachable
-   * @throws IllegalArgumentException if the universityId is not registered
+   * @throws CinecaClient.CinecaUnavailableException if Cineca ESSE3 is unreachable
+   * @throws IllegalArgumentException if the universityId is not registered in the system
    */
   @Transactional
   public LoginResponse login(LoginRequest request) {
@@ -136,11 +167,14 @@ public class AuthService {
   }
 
   /**
-   * Logs out the user by invalidating the refresh token and clearing
-   * Cineca session tokens from Redis for the specified university.
+   * Logs out the user by invalidating refresh token and clearing Cineca session data.
    *
-   * @param refreshToken the OhMyU refresh token to invalidate
-   * @param universityId the university session to clear
+   * This method ensures:
+   * - refresh token invalidation
+   * - removal of Cineca session data from Redis
+   *
+   * @param refreshToken refresh token to invalidate
+   * @param universityId university context to clear session for
    */
   public void logout(String refreshToken, String universityId) {
     sessionStore.getUserIdByRefreshToken(refreshToken).ifPresent(omuUserId -> {
@@ -155,10 +189,20 @@ public class AuthService {
    * If the Cineca JWT is still valid in Redis it is reused.
    * If it is expired, the user must re-login to get a fresh Cineca session.
    *
-   * @param refreshToken the OhMyU refresh token
-   * @param universityId the university to refresh the session for
+   * The method:
+   * - validates refresh token
+   * - verifies user existence
+   * - checks Cineca session validity in Redis
+   * - issues a new JWT access token
+   *
+   * @param refreshToken refresh token used for session renewal
+   * @param universityId university context
    * @return new OhMyU access token
-   * @throws IllegalArgumentException if the refresh token is invalid or expired
+   *
+   * @throws IllegalArgumentException if refresh token is invalid or expired
+   * @throws IllegalArgumentException if user is not found
+   * @throws IllegalArgumentException if Cineca session has expired
+   * @throws IllegalArgumentException if no university connection exists
    */
   @Transactional(readOnly = true)
   public String refresh(String refreshToken, String universityId) {
@@ -190,10 +234,20 @@ public class AuthService {
         null, null, null);
   }
 
-  // ================================
-  // Private helpers
-  // ================================
-
+  /**
+   * Maps a Cineca career profile (TrattoCarriera) into the internal API DTO.
+   *
+   * This method normalizes raw ESSE3 data into a stable representation used by
+   * the frontend, enriching it with:
+   * - university context
+   * - activation state
+   * - optional course metadata (when available)
+   *
+   * @param t Cineca career segment from ESSE3
+   * @param universityId university identifier
+   * @param universityName human-readable university name
+   * @return normalized career profile DTO
+   */
   private ProfiloCarriera toProfiloCarriera(
       TrattoCarriera t,
       String universityId,

@@ -16,29 +16,54 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for OhMyUniversity authentication.
+ * Authentication controller for OhMyUniversity.
  *
- * All endpoints are public — no authentication required to reach them.
- * The login endpoint proxies credentials to the university's Cineca ESSE3 instance.
+ * This controller exposes public endpoints used to:
+ * - authenticate a student via Cineca ESSE3 (login)
+ * - refresh JWT access tokens using a refresh token
+ * - logout and invalidate server-side sessions (Redis)
+ *
+ * Important:
+ * All endpoints are publicly accessible — authentication is delegated
+ * to Cineca or refresh-token validation, not Spring Security here.
  */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
   private static final Logger log = LoggerFactory.getLogger(AuthController.class);
-
   private final AuthService authService;
 
+  // ============ Constructor ============
+
+  /**
+   * Creates the AuthController and injects the authentication service.
+   *
+   * This controller depends on AuthService to handle all authentication logic,
+   * including Cineca login, token generation, and session management.
+   *
+   * @param authService service responsible for authentication flows and token management
+   */
   public AuthController(AuthService authService) {
     this.authService = authService;
   }
 
+  // ============ Classe Methods ============
+
   /**
-   * Authenticates a student against their university's Cineca ESSE3 instance.
+   * Authenticates a student against Cineca ESSE3.
    *
-   * @param request Cineca credentials + universityId
-   * @return 200 with login data, 401 if credentials invalid,
-   *         404 if university unknown, 503 if Cineca is unreachable
+   * Flow:
+   * 1. Validate request payload
+   * 2. Delegate authentication to AuthService
+   * 3. Retrieve Cineca session + JWT
+   * 4. Build OhMyUniversity access + refresh tokens
+   *
+   * @param request login payload containing universityId, username, password
+   * @return 200 OK with LoginResponse if successful
+   *         401 if Cineca credentials are invalid
+   *         404 if universityId is not registered
+   *         503 if Cineca service is unreachable
    */
   @PostMapping("/login")
   public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
@@ -58,11 +83,15 @@ public class AuthController {
   }
 
   /**
-   * Issues a new access token using a valid refresh token.
+   * Refreshes an access token using a valid refresh token.
    *
-   * @param refreshToken the OhMyU refresh token (from login response)
-   * @param universityId the university to refresh the session for
-   * @return 200 with new access token, 401 if refresh token invalid or expired
+   * This endpoint does NOT contact Cineca directly.
+   * It only validates and rotates OhMyUniversity tokens.
+   *
+   * @param refreshToken valid refresh token issued at login
+   * @param universityId target university session scope
+   * @return 200 OK with new access token
+   *         401 if refresh token is invalid or expired
    */
   @PostMapping("/refresh")
   public ResponseEntity<String> refresh(
@@ -78,11 +107,14 @@ public class AuthController {
   }
 
   /**
-   * Logs out the user by invalidating the refresh token and clearing
-   * the Cineca session from Redis.
+   * Logs out the user by invalidating all active sessions.
    *
-   * @param refreshToken the OhMyU refresh token to invalidate
-   * @param universityId the university session to clear
+   * Actions performed:
+   * - Deletes refresh token from Redis
+   * - Clears Cineca session tokens
+   *
+   * @param refreshToken refresh token to invalidate
+   * @param universityId university session scope
    * @return 204 No Content
    */
   @PostMapping("/logout")

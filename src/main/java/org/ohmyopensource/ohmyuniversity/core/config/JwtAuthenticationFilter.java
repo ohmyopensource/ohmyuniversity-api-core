@@ -18,17 +18,21 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Reads the OhMyUniversity JWT from the Authorization header,
- * validates it and populates the Spring Security context.
+ * Spring Security filter that validates OhMyUniversity JWT tokens
+ * and populates the SecurityContext with an authenticated principal.
  *
- * The JWT claims are stored as an {@link OmuPrincipal} so that downstream
- * services can read matId, stuId, universityId without re-parsing the token.
+ * This filter:
+ * - Extracts the Bearer token from the Authorization header
+ * - Validates and parses JWT claims via OmuJwtService
+ * - Builds an OmuPrincipal containing user and academic context
+ * - Injects authentication into Spring Security context
  *
- * JJWT 0.12.x deserializes numeric JSON values as Integer internally,
- * so Long claims must be read via {@code (Number).longValue()} to avoid null.
+ * If the token is missing or invalid, the request proceeds unauthenticated.
+ * Protected endpoints are enforced later by SecurityConfig.
  *
- * If no token is present or the token is invalid, the filter chain
- * continues unauthenticated — SecurityConfig will reject protected endpoints.
+ * Note on JJWT behavior:
+ * Numeric claims may be deserialized as Integer/Double internally,
+ * therefore they must be safely converted using Number.longValue().
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -38,10 +42,37 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
   private final OmuJwtService jwtService;
 
+  // ============ Constructor ============
+
+  /**
+   * Creates the filter and injects the JWT service used for validation.
+   *
+   * @param jwtService service responsible for validating and parsing JWT tokens
+   */
   public JwtAuthenticationFilter(OmuJwtService jwtService) {
     this.jwtService = jwtService;
   }
 
+  // ============ Override Methods ============
+
+  /**
+   * Intercepts every HTTP request and attempts JWT authentication.
+   *
+   * Flow:
+   * 1. Extract Authorization header
+   * 2. Validate Bearer token format
+   * 3. Parse and validate JWT claims
+   * 4. Build OmuPrincipal from claims
+   * 5. Store authentication in SecurityContext
+   *
+   * If validation fails, the request continues without authentication.
+   *
+   * @param request incoming HTTP request
+   * @param response HTTP response
+   * @param filterChain remaining filter chain
+   * @throws ServletException if servlet processing fails
+   * @throws IOException if I/O error occurs during filtering
+   */
   @Override
   protected void doFilterInternal(
       HttpServletRequest request,

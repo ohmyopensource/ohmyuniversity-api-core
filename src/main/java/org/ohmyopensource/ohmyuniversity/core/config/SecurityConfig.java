@@ -12,8 +12,17 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 /**
  * Spring Security configuration for the core microservice.
  *
- * Auth endpoints are public. All other endpoints require a valid OhMyU JWT
- * validated by {@link JwtAuthenticationFilter}.
+ * This configuration defines a stateless JWT-based security model where:
+ * - Authentication is handled via OhMyUniversity JWT tokens
+ * - No server-side session is maintained
+ * - Requests are authorized based on JWT claims validated by {@link JwtAuthenticationFilter}
+ *
+ * Public endpoints:
+ * - /api/auth/** (authentication flow)
+ * - /actuator/health (health checks)
+ * - /swagger-ui/** and /v3/api-docs/** (API documentation)
+ *
+ * All remaining endpoints require a valid authenticated principal.
  */
 @Configuration
 @EnableWebSecurity
@@ -21,10 +30,32 @@ public class SecurityConfig {
 
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+  // ============ Constructor ============
+
+  /**
+   * Creates the security configuration and injects the JWT filter
+   * responsible for validating incoming requests.
+   */
   public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
     this.jwtAuthenticationFilter = jwtAuthenticationFilter;
   }
 
+  // ============ Class Methods ============
+
+  /**
+   * Configures the Spring Security filter chain.
+   *
+   * Security rules:
+   * - CSRF disabled (stateless REST API)
+   * - Stateless session management
+   * - Public access to authentication and documentation endpoints
+   * - All other endpoints require authentication
+   * - JWT filter applied before UsernamePasswordAuthenticationFilter
+   *
+   * @param http Spring Security HTTP configuration
+   * @return configured SecurityFilterChain
+   * @throws Exception if security configuration fails
+   */
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http

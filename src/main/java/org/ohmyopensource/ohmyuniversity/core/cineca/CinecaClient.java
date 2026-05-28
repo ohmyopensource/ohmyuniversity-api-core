@@ -11,50 +11,69 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 /**
- * HTTP client for the Cineca ESSE3 REST API.
+ * HTTP client for interacting with the Cineca ESSE3 REST API.
  *
- * Each university has its own ESSE3 instance at a different base URL.
- * This client is stateless — the base URL and credentials are passed per call.
+ * This client acts as a stateless proxy between OhMyUniversity and the
+ * university ESSE3 systems.
  *
- * Authentication against Cineca uses HTTP Basic Auth (RFC2617).
- * The student's Cineca username and password are passed directly — we act
- * as a proxy between the student and their university's ESSE3 instance.
- * Credentials are never stored — only the resulting session token is cached
- * in Redis with TTL.
+ * Key characteristics:
+ * - Each university has its own base URL
+ * - Authentication uses HTTP Basic Auth (username/password)
+ * - No credentials are persisted
+ * - Session tokens are stored externally in Redis
+ *
+ * All calls are reactive (WebClient) but executed in blocking mode
+ * at service layer boundaries.
  */
 @Component
 public class CinecaClient {
 
   private static final Logger log = LoggerFactory.getLogger(CinecaClient.class);
 
-  // Request the JWT in the login response so we can use it for subsequent calls
+  /** Login endpoint requesting also JWT in response payload */
   private static final String LOGIN_PATH = "/login?optionalFields=jwt";
 
-  // JWT refresh endpoint — no session auth required, only a valid Cineca JWT
+  /** Endpoint used to refresh an existing Cineca JWT */
   private static final String JWT_REFRESH_PATH = "/jwt/refresh";
 
   private final WebClient webClient;
 
+  // ============ Constructor ============
+
+  /**
+   * Initializes the WebClient instance used to communicate with Cineca ESSE3 APIs.
+   *
+   * Configuration details:
+   * - Increases max in-memory buffer size to 5MB to safely handle large Cineca responses
+   *   (e.g. login payloads containing career data and nested structures)
+   * - Uses default WebClient builder since base URL is dynamic per request
+   *
+   * This client is stateless by design — no base URL is preconfigured here.
+   * Each request provides its own target ESSE3 instance.
+   */
   public CinecaClient() {
     this.webClient = WebClient.builder()
         .codecs(config -> config.defaultCodecs().maxInMemorySize(5 * 1024 * 1024))
         .build();
   }
 
+  // ============ Class Methods ============
+
   /**
-   * Authenticates a student against their university's ESSE3 instance.
+   * Authenticates a student against a specific Cineca ESSE3 instance.
    *
-   * Calls {@code GET /login?optionalFields=jwt} with HTTP Basic Auth.
-   * Returns the full login response including career segments and JWT token.
+   * This method performs:
+   * - HTTP GET /login?optionalFields=jwt
+   * - HTTP Basic Authentication (username/password)
+   * - Parsing of CinecaLoginResponse
    *
-   * @param cinecaBaseUrl base URL of the university's ESSE3 API,
-   *                      e.g. "https://unimol.esse3.cineca.it/e3rest/api"
-   * @param username      Cineca username, e.g. "a.delmuto"
-   * @param password      Cineca password
-   * @return login response with authToken, JWT and career segments
-   * @throws CinecaAuthException if credentials are invalid (401) or
-   *                             the account is not enabled for REST (400)
-   * @throws CinecaUnavailableException if the ESSE3 instance is unreachable
+   * @param cinecaBaseUrl base URL of ESSE3 API (e.g. https://.../e3rest/api)
+   * @param username Cineca username
+   * @param password Cineca password
+   * @return CinecaLoginResponse containing JWT, authToken, and user data
+   *
+   * @throws CinecaAuthException if credentials are invalid (401/400)
+   * @throws CinecaUnavailableException if Cineca service is unreachable
    */
   public CinecaLoginResponse login(
       String cinecaBaseUrl,
@@ -94,14 +113,14 @@ public class CinecaClient {
   /**
    * Refreshes an existing Cineca JWT token.
    *
-   * Calls {@code GET /jwt/refresh} with the current JWT in the Authorization header.
-   * This is a public endpoint on Cineca — no session required, only a valid JWT.
+   * Used when the current JWT is close to expiration.
    *
-   * @param cinecaBaseUrl base URL of the university's ESSE3 API
-   * @param currentJwt    the current (possibly near-expiry) Cineca JWT
-   * @return new Cineca JWT with refreshed expiry
-   * @throws CinecaAuthException if the current JWT is invalid or expired
-   * @throws CinecaUnavailableException if the ESSE3 instance is unreachable
+   * @param cinecaBaseUrl base URL of ESSE3 API
+   * @param currentJwt valid Cineca JWT
+   * @return refreshed JWT string
+   *
+   * @throws CinecaAuthException if JWT is invalid or expired
+   * @throws CinecaUnavailableException if Cineca service is unreachable
    */
   public String refreshJwt(String cinecaBaseUrl, String currentJwt) {
     String url = cinecaBaseUrl + JWT_REFRESH_PATH;
@@ -128,26 +147,31 @@ public class CinecaClient {
     }
   }
 
-  // ================================
-  // Private helpers
-  // ================================
-
+  /**
+   * Builds HTTP Basic Authentication header value.
+   *
+   * @param username Cineca username
+   * @param password Cineca password
+   * @return formatted "Basic base64(username:password)" header
+   */
   private String basicAuth(String username, String password) {
     String credentials = username + ":" + password;
     return "Basic " + Base64.getEncoder()
         .encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
   }
 
-  // ================================
-  // Exceptions
-  // ================================
-
+  /**
+   * Thrown when Cineca rejects authentication or JWT is invalid.
+   */
   public static class CinecaAuthException extends RuntimeException {
     public CinecaAuthException(String message) {
       super(message);
     }
   }
 
+  /**
+   * Thrown when Cineca ESSE3 is unreachable or returns 5xx errors.
+   */
   public static class CinecaUnavailableException extends RuntimeException {
     public CinecaUnavailableException(String message) {
       super(message);

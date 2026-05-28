@@ -1,16 +1,13 @@
 -- =============================================================
 -- V1 - Create omu_user table
 --
--- Represents the stable OhMyUniversity identity of a person.
--- This is NOT a copy of Cineca data — it is the aggregating identity
--- that links one person across multiple universities and careers.
+-- Core identity table for OhMyUniversity.
+-- Represents a stable, cross-university user identity.
 --
--- The codiceFiscale is the natural cross-university key: the same
--- person can have accounts at multiple universities but always has
--- the same Italian tax code.
---
--- No student data is stored here — all academic data is fetched
--- from Cineca on demand and cached in Redis.
+-- IMPORTANT:
+-- This table does NOT store academic data.
+-- All student data is retrieved from Cineca APIs on demand
+-- and cached in Redis.
 -- =============================================================
 
 CREATE TABLE omu_user (
@@ -24,6 +21,24 @@ CREATE TABLE omu_user (
                           CONSTRAINT uq_omu_user_codice_fiscale UNIQUE (codice_fiscale)
 );
 
-COMMENT ON TABLE omu_user IS 'Stable OhMyUniversity identity. Aggregates one person across multiple universities and careers. No academic data stored — all fetched from Cineca on demand.';
-COMMENT ON COLUMN omu_user.codice_fiscale IS 'Italian tax code — natural cross-university identifier. Used to match the same person across different university accounts.';
-COMMENT ON COLUMN omu_user.email_primaria IS 'Primary contact email registered on OhMyUniversity. May differ from university institutional emails.';
+-- =============================================================
+-- Comments
+-- =============================================================
+
+COMMENT ON TABLE omu_user IS
+'Core identity table for OhMyUniversity. Represents a user across multiple universities. No academic data is stored here.';
+
+COMMENT ON COLUMN omu_user.id IS
+'Internal UUID primary key generated via gen_random_uuid().';
+
+COMMENT ON COLUMN omu_user.codice_fiscale IS
+'Italian tax code used as cross-university unique identifier for a person.';
+
+COMMENT ON COLUMN omu_user.email_primaria IS
+'Primary email used for OhMyUniversity communications (may differ from university email).';
+
+COMMENT ON COLUMN omu_user.created_at IS
+'Timestamp of user creation.';
+
+COMMENT ON COLUMN omu_user.last_login_at IS
+'Timestamp of last successful authentication.';

@@ -5,20 +5,32 @@ import java.util.List;
 /**
  * Response DTO for GET /api/carriera/prenotazioni.
  *
- * Returns the full booking history for a student — all exam bookings
- * (past and present) fetched from Cineca calesa-service-v1/prenotazioni/{matId}.
+ * This object represents the full exam booking history for a student,
+ * including both past and future exam sessions.
  *
- * Each entry represents a single booking attempt with grade outcome.
+ * Data is retrieved from Cineca calesa-service-v1 and includes
+ * booking metadata, exam results, and grading outcomes when available.
+ *
+ * Each entry represents a single exam booking linked to the student's
+ * academic career and transcript.
  */
 public class PrenotazioneResponse {
 
   private List<Prenotazione> prenotazioni;
+
+  // ============ Getters | Setters | Bool ============
 
   public List<Prenotazione> getPrenotazioni() { return prenotazioni; }
   public void setPrenotazioni(List<Prenotazione> prenotazioni) {
     this.prenotazioni = prenotazioni;
   }
 
+  /**
+   * Represents a single exam booking entry.
+   *
+   * Each record contains the booking metadata and, if available,
+   * the exam outcome information.
+   */
   public static class Prenotazione {
 
     /** Unique booking ID (applistaId from Cineca). */
@@ -77,6 +89,8 @@ public class PrenotazioneResponse {
 
     /** Exam questions text, if available. */
     private String domandeEsame;
+
+    // ============ Getters | Setters | Bool ============
 
     public Long getApplistaId() { return applistaId; }
     public void setApplistaId(Long applistaId) { this.applistaId = applistaId; }
@@ -140,25 +154,19 @@ public class PrenotazioneResponse {
     public void setDomandeEsame(String domandeEsame) { this.domandeEsame = domandeEsame; }
   }
 
+  /**
+   * Represents the outcome of an exam booking.
+   */
   public static class EsitoPrenotazione {
 
-    /** Numeric grade (null if not set or judgement-based). */
     private Integer votoEsa;
-
-    /** Whether the exam was passed. */
     private Boolean superato;
-
-    /** Whether the student was absent. */
     private Boolean assente;
-
-    /** Whether the student withdrew. */
     private Boolean ritirato;
-
-    /** Judgement code (e.g. "IDO" = Idoneo) for pass/fail exams. */
     private String tipoGiudCod;
-
-    /** Judgement description. */
     private String tipoGiudizioDes;
+
+    // ============ Getters | Setters | Bool ============
 
     public Integer getVotoEsa() { return votoEsa; }
     public void setVotoEsa(Integer votoEsa) { this.votoEsa = votoEsa; }

@@ -12,13 +12,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
- * Issues and validates OhMyUniversity JWT access tokens.
+ * Service responsible for issuing and validating OhMyUniversity! JWT tokens.
  *
- * These tokens contain OhMyU-specific claims and
- * are signed with our own secret key.
+ * Access tokens contain user identity and active university profile claims.
+ * Tokens are signed using an HMAC secret key configured through application
+ * properties.
  *
- * Token lifetime: 15 minutes (access token).
- * Refresh is handled via the refresh token stored in Redis.
+ * Access token lifetime defaults to 15 minutes. Refresh token lifecycle
+ * management is delegated to the dedicated Redis-based refresh token layer.
  */
 @Service
 public class OmuJwtService {
@@ -26,6 +27,14 @@ public class OmuJwtService {
   private final SecretKey signingKey;
   private final long expirationMs;
 
+  // ============ Constructor ============
+
+  /**
+   * Creates a new JWT service instance.
+   *
+   * @param secret JWT signing secret
+   * @param expirationMs access token expiration time in milliseconds
+   */
   public OmuJwtService(
       @Value("${omu.jwt.secret}") String secret,
       @Value("${omu.jwt.expiration-ms:900000}") long expirationMs) {
@@ -33,16 +42,25 @@ public class OmuJwtService {
     this.expirationMs = expirationMs;
   }
 
+  // ============ Override Methods ============
+
+  // ============ Getters | Setters | Bool ============
+
+  // ============ Class Methods ============
+
   /**
-   * Issues a new OhMyU access token for the given user and active profile.
+   * Issues a signed JWT access token for the provided user context.
    *
-   * @param omuUserId    UUID of the OhMyU user
-   * @param codiceFiscale tax code of the user
+   * The generated token contains the authenticated OhMyUniversity user
+   * identifier together with the currently selected academic profile.
+   *
+   * @param omuUserId unique OhMyUniversity user identifier
+   * @param codiceFiscale user tax code
    * @param universityId active university identifier
-   * @param stuId        active Cineca career ID
-   * @param matId        active Cineca career segment ID
-   * @param matricola    active registration number
-   * @return signed JWT string
+   * @param stuId active Cineca career identifier
+   * @param matId active Cineca career segment identifier
+   * @param matricola active student registration number
+   * @return signed JWT access token
    */
   public String issue(
       String omuUserId,
@@ -69,8 +87,14 @@ public class OmuJwtService {
   }
 
   /**
-   * Validates a JWT and returns its claims.
-   * Throws a JwtException if the token is invalid or expired.
+   * Validates the provided JWT access token.
+   *
+   * If validation succeeds, the parsed token claims are returned.
+   * The underlying JWT library throws an exception when the token is
+   * malformed, expired, or signed with an invalid key.
+   *
+   * @param token JWT token to validate
+   * @return validated token claims
    */
   public Claims validate(String token) {
     return Jwts.parser()
@@ -81,7 +105,12 @@ public class OmuJwtService {
   }
 
   /**
-   * Generates a cryptographically random refresh token.
+   * Generates a cryptographically random refresh token identifier.
+   *
+   * The generated value is composed of two UUIDs without dashes in order
+   * to increase entropy and reduce predictability.
+   *
+   * @return generated refresh token
    */
   public String generateRefreshToken() {
     return UUID.randomUUID().toString().replace("-", "")

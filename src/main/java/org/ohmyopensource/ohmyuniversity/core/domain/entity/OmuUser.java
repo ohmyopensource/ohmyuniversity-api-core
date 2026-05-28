@@ -17,54 +17,81 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Stable OhMyUniversity identity for a person.
+ * Core identity entity representing a stable OhMyUniversity user.
  *
- * This is NOT a copy of Cineca student data. It is the aggregating identity
- * that links one physical person across multiple universities and careers.
- * The codiceFiscale is the natural cross-university key — the same person
- * always has the same Italian tax code regardless of which university they attend.
+ * This entity is NOT a replica of Cineca or university-specific data.
+ * It represents a unified person identity across multiple universities.
  *
- * No academic data is stored here. All student data (grades, exams, career
- * segments) is fetched from Cineca on demand and cached in Redis with TTL.
+ * The main identifier is the Italian fiscal code (codice fiscale),
+ * which acts as the cross-university linking key.
+ *
+ * Responsibilities:
+ * - Provide a stable internal user identity
+ * - Link multiple UniversityConnection records
+ * - Track authentication metadata (creation, last login)
+ *
+ * No academic or career data is stored in this entity.
+ * All student-related information is retrieved dynamically from Cineca APIs
+ * and optionally cached externally (e.g., Redis).
  */
 @Entity
 @Table(name = "omu_user")
 public class OmuUser {
 
+  /**
+   * Unique internal identifier (UUID).
+   */
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
   @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
   private UUID id;
 
   /**
-   * Italian tax code — natural cross-university identifier.
-   * Used to match the same person across different university accounts.
+   * Italian fiscal code used as cross-university unique identifier.
    */
   @NotBlank
   @Column(name = "codice_fiscale", nullable = false, unique = true, length = 16)
   private String codiceFiscale;
 
   /**
-   * Primary contact email registered on OhMyUniversity.
-   * May differ from university institutional emails.
+   * Primary email address of the user in the OhMyUniversity system.
    */
   @Column(name = "email_primaria")
   private String emailPrimaria;
 
+  /**
+   * Timestamp of user creation.
+   */
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
+  /**
+   * Timestamp of last successful login.
+   */
   @Column(name = "last_login_at")
   private Instant lastLoginAt;
 
+  /**
+   * List of university-specific connections associated with this user.
+   *
+   * Represents the relationship between the global user identity
+   * and multiple Cineca/university accounts.
+   */
   @OneToMany(mappedBy = "user", cascade = CascadeType.ALL,
       fetch = FetchType.LAZY, orphanRemoval = true)
   private List<UniversityConnection> universityConnections = new ArrayList<>();
 
+  // ============ Class Methods ============
+
+  /**
+   * Automatically sets creation timestamp before persistence.
+   */
   @PrePersist
   void onCreate() {
     createdAt = Instant.now();
   }
+
+  // ============ Getters | Setters | Bool ============
 
   public UUID getId() {
     return id;

@@ -5,20 +5,24 @@ import java.util.List;
 /**
  * Response DTO for POST /api/auth/login.
  *
- * Returns the OhMyUniversity access token and refresh token,
- * plus the list of all university profiles available for this user.
- * The student can then switch between profiles without re-logging in.
+ * This object represents the authentication response returned after a successful
+ * login against a Cineca ESSE3 university instance.
+ *
+ * It contains:
+ * - a short-lived access token used for authenticated requests
+ * - a long-lived refresh token used to renew sessions
+ * - the list of available academic profiles for the authenticated user
+ *
+ * Each profile corresponds to a specific university and degree course,
+ * allowing multi-university and multi-career support without re-authentication.
  */
 public class LoginResponse {
 
-  /** OhMyUniversity JWT access token — short-lived (15 minutes). */
   private String accessToken;
-
-  /** OhMyUniversity refresh token — long-lived (7 days), stored in Redis. */
   private String refreshToken;
-
-  /** All career profiles available for this user across all connected universities. */
   private List<ProfiloCarriera> profili;
+
+  // ============ Getters | Setters | Bool ============
 
   public String getAccessToken() { return accessToken; }
   public void setAccessToken(String accessToken) { this.accessToken = accessToken; }
@@ -30,8 +34,15 @@ public class LoginResponse {
   public void setProfili(List<ProfiloCarriera> profili) { this.profili = profili; }
 
   /**
-   * Represents a single career profile — one degree course at one university.
-   * A student can have multiple profiles (e.g. L-31 + LM-18, or two universities).
+   * Represents a single academic career profile.
+   *
+   * Each profile corresponds to a specific:
+   * - university
+   * - degree course
+   * - student enrollment (matricola context)
+   *
+   * This structure allows the user to switch between multiple
+   * academic contexts without re-authentication.
    */
   public static class ProfiloCarriera {
 
@@ -44,8 +55,8 @@ public class LoginResponse {
     private String corsoCodice;
 
     /**
-     * Cineca degree course ID — needed as cdsId parameter for GET /api/carriera/appelli.
-     * Sourced from trattiCarriera.dettaglioTratto.cdsId in the Cineca login response.
+     * Cineca degree course identifier used for academic operations.
+     * Required for endpoints such as exam sessions (appelli).
      */
     private Long cdsId;
 
@@ -56,6 +67,8 @@ public class LoginResponse {
     private Integer durataAnni;
     private Integer annoAccademico;
     private boolean attivo;
+
+    // ============ Getters | Setters | Bool ============
 
     public String getUniversityId() { return universityId; }
     public void setUniversityId(String universityId) { this.universityId = universityId; }

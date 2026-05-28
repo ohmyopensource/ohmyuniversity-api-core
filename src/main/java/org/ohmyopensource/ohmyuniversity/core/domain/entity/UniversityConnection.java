@@ -15,65 +15,92 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Links an OhMyUniversity user to a specific Cineca/ESSE3 university account.
+ * Entity that links an OhMyUniversity user to a specific Cineca/ESSE3 account.
  *
- * One user can have multiple connections — different universities, or different
- * usernames at the same university (e.g. separate accounts for two degree courses).
+ * A single user can have multiple university connections, each representing:
+ * - a different university tenant
+ * - or multiple Cineca accounts within the same university context
  *
- * No Cineca tokens are stored here. Session tokens (authToken, JWT) live in
- * Redis with TTL only, never persisted to the database.
+ * This entity does NOT store any authentication/session credentials.
+ * Cineca tokens (JWT, authToken) are stored in Redis with TTL and never persisted.
+ *
+ * Responsibilities:
+ * - Map internal user identity to external Cineca account
+ * - Store university metadata (id, name, base URL)
+ * - Track connection lifecycle (creation, last usage)
  */
 @Entity
 @Table(name = "university_connection")
 public class UniversityConnection {
 
+  /**
+   * Unique identifier of the university connection.
+   */
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
   @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
   private UUID id;
 
+  /**
+   * Owning OhMyUniversity user associated with this connection.
+   */
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "user_id", nullable = false)
   private OmuUser user;
 
   /**
-   * Short university identifier matching the Cineca JWT "tenant" field.
-   * Examples: "UNIMOL", "UNIROMA1", "POLIMI".
+   * University tenant identifier used in Cineca context.
+   *
+   * Example: UNIMOL, POLIMI, UNIROMA1
    */
   @NotBlank
   @Column(name = "university_id", nullable = false, length = 20)
   private String universityId;
 
+  /**
+   * Human-readable university name.
+   */
   @NotBlank
   @Column(name = "university_name", nullable = false)
   private String universityName;
 
   /**
-   * Base URL of the ESSE3 REST API for this university.
-   * Example: "https://unimol.esse3.cineca.it/e3rest/api"
+   * Base URL of the Cineca ESSE3 API for this university instance.
    */
   @NotBlank
   @Column(name = "cineca_base_url", nullable = false, length = 500)
   private String cinecaBaseUrl;
 
   /**
-   * Username used to authenticate against this university ESSE3 instance.
-   * Example: "a.delmuto"
+   * Cineca username used to authenticate against the ESSE3 system.
    */
   @NotBlank
   @Column(name = "username_cineca", nullable = false)
   private String usernameCineca;
 
+  /**
+   * Timestamp when the connection was first created.
+   */
   @Column(name = "connected_at", nullable = false, updatable = false)
   private Instant connectedAt;
 
+  /**
+   * Timestamp of last usage of this connection.
+   */
   @Column(name = "last_used_at")
   private Instant lastUsedAt;
 
+  // ============ Class Methods ============
+
+  /**
+   * Automatically sets creation timestamp before persisting the entity.
+   */
   @PrePersist
   void onCreate() {
     connectedAt = Instant.now();
   }
+
+  // ============ Getters | Setters | Bool ============
 
   public UUID getId() {
     return id;

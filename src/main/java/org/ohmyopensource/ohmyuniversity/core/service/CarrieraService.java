@@ -30,13 +30,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Orchestrates career-related data fetching from Cineca ESSE3.
+ * Service responsible for orchestrating career-related operations against
+ * Cineca ESSE3 APIs.
  *
- * Every method reads the Cineca JWT from Redis using the caller's identity.
- * If the Cineca JWT is expired, throws CinecaAuthException so the controller
- * returns 401 and the client knows it must re-login.
+ * Every request retrieves live academic data using the authenticated
+ * Cineca session associated with the current OhMyUniversity user.
  *
- * No data is stored — every call fetches live from Cineca.
+ * No academic information is persisted locally inside the application.
  */
 @Service
 public class CarrieraService {
@@ -51,6 +51,16 @@ public class CarrieraService {
   private final UniversityRegistry universityRegistry;
   private final UniversityConnectionRepository connectionRepository;
 
+  // ============ Constructor ============
+
+  /**
+   * Creates a new career service instance.
+   *
+   * @param cinecaClient Cineca career API client
+   * @param sessionStore Cineca session storage service
+   * @param universityRegistry university configuration registry
+   * @param connectionRepository repository used to resolve Cineca connections
+   */
   public CarrieraService(
       CinecaCarrieraClient cinecaClient,
       CinecaSessionStore sessionStore,
@@ -62,10 +72,14 @@ public class CarrieraService {
     this.connectionRepository = connectionRepository;
   }
 
-  // ================================
-  // Libretto
-  // ================================
+  // ============ Class Methods ============
 
+  /**
+   * Retrieves the complete student transcript from Cineca.
+   *
+   * @param principal authenticated OhMyUniversity principal
+   * @return transcript response containing all exam entries
+   */
   public LibrettoResponse getLibretto(OmuPrincipal principal) {
     String cinecaJwt = resolveCinecaJwt(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
@@ -81,10 +95,12 @@ public class CarrieraService {
     return response;
   }
 
-  // ================================
-  // Medie
-  // ================================
-
+  /**
+   * Retrieves academic statistics and average calculations for the student.
+   *
+   * @param principal authenticated OhMyUniversity principal
+   * @return aggregated academic statistics response
+   */
   public MediaResponse getMedia(OmuPrincipal principal) {
     String cinecaJwt = resolveCinecaJwt(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
@@ -137,10 +153,12 @@ public class CarrieraService {
     return response;
   }
 
-  // ================================
-  // Piano di studi
-  // ================================
-
+  /**
+   * Retrieves the student's study plan from Cineca.
+   *
+   * @param principal authenticated OhMyUniversity principal
+   * @return study plan response
+   */
   public PianoStudioResponse getPiano(OmuPrincipal principal) {
     String cinecaJwt = resolveCinecaJwt(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
@@ -172,10 +190,14 @@ public class CarrieraService {
     return response;
   }
 
-  // ================================
-  // Appelli
-  // ================================
-
+  /**
+   * Retrieves all available exam sessions for the specified activity.
+   *
+   * @param principal authenticated OhMyUniversity principal
+   * @param cdsId course identifier
+   * @param adId teaching activity identifier
+   * @return available exam sessions response
+   */
   public AppelloResponse getAppelli(OmuPrincipal principal, Long cdsId, Long adId) {
     String cinecaJwt = resolveCinecaJwt(principal);
     String cinecaAuthToken = resolveCinecaAuthToken(principal);
@@ -192,19 +214,14 @@ public class CarrieraService {
     return response;
   }
 
-  // ================================
-  // Prenotazioni
-  // ================================
-
   /**
-   * Returns the full booking history for the student.
+   * Retrieves the student's exam booking history.
    *
-   * Uses Basic Auth + JSESSIONID against calesa-service-v1/prenotazioni/{matId}.
-   * The password is passed by the client at request time and never stored.
-   * The Cineca username is read from UniversityConnection in DB.
+   * The Cineca password is provided at request time and is never persisted.
    *
-   * @param principal OhMyU JWT principal
-   * @param cinecaPassword Cineca password provided by the client at request time
+   * @param principal authenticated OhMyUniversity principal
+   * @param cinecaPassword Cineca password provided by the client
+   * @return booking history response
    */
   public PrenotazioneResponse getPrenotazioni(OmuPrincipal principal, String cinecaPassword) {
     String cinecaAuthToken = resolveCinecaAuthToken(principal);
@@ -222,10 +239,12 @@ public class CarrieraService {
     return response;
   }
 
-  // ================================
-  // Badge
-  // ================================
-
+  /**
+   * Retrieves the student's digital university badge.
+   *
+   * @param principal authenticated OhMyUniversity principal
+   * @return badge response or null if no badge exists
+   */
   public BadgeResponse getBadge(OmuPrincipal principal) {
     String cinecaJwt = resolveCinecaJwt(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
@@ -240,28 +259,48 @@ public class CarrieraService {
     return toBadgeResponse(badges.get(0));
   }
 
-  // ================================
-  // Private helpers
-  // ================================
-
+  /**
+   * Resolves the Cineca JWT associated with the current user session.
+   *
+   * @param principal authenticated OhMyUniversity principal
+   * @return Cineca JWT token
+   */
   private String resolveCinecaJwt(OmuPrincipal principal) {
     return sessionStore.getCinecaJwt(principal.omuUserId(), principal.universityId())
         .orElseThrow(() -> new CinecaClient.CinecaAuthException(
             "Cineca session expired — please log in again"));
   }
 
+  /**
+   * Resolves the Cineca authentication token associated with the current user.
+   *
+   * @param principal authenticated OhMyUniversity principal
+   * @return Cineca authentication token
+   */
   private String resolveCinecaAuthToken(OmuPrincipal principal) {
     return sessionStore.getCinecaAuthToken(principal.omuUserId(), principal.universityId())
         .orElseThrow(() -> new CinecaClient.CinecaAuthException(
             "Cineca auth token expired — please log in again"));
   }
 
+  /**
+   * Resolves the configured Cineca base URL for the specified university.
+   *
+   * @param universityId university identifier
+   * @return Cineca base URL
+   */
   private String resolveBaseUrl(String universityId) {
     return universityRegistry.resolve(universityId)
         .map(UniversityRegistry.UniversityConfig::baseUrl)
         .orElseThrow(() -> new IllegalArgumentException("Unknown university: " + universityId));
   }
 
+  /**
+   * Resolves the Cineca username associated with the current university.
+   *
+   * @param principal authenticated OhMyUniversity principal
+   * @return Cineca username
+   */
   private String resolveUsername(OmuPrincipal principal) {
     return connectionRepository
         .findByUserId(java.util.UUID.fromString(principal.omuUserId()))
@@ -273,6 +312,12 @@ public class CarrieraService {
             "No Cineca connection found for university: " + principal.universityId()));
   }
 
+  /**
+   * Maps a Cineca transcript row into the public API DTO.
+   *
+   * @param r source Cineca transcript row
+   * @return mapped transcript DTO
+   */
   private RigaLibretto toRigaLibretto(CinecaRigaLibretto r) {
     RigaLibretto riga = new RigaLibretto();
     riga.setAdsceId(r.getAdsceId());
@@ -297,6 +342,12 @@ public class CarrieraService {
     return riga;
   }
 
+  /**
+   * Maps a Cineca study plan activity into the public API DTO.
+   *
+   * @param r source Cineca study plan activity
+   * @return mapped study plan row
+   */
   private PianoStudioResponse.RigaPiano toRigaPiano(CinecaAttivitaPiano r) {
     PianoStudioResponse.RigaPiano riga = new PianoStudioResponse.RigaPiano();
     riga.setAdsceId(r.getAdsceId());
@@ -308,6 +359,12 @@ public class CarrieraService {
     return riga;
   }
 
+  /**
+   * Maps a Cineca exam session into the public API DTO.
+   *
+   * @param a source Cineca exam session
+   * @return mapped exam session DTO
+   */
   private AppelloResponse.Appello toAppello(CinecaAppello a) {
     AppelloResponse.Appello app = new AppelloResponse.Appello();
     app.setAppId(a.getAppId());
@@ -326,6 +383,12 @@ public class CarrieraService {
     return app;
   }
 
+  /**
+   * Maps a Cineca booking entity into the public API DTO.
+   *
+   * @param p source Cineca booking entity
+   * @return mapped booking DTO
+   */
   private Prenotazione toPrenotazione(CinecaPrenotazione p) {
     Prenotazione pre = new Prenotazione();
     pre.setApplistaId(p.getApplistaId());
@@ -361,6 +424,12 @@ public class CarrieraService {
     return pre;
   }
 
+  /**
+   * Maps a Cineca badge entity into the public API DTO.
+   *
+   * @param b source Cineca badge entity
+   * @return mapped badge response
+   */
   private BadgeResponse toBadgeResponse(CinecaBadge b) {
     BadgeResponse r = new BadgeResponse();
     r.setBdgId(b.getBdgId());
