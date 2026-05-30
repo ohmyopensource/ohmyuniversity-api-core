@@ -12,26 +12,33 @@ import org.junit.jupiter.api.Test;
 /**
  * Unit tests for {@link OmuJwtService}.
  *
- * No Spring context — instantiated directly with test values.
+ * <p>Instantiated directly without a Spring context. Covers token issuance,
+ * claim round-trips, expiration, signature validation, and refresh token generation.
  */
 class OmuJwtServiceTest {
 
-  // Must be at least 32 chars for HMAC-SHA256
+  /** HMAC-SHA256 requires a secret of at least 32 characters. */
   private static final String SECRET =
       "omu_test_jwt_secret_at_least_32_chars_ok";
-  private static final long EXPIRATION_MS = 900_000L; // 15 min
+
+  /** Standard access token lifetime used across happy-path tests. */
+  private static final long EXPIRATION_MS = 900_000L;
 
   private OmuJwtService jwtService;
 
+  /**
+   * Initialises a fresh {@link OmuJwtService} instance before each test
+   * to guarantee test isolation.
+   */
   @BeforeEach
   void setUp() {
     jwtService = new OmuJwtService(SECRET, EXPIRATION_MS);
   }
 
-  // ================================
-  // issue + validate — happy path
-  // ================================
-
+  /**
+   * Verifies that a token issued by {@link OmuJwtService#issue} contains
+   * the expected subject and string claims after a validate round-trip.
+   */
   @Test
   @DisplayName("issue: token contains all expected claims")
   void issue_containsAllClaims() {
@@ -51,6 +58,13 @@ class OmuJwtServiceTest {
     assertThat(claims.get("matricola", String.class)).isEqualTo("178026");
   }
 
+  /**
+   * Verifies that {@code stuId} and {@code matId} survive a validate round-trip
+   * as {@link Long} values when read via {@link Number#longValue()}.
+   *
+   * <p>JJWT 0.12.x may deserialise numeric claims as {@link Integer} internally;
+   * this test guards against silent precision loss.
+   */
   @Test
   @DisplayName("issue: stuId and matId survive round-trip as Long via Number cast")
   void issue_stuIdAndMatIdRoundTrip() {
@@ -64,8 +78,6 @@ class OmuJwtServiceTest {
 
     Claims claims = jwtService.validate(token);
 
-    // JJWT 0.12.x deserializes numbers as Integer internally —
-    // the filter reads them via (Number).longValue(), tested here
     Number stuId = (Number) claims.get("stuId");
     Number matId = (Number) claims.get("matId");
 
@@ -75,6 +87,11 @@ class OmuJwtServiceTest {
     assertThat(matId.longValue()).isEqualTo(106279L);
   }
 
+  /**
+   * Verifies that {@code stuId}, {@code matId}, and {@code matricola} are
+   * accepted as {@code null}, supporting the refresh-token issuance flow
+   * where no active academic profile is required.
+   */
   @Test
   @DisplayName("issue: null stuId and matId are allowed (refresh token flow)")
   void issue_nullStuIdAndMatId() {
@@ -93,28 +110,31 @@ class OmuJwtServiceTest {
     assertThat(claims.get("matricola")).isNull();
   }
 
+  /**
+   * Verifies that a freshly issued token is not considered expired,
+   * confirmed by {@link OmuJwtService#validate} returning non-null claims.
+   */
   @Test
   @DisplayName("issue: token is not expired immediately after creation")
   void issue_tokenNotExpiredImmediately() {
     String token = jwtService.issue(
         "user-uuid-123", "CF", "UNIMOL", null, null, null);
 
-    // validate() throws if expired — no exception means token is valid
     Claims claims = jwtService.validate(token);
     assertThat(claims).isNotNull();
   }
 
-  // ================================
-  // validate — failure cases
-  // ================================
-
+  /**
+   * Verifies that {@link OmuJwtService#validate} throws {@link JwtException}
+   * when the token signature has been tampered with by altering the last character
+   * of the signature segment.
+   */
   @Test
   @DisplayName("validate: throws JwtException on tampered token")
   void validate_throwsOnTamperedToken() {
     String token = jwtService.issue(
         "user-uuid-123", "CF", "UNIMOL", null, null, null);
 
-    // Flip one character in the signature (last segment)
     String[] parts = token.split("\\.");
     String tamperedSignature = parts[2].substring(0, parts[2].length() - 1) + "X";
     String tampered = parts[0] + "." + parts[1] + "." + tamperedSignature;
@@ -123,6 +143,10 @@ class OmuJwtServiceTest {
         .isInstanceOf(JwtException.class);
   }
 
+  /**
+   * Verifies that {@link OmuJwtService#validate} throws {@link JwtException}
+   * when the token was signed with a different secret key.
+   */
   @Test
   @DisplayName("validate: throws JwtException on token signed with different secret")
   void validate_throwsOnWrongSecret() {
@@ -136,10 +160,14 @@ class OmuJwtServiceTest {
         .isInstanceOf(JwtException.class);
   }
 
+  /**
+   * Verifies that {@link OmuJwtService#validate} throws {@link JwtException}
+   * when the token expiration is set to {@code -1ms}, causing it to expire
+   * before validation is attempted.
+   */
   @Test
   @DisplayName("validate: throws JwtException on expired token")
   void validate_throwsOnExpiredToken() {
-    // Create service with -1ms expiration so token expires immediately
     OmuJwtService shortLivedService = new OmuJwtService(SECRET, -1L);
 
     String token = shortLivedService.issue(
@@ -149,6 +177,10 @@ class OmuJwtServiceTest {
         .isInstanceOf(JwtException.class);
   }
 
+  /**
+   * Verifies that {@link OmuJwtService#validate} throws {@link JwtException}
+   * when presented with a syntactically malformed token string.
+   */
   @Test
   @DisplayName("validate: throws JwtException on malformed token")
   void validate_throwsOnMalformedToken() {
@@ -156,6 +188,10 @@ class OmuJwtServiceTest {
         .isInstanceOf(JwtException.class);
   }
 
+  /**
+   * Verifies that {@link OmuJwtService#validate} throws an exception
+   * when called with an empty string.
+   */
   @Test
   @DisplayName("validate: throws JwtException on empty string")
   void validate_throwsOnEmptyString() {
@@ -163,18 +199,21 @@ class OmuJwtServiceTest {
         .isInstanceOf(Exception.class);
   }
 
-  // ================================
-  // generateRefreshToken
-  // ================================
-
+  /**
+   * Verifies that {@link OmuJwtService#generateRefreshToken} returns a
+   * 64-character string, composed of two UUID values with dashes removed.
+   */
   @Test
   @DisplayName("generateRefreshToken: returns 64-char hex string")
   void generateRefreshToken_length() {
     String token = jwtService.generateRefreshToken();
-    // Two UUIDs without dashes = 32 + 32 = 64 chars
     assertThat(token).hasSize(64);
   }
 
+  /**
+   * Verifies that the refresh token contains no dash characters,
+   * confirming that UUID formatting has been correctly stripped.
+   */
   @Test
   @DisplayName("generateRefreshToken: contains no dashes")
   void generateRefreshToken_noDashes() {
@@ -182,6 +221,10 @@ class OmuJwtServiceTest {
     assertThat(token).doesNotContain("-");
   }
 
+  /**
+   * Verifies that two consecutively generated refresh tokens are not equal,
+   * confirming that the generation relies on a random source.
+   */
   @Test
   @DisplayName("generateRefreshToken: two consecutive tokens are different")
   void generateRefreshToken_isRandom() {

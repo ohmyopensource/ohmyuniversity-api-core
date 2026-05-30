@@ -12,31 +12,42 @@ import org.junit.jupiter.api.Test;
 /**
  * Unit tests for {@link UniversityRegistry}.
  *
- * No Spring context — registry is instantiated directly and populated via setUniversities().
+ * <p>No Spring context — the registry is instantiated directly and populated
+ * via {@link UniversityRegistry#setUniversities(Map)} to keep tests fast
+ * and independent of application configuration.
  */
 class UniversityRegistryTest {
 
   private UniversityRegistry registry;
 
+  /** Shared UNIMOL configuration reused across multiple test cases. */
   private static final UniversityRegistry.UniversityConfig UNIMOL_CONFIG =
       new UniversityRegistry.UniversityConfig(
           "Università degli Studi del Molise",
           "https://unimol.esse3.cineca.it/e3rest/api");
 
+  /**
+   * Initialises a fresh {@link UniversityRegistry} populated with a single
+   * known entry before each test to guarantee isolation.
+   */
   @BeforeEach
   void setUp() {
     registry = new UniversityRegistry();
     registry.setUniversities(Map.of("UNIMOL", UNIMOL_CONFIG));
   }
 
-  // ============================================================
-  // resolve()
-  // ============================================================
-
+  /**
+   * Verifies the lookup behaviour of {@link UniversityRegistry#resolve(String)}
+   * across known, unknown, null, and mixed-case identifiers.
+   */
   @Nested
   @DisplayName("resolve()")
   class Resolve {
 
+    /**
+     * Verifies that resolving a registered university identifier returns
+     * a non-empty {@link Optional} containing the correct name and base URL.
+     */
     @Test
     @DisplayName("known universityId → returns config")
     void knownId() {
@@ -49,18 +60,30 @@ class UniversityRegistryTest {
           .isEqualTo("https://unimol.esse3.cineca.it/e3rest/api");
     }
 
+    /**
+     * Verifies that resolving an unregistered university identifier returns
+     * an empty {@link Optional}.
+     */
     @Test
     @DisplayName("unknown universityId → empty Optional")
     void unknownId() {
       assertThat(registry.resolve("UNICAM")).isEmpty();
     }
 
+    /**
+     * Verifies that passing {@code null} as the university identifier returns
+     * an empty {@link Optional} without throwing a {@link NullPointerException}.
+     */
     @Test
     @DisplayName("null universityId → empty Optional, no NullPointerException")
     void nullId() {
       assertThat(registry.resolve(null)).isEmpty();
     }
 
+    /**
+     * Verifies that university identifiers are resolved case-insensitively,
+     * accepting both fully lowercase and mixed-case variants.
+     */
     @Test
     @DisplayName("lowercase universityId → resolved case-insensitively")
     void caseInsensitive() {
@@ -69,14 +92,19 @@ class UniversityRegistryTest {
     }
   }
 
-  // ============================================================
-  // UniversityConfig record
-  // ============================================================
-
+  /**
+   * Verifies the structural contract of the {@link UniversityRegistry.UniversityConfig} record,
+   * including accessor correctness and value-based equality.
+   */
   @Nested
   @DisplayName("UniversityConfig record")
   class UniversityConfigTests {
 
+    /**
+     * Verifies that {@link UniversityRegistry.UniversityConfig#name()} and
+     * {@link UniversityRegistry.UniversityConfig#baseUrl()} return the values
+     * supplied at construction time.
+     */
     @Test
     @DisplayName("name() and baseUrl() return correct values")
     void recordAccessors() {
@@ -87,6 +115,11 @@ class UniversityRegistryTest {
       assertThat(config.baseUrl()).isEqualTo("https://test.esse3.it/api");
     }
 
+    /**
+     * Verifies that two {@link UniversityRegistry.UniversityConfig} instances
+     * constructed with identical values are considered equal, as expected
+     * from a Java record.
+     */
     @Test
     @DisplayName("two configs with same values are equal")
     void recordEquality() {

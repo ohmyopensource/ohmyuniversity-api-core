@@ -22,8 +22,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 /**
  * Unit tests for {@link JwtAuthenticationFilter}.
  *
- * OmuJwtService is mocked. SecurityContextHolder is cleared before each test.
- * Spring servlet mocks are used — no MockMvc, no application context.
+ * <p>{@link OmuJwtService} is mocked via Mockito. The
+ * {@link SecurityContextHolder} is cleared before each test to prevent
+ * state leaking across cases. Spring servlet mocks are used in place of
+ * MockMvc so that no application context is required.
  */
 class JwtAuthenticationFilterTest {
 
@@ -34,6 +36,10 @@ class JwtAuthenticationFilterTest {
   private MockHttpServletResponse response;
   private MockFilterChain chain;
 
+  /**
+   * Initialises fresh collaborators and clears the {@link SecurityContextHolder}
+   * before each test to guarantee isolation.
+   */
   @BeforeEach
   void setUp() {
     jwtService = mock(OmuJwtService.class);
@@ -44,24 +50,34 @@ class JwtAuthenticationFilterTest {
     SecurityContextHolder.clearContext();
   }
 
-  // ============================================================
-  // No / malformed Authorization header > filter skips auth
-  // ============================================================
-
+  /**
+   * Verifies that the filter skips JWT processing and leaves the
+   * {@link SecurityContextHolder} empty when the {@code Authorization}
+   * header is absent or does not carry a Bearer token.
+   */
   @Nested
   @DisplayName("When Authorization header is absent or malformed")
   class NoHeader {
 
+    /**
+     * Verifies that when no {@code Authorization} header is present the
+     * filter chain proceeds, {@link OmuJwtService} is never invoked, and
+     * no {@link Authentication} is placed in the security context.
+     */
     @Test
     @DisplayName("no header → chain proceeds, SecurityContext empty")
     void noHeader() throws Exception {
       filter.doFilterInternal(request, response, chain);
 
       assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
-      assertThat(chain.getRequest()).isNotNull(); // chain was called
+      assertThat(chain.getRequest()).isNotNull();
       verifyNoInteractions(jwtService);
     }
 
+    /**
+     * Verifies that a header using a non-Bearer scheme (e.g. Basic) is ignored,
+     * the filter chain proceeds, and {@link OmuJwtService} is never invoked.
+     */
     @Test
     @DisplayName("header without 'Bearer ' prefix → chain proceeds, SecurityContext empty")
     void headerWithoutBearerPrefix() throws Exception {
@@ -73,8 +89,15 @@ class JwtAuthenticationFilterTest {
       verifyNoInteractions(jwtService);
     }
 
+    /**
+     * Verifies that a header consisting of exactly {@code "Bearer "} with no
+     * following token causes {@link OmuJwtService#validate(String)} to be called
+     * with an empty string, the resulting {@link JwtException} to be swallowed,
+     * and the filter chain to proceed without populating the security context.
+     */
     @Test
-    @DisplayName("header is exactly 'Bearer ' with no token → jwtService called, JwtException swallowed")
+    @DisplayName("header is exactly 'Bearer ' with no token → jwtService called, "
+        + "JwtException swallowed")
     void bearerPrefixOnly() throws Exception {
       request.addHeader("Authorization", "Bearer ");
       when(jwtService.validate("")).thenThrow(new JwtException("empty token"));
@@ -86,10 +109,11 @@ class JwtAuthenticationFilterTest {
     }
   }
 
-  // ============================================================
-  // Invalid / expired token → JwtException swallowed, no auth
-  // ============================================================
-
+  /**
+   * Verifies that the filter swallows {@link JwtException} thrown by
+   * {@link OmuJwtService#validate(String)} and continues the filter chain
+   * without populating the security context.
+   */
   @Nested
   @DisplayName("When token is invalid or expired")
   class InvalidToken {
@@ -108,16 +132,24 @@ class JwtAuthenticationFilterTest {
     }
   }
 
-  // ============================================================
-  // Valid token > OmuPrincipal built and injected into context
-  // ============================================================
-
+  /**
+   * Verifies that a valid JWT causes the filter to build an {@link OmuPrincipal},
+   * inject it into the {@link SecurityContextHolder}, and continue the filter chain.
+   */
   @Nested
   @DisplayName("When token is valid")
   class ValidToken {
 
     private static final String TOKEN = "valid.jwt.token";
 
+    /**
+     * Builds a mocked {@link Claims} instance with standard identity fields
+     * and the provided {@code stuId} and {@code matId} values.
+     *
+     * @param stuId value to return for the {@code stuId} claim
+     * @param matId value to return for the {@code matId} claim
+     * @return configured {@link Claims} mock
+     */
     private Claims buildClaims(Object stuId, Object matId) {
       Claims claims = mock(Claims.class);
       when(claims.getSubject()).thenReturn("auth0|abc123");
@@ -129,6 +161,11 @@ class JwtAuthenticationFilterTest {
       return claims;
     }
 
+    /**
+     * Verifies that when claims carry {@link Long} values for {@code stuId}
+     * and {@code matId} the resulting {@link OmuPrincipal} is fully populated
+     * and the {@code ROLE_STUDENTE} authority is granted.
+     */
     @Test
     @DisplayName("Long stuId/matId → OmuPrincipal populated, ROLE_STUDENTE granted")
     void validToken_longIds() throws Exception {
@@ -154,6 +191,11 @@ class JwtAuthenticationFilterTest {
       assertThat(principal.matricola()).isEqualTo("178026");
     }
 
+    /**
+     * Verifies that when JJWT deserialises numeric claims as {@link Integer}
+     * the filter correctly promotes them to {@link Long} via
+     * {@link Number#longValue()}, preventing silent precision loss.
+     */
     @Test
     @DisplayName("Integer stuId/matId (JJWT deserialization) → correctly cast to Long")
     void validToken_integerIds_castToLong() throws Exception {
@@ -170,6 +212,11 @@ class JwtAuthenticationFilterTest {
       assertThat(principal.matId()).isEqualTo(106279L);
     }
 
+    /**
+     * Verifies that {@code null} values for {@code stuId} and {@code matId}
+     * in the JWT claims result in an {@link OmuPrincipal} with {@code null}
+     * identifiers, without throwing a {@link NullPointerException}.
+     */
     @Test
     @DisplayName("null stuId and matId in claims → OmuPrincipal has null ids, no NPE")
     void validToken_nullIds() throws Exception {
@@ -186,6 +233,11 @@ class JwtAuthenticationFilterTest {
       assertThat(principal.matId()).isNull();
     }
 
+    /**
+     * Verifies that the filter chain continues after a successful authentication
+     * injection, and that {@link OmuJwtService#validate(String)} was invoked
+     * exactly once with the extracted token value.
+     */
     @Test
     @DisplayName("valid token → filter chain continues after auth injection")
     void validToken_chainProceeds() throws Exception {

@@ -21,49 +21,64 @@ import org.springframework.http.MediaType;
 /**
  * Unit tests for {@link CinecaClient}.
  *
- * MockWebServer intercepts HTTP calls at network level — no real Cineca instance required.
- * Tests cover happy path, 4xx/5xx error mapping, and connection failure handling.
+ * <p>{@link MockWebServer} intercepts outbound HTTP calls at the network level,
+ * eliminating the need for a real Cineca ESSE3 instance. Tests cover the happy path,
+ * {@code 4xx}/{@code 5xx} error mapping to domain exceptions, request header and path assertions,
+ * and connection failure handling.
  */
 class CinecaClientTest {
 
+  /**
+   * Shared {@link ObjectMapper} instance for constructing expected JSON payloads.
+   */
+  private final ObjectMapper objectMapper = new ObjectMapper();
   private MockWebServer server;
   private CinecaClient client;
   private String baseUrl;
 
-  private final ObjectMapper objectMapper = new ObjectMapper();
-
+  /**
+   * Starts a fresh {@link MockWebServer} and constructs the base URL and {@link CinecaClient}
+   * before each test.
+   */
   @BeforeEach
   void setUp() throws Exception {
-    server  = new MockWebServer();
+    server = new MockWebServer();
     server.start();
     baseUrl = server.url("/e3rest/api").toString();
-    // Strip trailing path — CinecaClient appends its own paths
     baseUrl = "http://" + server.getHostName() + ":" + server.getPort() + "/e3rest/api";
-    client  = new CinecaClient();
+    client = new CinecaClient();
   }
 
+  /**
+   * Shuts down the {@link MockWebServer} after each test to release the bound port and avoid
+   * resource leaks.
+   */
   @AfterEach
   void tearDown() throws Exception {
     server.shutdown();
   }
 
-  // ============================================================
-  // login()
-  // ============================================================
-
+  /**
+   * Verifies the HTTP contract of {@link CinecaClient#login}, covering successful authentication,
+   * request structure, and error code mapping.
+   */
   @Nested
   @DisplayName("login()")
   class Login {
 
+    /**
+     * Verifies that a {@code 200 OK} response with a valid JSON body is parsed into a
+     * {@link CinecaLoginResponse} with the expected field values.
+     */
     @Test
     @DisplayName("200 → returns parsed CinecaLoginResponse")
     void success() throws Exception {
       String json = """
-      {
-        "authToken": "auth-token-abc",
-        "jwt": "jwt-token-abc"
-      }
-      """;
+          {
+            "authToken": "auth-token-abc",
+            "jwt": "jwt-token-abc"
+          }
+          """;
 
       server.enqueue(new MockResponse()
           .setResponseCode(200)
@@ -76,15 +91,19 @@ class CinecaClientTest {
       assertThat(result.getJwt()).isEqualTo("jwt-token-abc");
     }
 
+    /**
+     * Verifies that the {@code Authorization} header sent to Cineca is a correctly encoded HTTP
+     * Basic Auth value derived from the supplied username and password.
+     */
     @Test
     @DisplayName("200 → Authorization header is correct Basic Auth")
     void sendsCorrectBasicAuthHeader() throws Exception {
       String json = """
-      {
-        "authToken": "auth-token-abc",
-        "jwt": "jwt-token-abc"
-      }
-      """;
+          {
+            "authToken": "auth-token-abc",
+            "jwt": "jwt-token-abc"
+          }
+          """;
 
       server.enqueue(new MockResponse()
           .setResponseCode(200)
@@ -99,15 +118,20 @@ class CinecaClientTest {
       assertThat(recorded.getHeader(HttpHeaders.AUTHORIZATION)).isEqualTo(expectedHeader);
     }
 
+    /**
+     * Verifies that the login request targets the {@code /login} path and includes the
+     * {@code optionalFields=jwt} query parameter required by the Cineca ESSE3 API to include a JWT
+     * in the response.
+     */
     @Test
     @DisplayName("200 → request hits /login?optionalFields=jwt")
     void hitsCorrectPath() throws Exception {
       String json = """
-      {
-        "authToken": "auth-token-abc",
-        "jwt": "jwt-token-abc"
-      }
-      """;
+          {
+            "authToken": "auth-token-abc",
+            "jwt": "jwt-token-abc"
+          }
+          """;
 
       server.enqueue(new MockResponse()
           .setResponseCode(200)
@@ -121,6 +145,10 @@ class CinecaClientTest {
           .contains("optionalFields=jwt");
     }
 
+    /**
+     * Verifies that a {@code 401 Unauthorized} response from Cineca is mapped to a
+     * {@link CinecaAuthException}.
+     */
     @Test
     @DisplayName("401 → throws CinecaAuthException")
     void unauthorized() {
@@ -130,6 +158,10 @@ class CinecaClientTest {
           .isInstanceOf(CinecaAuthException.class);
     }
 
+    /**
+     * Verifies that a {@code 400 Bad Request} response from Cineca is mapped to a
+     * {@link CinecaAuthException}.
+     */
     @Test
     @DisplayName("400 → throws CinecaAuthException")
     void badRequest() {
@@ -139,6 +171,10 @@ class CinecaClientTest {
           .isInstanceOf(CinecaAuthException.class);
     }
 
+    /**
+     * Verifies that a {@code 500 Internal Server Error} response from Cineca is mapped to a
+     * {@link CinecaUnavailableException}.
+     */
     @Test
     @DisplayName("500 → throws CinecaUnavailableException")
     void serverError() {
@@ -148,10 +184,13 @@ class CinecaClientTest {
           .isInstanceOf(CinecaUnavailableException.class);
     }
 
+    /**
+     * Verifies that a connection failure — simulated by shutting down the server before the call —
+     * is mapped to a {@link CinecaUnavailableException}.
+     */
     @Test
     @DisplayName("connection refused → throws CinecaUnavailableException")
     void connectionRefused() throws Exception {
-      // Shut down server before calling — simulates unreachable Cineca
       server.shutdown();
 
       assertThatThrownBy(() -> client.login(baseUrl, "user", "pass"))
@@ -159,14 +198,18 @@ class CinecaClientTest {
     }
   }
 
-  // ============================================================
-  // refreshJwt()
-  // ============================================================
-
+  /**
+   * Verifies the HTTP contract of {@link CinecaClient#refreshJwt}, covering successful token
+   * refresh, request structure, and error code mapping.
+   */
   @Nested
   @DisplayName("refreshJwt()")
   class RefreshJwt {
 
+    /**
+     * Verifies that a {@code 200 OK} response with a plain-text body is returned as the refreshed
+     * JWT string.
+     */
     @Test
     @DisplayName("200 → returns refreshed JWT string")
     void success() {
@@ -180,6 +223,10 @@ class CinecaClientTest {
       assertThat(result).isEqualTo("new-jwt-token");
     }
 
+    /**
+     * Verifies that the {@code Authorization} header sent to Cineca uses the Bearer scheme carrying
+     * the current JWT value.
+     */
     @Test
     @DisplayName("200 → Authorization header is Bearer <currentJwt>")
     void sendsBearerHeader() throws Exception {
@@ -195,6 +242,10 @@ class CinecaClientTest {
           .isEqualTo("Bearer my-current-jwt");
     }
 
+    /**
+     * Verifies that the refresh request targets the {@code /jwt/refresh} path as required by the
+     * Cineca ESSE3 API.
+     */
     @Test
     @DisplayName("200 → request hits /jwt/refresh")
     void hitsCorrectPath() throws Exception {
@@ -209,6 +260,10 @@ class CinecaClientTest {
       assertThat(recorded.getPath()).contains("/jwt/refresh");
     }
 
+    /**
+     * Verifies that a {@code 401 Unauthorized} response from Cineca is mapped to a
+     * {@link CinecaAuthException}, indicating the current JWT has expired.
+     */
     @Test
     @DisplayName("401 → throws CinecaAuthException")
     void unauthorized() {
@@ -218,6 +273,10 @@ class CinecaClientTest {
           .isInstanceOf(CinecaAuthException.class);
     }
 
+    /**
+     * Verifies that a {@code 500 Internal Server Error} response from Cineca is mapped to a
+     * {@link CinecaUnavailableException}.
+     */
     @Test
     @DisplayName("500 → throws CinecaUnavailableException")
     void serverError() {
@@ -227,6 +286,10 @@ class CinecaClientTest {
           .isInstanceOf(CinecaUnavailableException.class);
     }
 
+    /**
+     * Verifies that a connection failure — simulated by shutting down the server before the call —
+     * is mapped to a {@link CinecaUnavailableException}.
+     */
     @Test
     @DisplayName("connection refused → throws CinecaUnavailableException")
     void connectionRefused() throws Exception {

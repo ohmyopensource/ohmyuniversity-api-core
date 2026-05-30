@@ -17,14 +17,16 @@ import org.springframework.test.context.ActiveProfiles;
 @SpringBootTest
 @ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
+@org.junit.jupiter.api.condition.EnabledIfSystemProperty(named = "docker.available", matches =
+    "true")
 class OhmyuniversityCoreApplicationTests {
 
   /**
    * Ensures that the Spring application context loads successfully.
    *
    * <p>This is a minimal sanity check test that will fail if the
-   * application context cannot be started due to misconfiguration,
-   * missing beans, or broken dependency injection.
+   * application context cannot be started due to misconfiguration, missing beans, or broken
+   * dependency injection.
    */
   @Test
   void contextLoads() {

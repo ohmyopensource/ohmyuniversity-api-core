@@ -1,9 +1,7 @@
 package org.ohmyopensource.ohmyuniversity.core.controller;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -20,7 +18,6 @@ import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaAuthExce
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaUnavailableException;
 import org.ohmyopensource.ohmyuniversity.core.config.JwtAuthenticationFilter;
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
-import org.ohmyopensource.ohmyuniversity.core.dto.AppelloResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.BadgeResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.LibrettoResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.LibrettoResponse.RigaLibretto;
@@ -41,10 +38,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * Unit tests for {@link CarrieraController} using MockMvc.
+ * Unit tests for {@link CarrieraController} using {@link MockMvc}.
  *
- * Spring Security filter chain is disabled — only the controller layer is tested.
- * CarrieraService is mocked. The OmuPrincipal is injected via SecurityMockMvc.
+ * <p>The Spring Security filter chain is disabled via
+ * {@link AutoConfigureMockMvc#addFilters()} so that only the controller layer is exercised.
+ * {@link CarrieraService} is replaced by a Mockito mock; the authenticated {@link OmuPrincipal} is
+ * injected into each request through {@link SecurityMockMvcRequestPostProcessors#authentication}.
  */
 @WebMvcTest(controllers = CarrieraController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -62,6 +61,10 @@ class CarrieraControllerTest {
 
   private OmuPrincipal principal;
 
+  /**
+   * Initialises a test {@link OmuPrincipal} that is injected into the {@link MockMvc} security
+   * context before each test via {@link #auth()}.
+   */
   @BeforeEach
   void setUp() {
     principal = new OmuPrincipal(
@@ -73,7 +76,13 @@ class CarrieraControllerTest {
         "178026");
   }
 
-  // Injects the OmuPrincipal into the MockMvc security context
+  /**
+   * Returns a {@link RequestPostProcessor} that wraps {@link #principal} in a
+   * {@link UsernamePasswordAuthenticationToken} and registers it as the current security context
+   * principal for the outgoing {@link MockMvc} request.
+   *
+   * @return a post-processor that injects the test principal into the request
+   */
   private RequestPostProcessor auth() {
     return SecurityMockMvcRequestPostProcessors.authentication(
         new UsernamePasswordAuthenticationToken(
@@ -81,14 +90,18 @@ class CarrieraControllerTest {
             List.of(new SimpleGrantedAuthority("ROLE_STUDENTE"))));
   }
 
-  // ================================
-  // GET /api/carriera/libretto
-  // ================================
-
+  /**
+   * Verifies the HTTP contract of {@code GET /api/carriera/libretto}, covering successful
+   * retrieval, Cineca session expiry, and service unavailability.
+   */
   @Nested
   @DisplayName("GET /api/carriera/libretto")
   class Libretto {
 
+    /**
+     * Verifies that a successful call to {@link CarrieraService#getLibretto} produces a
+     * {@code 200 OK} response whose JSON body contains the expected {@link RigaLibretto} fields.
+     */
     @Test
     @DisplayName("returns 200 with righe")
     void returns200() throws Exception {
@@ -110,6 +123,10 @@ class CarrieraControllerTest {
           .andExpect(jsonPath("$.righe[0].superata").value(true));
     }
 
+    /**
+     * Verifies that a {@link CinecaAuthException} thrown by {@link CarrieraService#getLibretto} —
+     * indicating an expired Cineca session — is mapped to a {@code 401 Unauthorized} response.
+     */
     @Test
     @DisplayName("returns 401 when Cineca session expired")
     void returns401OnExpiredSession() throws Exception {
@@ -120,6 +137,11 @@ class CarrieraControllerTest {
           .andExpect(status().isUnauthorized());
     }
 
+    /**
+     * Verifies that a {@link CinecaUnavailableException} thrown by
+     * {@link CarrieraService#getLibretto} — indicating that the Cineca ESSE3 backend is unreachable
+     * — is mapped to a {@code 503 Service Unavailable} response.
+     */
     @Test
     @DisplayName("returns 503 when Cineca unavailable")
     void returns503WhenCinecaDown() throws Exception {
@@ -131,14 +153,19 @@ class CarrieraControllerTest {
     }
   }
 
-  // ================================
-  // GET /api/carriera/medie
-  // ================================
-
+  /**
+   * Verifies the HTTP contract of {@code GET /api/carriera/medie}, covering successful retrieval of
+   * grade averages and Cineca session expiry.
+   */
   @Nested
   @DisplayName("GET /api/carriera/medie")
   class Medie {
 
+    /**
+     * Verifies that a successful call to {@link CarrieraService#getMedia} produces a {@code 200 OK}
+     * response whose JSON body contains the expected arithmetic average, weighted average,
+     * projected graduation score, and CFU completion percentage fields of {@link MediaResponse}.
+     */
     @Test
     @DisplayName("returns 200 with averages")
     void returns200() throws Exception {
@@ -163,6 +190,10 @@ class CarrieraControllerTest {
           .andExpect(jsonPath("$.percentualeCfu").value(76.8));
     }
 
+    /**
+     * Verifies that a {@link CinecaAuthException} thrown by {@link CarrieraService#getMedia} —
+     * indicating an expired Cineca session — is mapped to a {@code 401 Unauthorized} response.
+     */
     @Test
     @DisplayName("returns 401 when Cineca session expired")
     void returns401() throws Exception {
@@ -174,14 +205,19 @@ class CarrieraControllerTest {
     }
   }
 
-  // ================================
-  // GET /api/carriera/piano
-  // ================================
-
+  /**
+   * Verifies the HTTP contract of {@code GET /api/carriera/piano}, covering successful retrieval of
+   * the study plan and service unavailability.
+   */
   @Nested
   @DisplayName("GET /api/carriera/piano")
   class Piano {
 
+    /**
+     * Verifies that a successful call to {@link CarrieraService#getPiano} produces a {@code 200 OK}
+     * response whose JSON body contains the expected {@link PianoStudioResponse.RigaPiano} fields,
+     * including the activity code and the number of CFU credits.
+     */
     @Test
     @DisplayName("returns 200 with righe piano")
     void returns200() throws Exception {
@@ -202,6 +238,11 @@ class CarrieraControllerTest {
           .andExpect(jsonPath("$.righe[0].cfu").value(6.0));
     }
 
+    /**
+     * Verifies that a {@link CinecaUnavailableException} thrown by {@link CarrieraService#getPiano}
+     * — indicating that the Cineca ESSE3 backend is unreachable — is mapped to a
+     * {@code 503 Service Unavailable} response.
+     */
     @Test
     @DisplayName("returns 503 when Cineca unavailable")
     void returns503() throws Exception {
@@ -213,14 +254,19 @@ class CarrieraControllerTest {
     }
   }
 
-  // ================================
-  // POST /api/carriera/prenotazioni
-  // ================================
-
+  /**
+   * Verifies the HTTP contract of {@code POST /api/carriera/prenotazioni}, covering successful
+   * retrieval of exam bookings, request body validation, and Cineca authentication failure.
+   */
   @Nested
   @DisplayName("POST /api/carriera/prenotazioni")
   class Prenotazioni {
 
+    /**
+     * Verifies that a {@code POST} request with a valid JSON body containing a non-blank password
+     * produces a {@code 200 OK} response whose JSON body contains the expected
+     * {@link PrenotazioneResponse.Prenotazione} fields.
+     */
     @Test
     @DisplayName("returns 200 with prenotazioni list")
     void returns200() throws Exception {
@@ -241,6 +287,11 @@ class CarrieraControllerTest {
           .andExpect(jsonPath("$.prenotazioni[0].applistaId").value(1228134));
     }
 
+    /**
+     * Verifies that a {@code POST} request whose JSON body contains an empty {@code password} field
+     * fails bean validation and produces a {@code 400 Bad Request} response without invoking
+     * {@link CarrieraService#getPrenotazioni}.
+     */
     @Test
     @DisplayName("returns 400 when password is missing")
     void returns400WhenPasswordMissing() throws Exception {
@@ -251,6 +302,11 @@ class CarrieraControllerTest {
           .andExpect(status().isBadRequest());
     }
 
+    /**
+     * Verifies that a {@code POST} request whose JSON body is an empty object — omitting the
+     * required {@code password} field entirely — fails bean validation and produces a
+     * {@code 400 Bad Request} response without invoking {@link CarrieraService#getPrenotazioni}.
+     */
     @Test
     @DisplayName("returns 400 when body is empty")
     void returns400WhenBodyEmpty() throws Exception {
@@ -261,6 +317,11 @@ class CarrieraControllerTest {
           .andExpect(status().isBadRequest());
     }
 
+    /**
+     * Verifies that a {@link CinecaAuthException} thrown by {@link CarrieraService#getPrenotazioni}
+     * — indicating that the supplied credentials were rejected by Cineca — is mapped to a
+     * {@code 401 Unauthorized} response.
+     */
     @Test
     @DisplayName("returns 401 when Cineca auth fails")
     void returns401OnAuthFailure() throws Exception {
@@ -275,14 +336,19 @@ class CarrieraControllerTest {
     }
   }
 
-  // ================================
-  // GET /api/carriera/tasse
-  // ================================
-
+  /**
+   * Verifies the HTTP contract of {@code GET /api/carriera/tasse}, covering successful retrieval of
+   * the tax status, Cineca session expiry, and service unavailability.
+   */
   @Nested
   @DisplayName("GET /api/carriera/tasse")
   class Tasse {
 
+    /**
+     * Verifies that a successful call to {@link CarrieraService#getTasse} produces a {@code 200 OK}
+     * response whose JSON body contains the expected {@link TasseResponse} fields, including the
+     * traffic-light status {@code VERDE} and a zero outstanding amount.
+     */
     @Test
     @DisplayName("returns 200 with semaforo VERDE")
     void returns200() throws Exception {
@@ -301,6 +367,10 @@ class CarrieraControllerTest {
           .andExpect(jsonPath("$.importoDovuto").value("0.0"));
     }
 
+    /**
+     * Verifies that a {@link CinecaAuthException} thrown by {@link CarrieraService#getTasse} —
+     * indicating an expired Cineca session — is mapped to a {@code 401 Unauthorized} response.
+     */
     @Test
     @DisplayName("returns 401 when Cineca session expired")
     void returns401() throws Exception {
@@ -311,6 +381,11 @@ class CarrieraControllerTest {
           .andExpect(status().isUnauthorized());
     }
 
+    /**
+     * Verifies that a {@link CinecaUnavailableException} thrown by {@link CarrieraService#getTasse}
+     * — indicating that the Cineca ESSE3 backend is unreachable — is mapped to a
+     * {@code 503 Service Unavailable} response.
+     */
     @Test
     @DisplayName("returns 503 when Cineca unavailable")
     void returns503() throws Exception {
@@ -322,14 +397,19 @@ class CarrieraControllerTest {
     }
   }
 
-  // ================================
-  // GET /api/carriera/badge
-  // ================================
-
+  /**
+   * Verifies the HTTP contract of {@code GET /api/carriera/badge}, covering successful retrieval of
+   * badge data, the absence of a badge record, and Cineca session expiry.
+   */
   @Nested
   @DisplayName("GET /api/carriera/badge")
   class Badge {
 
+    /**
+     * Verifies that a successful call to {@link CarrieraService#getBadge} produces a {@code 200 OK}
+     * response whose JSON body contains the expected {@link BadgeResponse} fields, including badge
+     * identifier, first name, and last name.
+     */
     @Test
     @DisplayName("returns 200 with badge data")
     void returns200() throws Exception {
@@ -350,6 +430,11 @@ class CarrieraControllerTest {
           .andExpect(jsonPath("$.cognome").value("DEL MUTO"));
     }
 
+    /**
+     * Verifies that when {@link CarrieraService#getBadge} returns {@code null} — indicating that no
+     * badge record exists for the authenticated student — the controller produces a
+     * {@code 404 Not Found} response.
+     */
     @Test
     @DisplayName("returns 404 when no badge found")
     void returns404WhenNoBadge() throws Exception {
@@ -359,6 +444,10 @@ class CarrieraControllerTest {
           .andExpect(status().isNotFound());
     }
 
+    /**
+     * Verifies that a {@link CinecaAuthException} thrown by {@link CarrieraService#getBadge} —
+     * indicating an expired Cineca session — is mapped to a {@code 401 Unauthorized} response.
+     */
     @Test
     @DisplayName("returns 401 when Cineca session expired")
     void returns401() throws Exception {

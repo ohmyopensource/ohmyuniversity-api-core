@@ -33,50 +33,73 @@ import org.ohmyopensource.ohmyuniversity.core.dto.LoginResponse;
 /**
  * Unit tests for {@link AuthService}.
  *
- * All dependencies are mocked. No Spring context, no DB, no Redis.
- * Helper methods pre-build mock objects BEFORE any outer when() call
- * to avoid Mockito's UnfinishedStubbing.
+ * <p>All dependencies are mocked via Mockito. No Spring context, database,
+ * or Redis instance is required. Helper factory methods build mock objects before any enclosing
+ * {@code when()} call to avoid Mockito's {@code UnfinishedStubbingException}.
  */
 class AuthServiceTest {
 
+  /**
+   * University identifier used as a stable fixture across all tests.
+   */
+  private static final String UNI_ID = "UNIMOL";
+  /**
+   * Human-readable university name used when constructing registry configs.
+   */
+  private static final String UNI_NAME = "Università degli Studi del Molise";
+  /**
+   * Cineca ESSE3 base URL associated with {@link #UNI_ID}.
+   */
+  private static final String BASE_URL = "https://unimol.esse3.cineca.it/e3rest/api";
+  /**
+   * Italian tax code used as a stable user identity fixture.
+   */
+  private static final String CF = "TSTXXX00A00X000X";
+  /**
+   * Fixed UUID representing the OhMyUniversity user across all tests.
+   */
+  private static final UUID USER_UUID = UUID.randomUUID();
+  /**
+   * String form of {@link #USER_UUID}, used wherever a user ID string is expected.
+   */
+  private static final String USER_ID = USER_UUID.toString();
   private CinecaClient cinecaClient;
   private CinecaSessionStore sessionStore;
   private OmuJwtService jwtService;
   private OmuUserRepository userRepository;
   private UniversityConnectionRepository connectionRepository;
   private UniversityRegistry universityRegistry;
-
   private AuthService authService;
 
-  private static final String UNI_ID   = "UNIMOL";
-  private static final String UNI_NAME = "Università degli Studi del Molise";
-  private static final String BASE_URL = "https://unimol.esse3.cineca.it/e3rest/api";
-  private static final String CF       = "TSTXXX00A00X000X";
-  private static final UUID   USER_UUID = UUID.randomUUID();
-  private static final String USER_ID  = USER_UUID.toString();
-
+  /**
+   * Initialises fresh mocks and constructs a new {@link AuthService} instance before each test to
+   * guarantee isolation.
+   */
   @BeforeEach
   void setUp() {
-    cinecaClient         = mock(CinecaClient.class);
-    sessionStore         = mock(CinecaSessionStore.class);
-    jwtService           = mock(OmuJwtService.class);
-    userRepository       = mock(OmuUserRepository.class);
+    cinecaClient = mock(CinecaClient.class);
+    sessionStore = mock(CinecaSessionStore.class);
+    jwtService = mock(OmuJwtService.class);
+    userRepository = mock(OmuUserRepository.class);
     connectionRepository = mock(UniversityConnectionRepository.class);
-    universityRegistry   = mock(UniversityRegistry.class);
+    universityRegistry = mock(UniversityRegistry.class);
 
     authService = new AuthService(
         cinecaClient, sessionStore, jwtService,
         userRepository, connectionRepository, universityRegistry);
   }
 
-  // ============================================================
-  // Helpers — pre-built BEFORE any outer when() call
-  // ============================================================
-
+  /**
+   * Returns a {@link UniversityRegistry.UniversityConfig} for the standard test university.
+   */
   private UniversityRegistry.UniversityConfig uniConfig() {
     return new UniversityRegistry.UniversityConfig(UNI_NAME, BASE_URL);
   }
 
+  /**
+   * Builds a mocked {@link LoginRequest} configured with the standard test university, username,
+   * and password fixtures.
+   */
   private LoginRequest buildRequest() {
     LoginRequest req = mock(LoginRequest.class);
     when(req.getUniversityId()).thenReturn(UNI_ID);
@@ -85,6 +108,9 @@ class AuthServiceTest {
     return req;
   }
 
+  /**
+   * Builds a mocked {@link OmuUser} identified by {@link #USER_UUID} and {@link #CF}.
+   */
   private OmuUser buildMockUser() {
     OmuUser user = mock(OmuUser.class);
     when(user.getId()).thenReturn(USER_UUID);
@@ -92,6 +118,14 @@ class AuthServiceTest {
     return user;
   }
 
+  /**
+   * Builds a mocked {@link CinecaLoginResponse.CinecaUser} with the provided {@code persId} and
+   * {@code tratti} list.
+   *
+   * @param persId Cineca person identifier; may be {@code null}
+   * @param tratti list of academic career segments; may be {@code null}
+   * @return configured mock
+   */
   private CinecaLoginResponse.CinecaUser buildCinecaUser(Long persId,
       List<CinecaLoginResponse.TrattoCarriera> tratti) {
     CinecaLoginResponse.CinecaUser u = mock(CinecaLoginResponse.CinecaUser.class);
@@ -102,6 +136,15 @@ class AuthServiceTest {
     return u;
   }
 
+  /**
+   * Builds a mocked {@link CinecaLoginResponse} wrapping the provided user, JWT, and auth token
+   * values.
+   *
+   * @param cinecaUser authenticated Cineca user
+   * @param jwt        Cineca JWT; may be {@code null}
+   * @param authToken  Cineca auth token; may be {@code null}
+   * @return configured mock
+   */
   private CinecaLoginResponse buildCinecaResponse(
       CinecaLoginResponse.CinecaUser cinecaUser,
       String jwt,
@@ -113,6 +156,18 @@ class AuthServiceTest {
     return resp;
   }
 
+  /**
+   * Builds a mocked {@link CinecaLoginResponse.TrattoCarriera} with the provided identifiers,
+   * status codes, and optional detail block.
+   *
+   * @param stuId     Cineca student identifier
+   * @param matId     Cineca career segment identifier
+   * @param matricola student registration number
+   * @param staStuCod career status code (e.g. {@code "A"} for active)
+   * @param staStuDes human-readable career status description
+   * @param dettaglio optional detail record; may be {@code null}
+   * @return configured mock
+   */
   private CinecaLoginResponse.TrattoCarriera buildTratto(
       Long stuId, Long matId, String matricola,
       String staStuCod, String staStuDes,
@@ -128,20 +183,24 @@ class AuthServiceTest {
     return t;
   }
 
-  // ============================================================
-  // login()
-  // ============================================================
-
+  /**
+   * Verifies the end-to-end login flow of {@link AuthService#login(LoginRequest)}, covering user
+   * creation, session storage, profilo mapping, and error propagation.
+   */
   @Nested
   @DisplayName("login()")
   class Login {
 
+    /**
+     * Verifies that when the authenticating student has no existing OhMyUniversity account a new
+     * {@link OmuUser} and {@link UniversityConnection} are persisted, all Cineca session tokens are
+     * stored in Redis, and the response contains valid access and refresh tokens.
+     */
     @Test
     @DisplayName("new user → user created, connection saved, tokens stored, response populated")
     void newUser() {
-      // Pre-build all mocks before any outer when()
-      LoginRequest req           = buildRequest();
-      OmuUser savedUser          = buildMockUser();
+      LoginRequest req = buildRequest();
+      OmuUser savedUser = buildMockUser();
       CinecaLoginResponse.CinecaUser cinecaUser = buildCinecaUser(12345L, List.of());
       CinecaLoginResponse cinecaResp = buildCinecaResponse(cinecaUser, "cineca-jwt", "cineca-auth");
 
@@ -165,6 +224,11 @@ class AuthServiceTest {
       verify(sessionStore).storeRefreshToken("refresh-token", USER_ID);
     }
 
+    /**
+     * Verifies that when the student already has an OhMyUniversity account {@code lastLoginAt} is
+     * updated, no duplicate {@link UniversityConnection} is created, and the login flow completes
+     * successfully.
+     */
     @Test
     @DisplayName("existing user → user found, lastLoginAt updated, no new connection")
     void existingUser() {
@@ -178,7 +242,8 @@ class AuthServiceTest {
       when(userRepository.findByCodiceFiscale(CF)).thenReturn(Optional.of(existingUser));
       when(userRepository.save(any())).thenReturn(existingUser);
       when(connectionRepository.findByUserIdAndUniversityIdAndUsernameCineca(
-          any(), eq(UNI_ID), anyString())).thenReturn(Optional.of(mock(UniversityConnection.class)));
+          any(), eq(UNI_ID), anyString())).thenReturn(
+          Optional.of(mock(UniversityConnection.class)));
       when(jwtService.issue(any(), any(), any(), any(), any(), any())).thenReturn("access-token");
       when(jwtService.generateRefreshToken()).thenReturn("refresh-token");
 
@@ -188,6 +253,10 @@ class AuthServiceTest {
       verify(connectionRepository, never()).save(any(UniversityConnection.class));
     }
 
+    /**
+     * Verifies that an unregistered university identifier causes {@link AuthService#login} to throw
+     * {@link IllegalArgumentException} with a message containing {@code "Unknown university"}.
+     */
     @Test
     @DisplayName("unknown universityId → throws IllegalArgumentException")
     void unknownUniversity() {
@@ -199,6 +268,10 @@ class AuthServiceTest {
           .hasMessageContaining("Unknown university");
     }
 
+    /**
+     * Verifies that when Cineca returns a {@code null} JWT,
+     * {@link CinecaSessionStore#storeCinecaJwt} is never invoked.
+     */
     @Test
     @DisplayName("null JWT from Cineca → storeCinecaJwt never called")
     void nullJwtNotStored() {
@@ -221,6 +294,10 @@ class AuthServiceTest {
       verify(sessionStore, never()).storeCinecaJwt(any(), any(), any());
     }
 
+    /**
+     * Verifies that when Cineca returns a {@code null} auth token,
+     * {@link CinecaSessionStore#storeCinecaAuthToken} is never invoked.
+     */
     @Test
     @DisplayName("null authToken from Cineca → storeCinecaAuthToken never called")
     void nullAuthTokenNotStored() {
@@ -243,6 +320,11 @@ class AuthServiceTest {
       verify(sessionStore, never()).storeCinecaAuthToken(any(), any(), any());
     }
 
+    /**
+     * Verifies that when the Cineca response contains a {@code null} {@code trattiCarriera} list
+     * the resulting {@link LoginResponse} has an empty {@code profili} collection and
+     * {@link OmuJwtService#issue} is called with {@code null} for all career identifiers.
+     */
     @Test
     @DisplayName("null trattiCarriera → profili empty, access token issued with null ids")
     void nullTrattiCarriera() {
@@ -267,6 +349,10 @@ class AuthServiceTest {
           eq(null), eq(null), eq(null));
     }
 
+    /**
+     * Verifies that a career segment with status code {@code "A"} (active) is mapped to a
+     * {@link LoginResponse.ProfiloCarriera} where {@code attivo} is {@code true}.
+     */
     @Test
     @DisplayName("tratto con staStuCod=A → ProfiloCarriera.attivo = true")
     void trattoAttivoTrue() {
@@ -292,6 +378,10 @@ class AuthServiceTest {
       assertThat(response.getProfili().getFirst().isAttivo()).isTrue();
     }
 
+    /**
+     * Verifies that a career segment with status code {@code "C"} (ceased) is mapped to a
+     * {@link LoginResponse.ProfiloCarriera} where {@code attivo} is {@code false}.
+     */
     @Test
     @DisplayName("tratto con staStuCod=C → ProfiloCarriera.attivo = false")
     void trattoAttivoFalse() {
@@ -316,6 +406,11 @@ class AuthServiceTest {
       assertThat(response.getProfili().getFirst().isAttivo()).isFalse();
     }
 
+    /**
+     * Verifies that when a career segment carries a {@link CinecaLoginResponse.DettaglioTratto} the
+     * resulting {@link LoginResponse.ProfiloCarriera} is fully populated with the course code,
+     * type, academic year, and enrolment year.
+     */
     @Test
     @DisplayName("tratto con dettaglioTratto → ProfiloCarriera popolato correttamente")
     void trattoConDettaglio() {
@@ -351,6 +446,10 @@ class AuthServiceTest {
       assertThat(profilo.getAnnoAccademico()).isEqualTo(2022);
     }
 
+    /**
+     * Verifies that a {@link CinecaAuthException} thrown by {@link CinecaClient#login} propagates
+     * unchanged from {@link AuthService#login}.
+     */
     @Test
     @DisplayName("CinecaAuthException → propagates unchanged")
     void cinecaAuthException() {
@@ -363,6 +462,10 @@ class AuthServiceTest {
           .isInstanceOf(CinecaAuthException.class);
     }
 
+    /**
+     * Verifies that a {@link CinecaUnavailableException} thrown by {@link CinecaClient#login}
+     * propagates unchanged from {@link AuthService#login}.
+     */
     @Test
     @DisplayName("CinecaUnavailableException → propagates unchanged")
     void cinecaUnavailableException() {
@@ -376,14 +479,18 @@ class AuthServiceTest {
     }
   }
 
-  // ============================================================
-  // logout()
-  // ============================================================
-
+  /**
+   * Verifies the session invalidation behaviour of {@link AuthService#logout(String, String)}.
+   */
   @Nested
   @DisplayName("logout()")
   class Logout {
 
+    /**
+     * Verifies that when a valid refresh token is provided both
+     * {@link CinecaSessionStore#deleteRefreshToken} and {@link CinecaSessionStore#clearSession} are
+     * invoked with the correct arguments.
+     */
     @Test
     @DisplayName("valid refresh token → deleteRefreshToken and clearSession called")
     void validToken() {
@@ -396,6 +503,10 @@ class AuthServiceTest {
       verify(sessionStore).clearSession(USER_ID, UNI_ID);
     }
 
+    /**
+     * Verifies that when the refresh token is not recognised no session data is touched — neither
+     * deletion nor session clearing is attempted.
+     */
     @Test
     @DisplayName("unknown refresh token → nothing called")
     void unknownToken() {
@@ -409,14 +520,18 @@ class AuthServiceTest {
     }
   }
 
-  // ============================================================
-  // refresh()
-  // ============================================================
-
+  /**
+   * Verifies the token rotation behaviour of {@link AuthService#refresh(String, String)}, covering
+   * the happy path and all early-exit failure conditions.
+   */
   @Nested
   @DisplayName("refresh()")
   class Refresh {
 
+    /**
+     * Verifies that when all session data is present and valid {@link AuthService#refresh} returns
+     * a new access token issued by {@link OmuJwtService}.
+     */
     @Test
     @DisplayName("valid flow → returns new access token")
     void validRefresh() {
@@ -437,6 +552,11 @@ class AuthServiceTest {
       assertThat(result).isEqualTo("new-access-token");
     }
 
+    /**
+     * Verifies that an unrecognised refresh token causes {@link AuthService#refresh} to throw
+     * {@link IllegalArgumentException} with a message containing
+     * {@code "Invalid or expired refresh token"}.
+     */
     @Test
     @DisplayName("invalid refresh token → throws IllegalArgumentException")
     void invalidRefreshToken() {
@@ -448,6 +568,11 @@ class AuthServiceTest {
           .hasMessageContaining("Invalid or expired refresh token");
     }
 
+    /**
+     * Verifies that when the user identified by the refresh token no longer exists in the database
+     * {@link AuthService#refresh} throws {@link IllegalArgumentException} with a message containing
+     * {@code "User not found"}.
+     */
     @Test
     @DisplayName("user not found in DB → throws IllegalArgumentException")
     void userNotFound() {
@@ -460,6 +585,11 @@ class AuthServiceTest {
           .hasMessageContaining("User not found");
     }
 
+    /**
+     * Verifies that when the Cineca JWT has expired or been evicted from Redis
+     * {@link AuthService#refresh} throws {@link IllegalArgumentException} with a message containing
+     * {@code "Cineca session expired"}.
+     */
     @Test
     @DisplayName("Cineca JWT expired in Redis → throws IllegalArgumentException")
     void cinecaJwtExpired() {
@@ -475,6 +605,11 @@ class AuthServiceTest {
           .hasMessageContaining("Cineca session expired");
     }
 
+    /**
+     * Verifies that when no {@link UniversityConnection} exists for the user
+     * {@link AuthService#refresh} throws {@link IllegalArgumentException} with a message containing
+     * {@code "No connection found"}.
+     */
     @Test
     @DisplayName("no university connection → throws IllegalArgumentException")
     void noConnection() {

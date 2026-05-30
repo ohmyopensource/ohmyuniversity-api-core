@@ -17,8 +17,10 @@ import org.springframework.data.redis.core.ValueOperations;
 /**
  * Unit tests for {@link CinecaSessionStore}.
  *
- * StringRedisTemplate and ValueOperations are mocked — no Redis instance required.
- * Tests verify key format, TTL, Optional wrapping, Long parsing, and delete behaviour.
+ * <p>{@link StringRedisTemplate} and {@link ValueOperations} are mocked via
+ * Mockito — no running Redis instance is required. Tests verify Redis key
+ * formatting, TTL values, {@link Optional} wrapping, {@link Long} parsing,
+ * and key deletion behaviour.
  */
 @SuppressWarnings("unchecked")
 class CinecaSessionStoreTest {
@@ -27,9 +29,16 @@ class CinecaSessionStoreTest {
   private ValueOperations<String, String> valueOps;
   private CinecaSessionStore store;
 
+  /** OhMyUniversity user identifier used as a stable fixture across all tests. */
   private static final String USER_ID = "auth0|abc123";
+
+  /** University identifier used as a stable fixture across all tests. */
   private static final String UNI_ID  = "UNIMOL";
 
+  /**
+   * Initialises fresh mocks and a new {@link CinecaSessionStore} instance
+   * before each test to guarantee isolation.
+   */
   @BeforeEach
   void setUp() {
     redis    = mock(StringRedisTemplate.class);
@@ -38,14 +47,18 @@ class CinecaSessionStoreTest {
     store = new CinecaSessionStore(redis);
   }
 
-  // ============================================================
-  // Cineca JWT
-  // ============================================================
-
+  /**
+   * Verifies the storage, retrieval, and deletion behaviour for
+   * Cineca JWT tokens managed under the {@code cineca:jwt:} key namespace.
+   */
   @Nested
   @DisplayName("Cineca JWT")
   class CinecaJwt {
 
+    /**
+     * Verifies that {@link CinecaSessionStore#storeCinecaJwt} writes to Redis
+     * using the expected composite key and a 14-minute TTL.
+     */
     @Test
     @DisplayName("store → set with correct key and 14-minute TTL")
     void store() {
@@ -57,6 +70,10 @@ class CinecaSessionStoreTest {
           Duration.ofMinutes(14));
     }
 
+    /**
+     * Verifies that {@link CinecaSessionStore#getCinecaJwt} returns a non-empty
+     * {@link Optional} containing the stored value when the key is present in Redis.
+     */
     @Test
     @DisplayName("get → returns Optional.of when key present")
     void getPresent() {
@@ -67,6 +84,10 @@ class CinecaSessionStoreTest {
       assertThat(result).contains("jwt-token");
     }
 
+    /**
+     * Verifies that {@link CinecaSessionStore#getCinecaJwt} returns an empty
+     * {@link Optional} when the key is absent from Redis.
+     */
     @Test
     @DisplayName("get → returns Optional.empty when key absent")
     void getAbsent() {
@@ -75,6 +96,10 @@ class CinecaSessionStoreTest {
       assertThat(store.getCinecaJwt(USER_ID, UNI_ID)).isEmpty();
     }
 
+    /**
+     * Verifies that {@link CinecaSessionStore#deleteCinecaJwt} removes the
+     * correct composite key from Redis.
+     */
     @Test
     @DisplayName("delete → deletes correct key")
     void delete() {
@@ -84,14 +109,18 @@ class CinecaSessionStoreTest {
     }
   }
 
-  // ============================================================
-  // Cineca Auth Token
-  // ============================================================
-
+  /**
+   * Verifies the storage and retrieval behaviour for Cineca authentication
+   * tokens managed under the {@code cineca:auth:} key namespace.
+   */
   @Nested
   @DisplayName("Cineca Auth Token")
   class CinecaAuthToken {
 
+    /**
+     * Verifies that {@link CinecaSessionStore#storeCinecaAuthToken} writes to
+     * Redis using the expected composite key and a 14-minute TTL.
+     */
     @Test
     @DisplayName("store → set with correct key and 14-minute TTL")
     void store() {
@@ -103,6 +132,10 @@ class CinecaSessionStoreTest {
           Duration.ofMinutes(14));
     }
 
+    /**
+     * Verifies that {@link CinecaSessionStore#getCinecaAuthToken} returns a
+     * non-empty {@link Optional} when the key is present in Redis.
+     */
     @Test
     @DisplayName("get → returns Optional.of when present")
     void getPresent() {
@@ -111,6 +144,10 @@ class CinecaSessionStoreTest {
       assertThat(store.getCinecaAuthToken(USER_ID, UNI_ID)).contains("auth-token");
     }
 
+    /**
+     * Verifies that {@link CinecaSessionStore#getCinecaAuthToken} returns an
+     * empty {@link Optional} when the key is absent from Redis.
+     */
     @Test
     @DisplayName("get → returns Optional.empty when absent")
     void getAbsent() {
@@ -120,14 +157,20 @@ class CinecaSessionStoreTest {
     }
   }
 
-  // ============================================================
-  // Cineca PersId
-  // ============================================================
-
+  /**
+   * Verifies the storage and retrieval behaviour for Cineca person identifiers
+   * managed under the {@code cineca:pers:} key namespace, including
+   * {@link Long} serialisation and deserialisation.
+   */
   @Nested
   @DisplayName("Cineca PersId")
   class CinecaPersId {
 
+    /**
+     * Verifies that {@link CinecaSessionStore#storeCinecaPersId} serialises the
+     * {@link Long} value to its string representation and writes it to Redis
+     * with the expected composite key and a 14-minute TTL.
+     */
     @Test
     @DisplayName("store → persId serialized to string with correct key and TTL")
     void store() {
@@ -139,6 +182,10 @@ class CinecaSessionStoreTest {
           Duration.ofMinutes(14));
     }
 
+    /**
+     * Verifies that {@link CinecaSessionStore#getCinecaPersId} correctly parses
+     * the string value stored in Redis back to a {@link Long}.
+     */
     @Test
     @DisplayName("get → parses string back to Long correctly")
     void getPresent() {
@@ -149,6 +196,10 @@ class CinecaSessionStoreTest {
       assertThat(result).contains(99999L);
     }
 
+    /**
+     * Verifies that {@link CinecaSessionStore#getCinecaPersId} returns an empty
+     * {@link Optional} when the key is absent from Redis.
+     */
     @Test
     @DisplayName("get → returns Optional.empty when absent")
     void getAbsent() {
@@ -158,14 +209,18 @@ class CinecaSessionStoreTest {
     }
   }
 
-  // ============================================================
-  // OhMyU Refresh Token
-  // ============================================================
-
+  /**
+   * Verifies the storage, retrieval, and deletion behaviour for
+   * OhMyUniversity refresh tokens managed under the {@code omu:refresh:} key namespace.
+   */
   @Nested
   @DisplayName("OhMyU Refresh Token")
   class RefreshToken {
 
+    /**
+     * Verifies that {@link CinecaSessionStore#storeRefreshToken} writes the
+     * user identifier to Redis under the expected key with a 7-day TTL.
+     */
     @Test
     @DisplayName("store → set with correct key and 7-day TTL")
     void store() {
@@ -177,6 +232,11 @@ class CinecaSessionStoreTest {
           Duration.ofDays(7));
     }
 
+    /**
+     * Verifies that {@link CinecaSessionStore#getUserIdByRefreshToken} returns
+     * a non-empty {@link Optional} containing the associated user identifier
+     * when the refresh token key is present in Redis.
+     */
     @Test
     @DisplayName("getUserId → returns Optional.of when token valid")
     void getPresent() {
@@ -185,6 +245,11 @@ class CinecaSessionStoreTest {
       assertThat(store.getUserIdByRefreshToken("refresh-abc")).contains(USER_ID);
     }
 
+    /**
+     * Verifies that {@link CinecaSessionStore#getUserIdByRefreshToken} returns
+     * an empty {@link Optional} when the refresh token has expired or was
+     * never stored.
+     */
     @Test
     @DisplayName("getUserId → returns Optional.empty when token expired or absent")
     void getAbsent() {
@@ -193,6 +258,10 @@ class CinecaSessionStoreTest {
       assertThat(store.getUserIdByRefreshToken("refresh-abc")).isEmpty();
     }
 
+    /**
+     * Verifies that {@link CinecaSessionStore#deleteRefreshToken} removes the
+     * correct key from Redis.
+     */
     @Test
     @DisplayName("delete → deletes correct key")
     void delete() {
@@ -202,14 +271,19 @@ class CinecaSessionStoreTest {
     }
   }
 
-  // ============================================================
-  // clearSession
-  // ============================================================
-
+  /**
+   * Verifies the composite session cleanup performed by
+   * {@link CinecaSessionStore#clearSession(String, String)}.
+   */
   @Nested
   @DisplayName("clearSession")
   class ClearSession {
 
+    /**
+     * Verifies that {@link CinecaSessionStore#clearSession} deletes all three
+     * session keys — JWT, auth token, and person identifier — for the given
+     * user and university combination.
+     */
     @Test
     @DisplayName("deletes JWT, auth and pers keys for the given user and university")
     void deletesAllThreeKeys() {

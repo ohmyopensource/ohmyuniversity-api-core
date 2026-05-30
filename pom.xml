@@ -76,7 +76,7 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
-		<!-- JJWT — per OmuJwtService (emissione e validazione JWT OhMyU) -->
+		<!-- JJWT — per OmuJwtService -->
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-api</artifactId>
@@ -95,7 +95,7 @@
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- WebFlux — per WebClient usato in CinecaClient -->
+		<!-- WebFlux -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webflux</artifactId>
@@ -159,7 +159,7 @@
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- OpenTelemetry (Spring Boot 4 native — replaces micrometer-tracing-bridge-otel) -->
+		<!-- OpenTelemetry -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-opentelemetry</artifactId>
@@ -306,6 +306,59 @@
 						<goals>
 							<goal>check</goal>
 						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- JaCoCo -->
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<configuration>
+					<excludes>
+						<exclude>org/ohmyopensource/ohmyuniversity/core/dto/**</exclude>
+						<exclude>org/ohmyopensource/ohmyuniversity/core/domain/entity/**</exclude>
+						<exclude>org/ohmyopensource/ohmyuniversity/core/domain/repository/**</exclude>
+						<exclude>org/ohmyopensource/ohmyuniversity/core/cineca/CinecaCarrieraClient$*</exclude>
+						<exclude>org/ohmyopensource/ohmyuniversity/core/cineca/CinecaLoginResponse$*</exclude>
+						<exclude>org/ohmyopensource/ohmyuniversity/core/OhmyuniversityCoreApplication</exclude>
+						<exclude>org/ohmyopensource/ohmyuniversity/core/config/DotenvLoader</exclude>
+            <exclude>org/ohmyopensource/ohmyuniversity/core/config/OmuPrincipal</exclude>
+					</excludes>
+				</configuration>
+				<executions>
+					<execution>
+						<id>prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>check</id>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<rule>
+									<element>BUNDLE</element>
+									<limits>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.60</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
+						</configuration>
 					</execution>
 				</executions>
 			</plugin>
