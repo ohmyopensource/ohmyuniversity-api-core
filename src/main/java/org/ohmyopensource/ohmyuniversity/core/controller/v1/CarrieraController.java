@@ -1,4 +1,4 @@
-package org.ohmyopensource.ohmyuniversity.core.controller;
+package org.ohmyopensource.ohmyuniversity.core.controller.v1;
 
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaAuthException;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaUnavailableException;
@@ -36,7 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
  * data is persisted in this service.
  */
 @RestController
-@RequestMapping("/api/carriera")
+@RequestMapping("/api/v1/carriera")
 public class CarrieraController {
 
   private static final Logger log = LoggerFactory.getLogger(CarrieraController.class);

@@ -1,4 +1,4 @@
-package org.ohmyopensource.ohmyuniversity.core.controller;
+package org.ohmyopensource.ohmyuniversity.core.controller.v1;
 
 import jakarta.validation.Valid;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaAuthException;
@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
  * refresh-token validation, not Spring Security here.
  */
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
 public class AuthController {
 
   private static final Logger log = LoggerFactory.getLogger(AuthController.class);
