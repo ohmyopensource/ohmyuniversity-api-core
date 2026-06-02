@@ -75,26 +75,26 @@ class SecurityConfigTest {
   static class StubController {
 
     /**
-     * Stub for {@code POST /api/auth/login}.
+     * Stub for {@code POST /api/v1/auth/login}.
      */
-    @org.springframework.web.bind.annotation.PostMapping("/api/auth/login")
+    @org.springframework.web.bind.annotation.PostMapping("/api/v1/auth/login")
     ResponseEntity<Void> login(
         @org.springframework.web.bind.annotation.RequestBody(required = false) Object b) {
       return ResponseEntity.ok().build();
     }
 
     /**
-     * Stub for {@code POST /api/auth/refresh}.
+     * Stub for {@code POST /api/v1/auth/refresh}.
      */
-    @org.springframework.web.bind.annotation.PostMapping("/api/auth/refresh")
+    @org.springframework.web.bind.annotation.PostMapping("/api/v1/auth/refresh")
     ResponseEntity<Void> refresh() {
       return ResponseEntity.ok().build();
     }
 
     /**
-     * Stub for {@code POST /api/auth/logout}.
+     * Stub for {@code POST /api/v1/auth/logout}.
      */
-    @org.springframework.web.bind.annotation.PostMapping("/api/auth/logout")
+    @org.springframework.web.bind.annotation.PostMapping("/api/v1/auth/logout")
     ResponseEntity<Void> logout() {
       return ResponseEntity.ok().build();
     }
@@ -124,49 +124,49 @@ class SecurityConfigTest {
     }
 
     /**
-     * Stub for {@code GET /api/carriera/libretto}.
+     * Stub for {@code GET /api/v1/carriera/libretto}.
      */
-    @org.springframework.web.bind.annotation.GetMapping("/api/carriera/libretto")
+    @org.springframework.web.bind.annotation.GetMapping("/api/v1/carriera/libretto")
     ResponseEntity<Void> libretto() {
       return ResponseEntity.ok().build();
     }
 
     /**
-     * Stub for {@code GET /api/carriera/medie}.
+     * Stub for {@code GET /api/v1/carriera/medie}.
      */
-    @org.springframework.web.bind.annotation.GetMapping("/api/carriera/medie")
+    @org.springframework.web.bind.annotation.GetMapping("/api/v1/carriera/medie")
     ResponseEntity<Void> medie() {
       return ResponseEntity.ok().build();
     }
 
     /**
-     * Stub for {@code GET /api/carriera/piano}.
+     * Stub for {@code GET /api/v1/carriera/piano}.
      */
-    @org.springframework.web.bind.annotation.GetMapping("/api/carriera/piano")
+    @org.springframework.web.bind.annotation.GetMapping("/api/v1/carriera/piano")
     ResponseEntity<Void> piano() {
       return ResponseEntity.ok().build();
     }
 
     /**
-     * Stub for {@code GET /api/carriera/tasse}.
+     * Stub for {@code GET /api/v1/carriera/tasse}.
      */
-    @org.springframework.web.bind.annotation.GetMapping("/api/carriera/tasse")
+    @org.springframework.web.bind.annotation.GetMapping("/api/v1/carriera/tasse")
     ResponseEntity<Void> tasse() {
       return ResponseEntity.ok().build();
     }
 
     /**
-     * Stub for {@code GET /api/carriera/badge}.
+     * Stub for {@code GET /api/v1/carriera/badge}.
      */
-    @org.springframework.web.bind.annotation.GetMapping("/api/carriera/badge")
+    @org.springframework.web.bind.annotation.GetMapping("/api/v1/carriera/badge")
     ResponseEntity<Void> badge() {
       return ResponseEntity.ok().build();
     }
 
     /**
-     * Stub for {@code POST /api/carriera/prenotazioni}.
+     * Stub for {@code POST /api/v1/carriera/prenotazioni}.
      */
-    @org.springframework.web.bind.annotation.PostMapping("/api/carriera/prenotazioni")
+    @org.springframework.web.bind.annotation.PostMapping("/api/v1/carriera/prenotazioni")
     ResponseEntity<Void> prenotazioni(
         @org.springframework.web.bind.annotation.RequestBody(required = false) Object b) {
       return ResponseEntity.ok().build();
@@ -183,39 +183,39 @@ class SecurityConfigTest {
   class PublicEndpoints {
 
     /**
-     * Verifies that {@code POST /api/auth/login} is publicly accessible without an
+     * Verifies that {@code POST /api/v1/auth/login} is publicly accessible without an
      * {@code Authorization} header.
      */
     @Test
-    @DisplayName("POST /api/auth/login is publicly accessible")
+    @DisplayName("POST /api/v1/auth/login is publicly accessible")
     void authLoginIsPublic() throws Exception {
-      mockMvc.perform(post("/api/auth/login")
+      mockMvc.perform(post("/api/v1/auth/login")
               .contentType("application/json")
               .content("{}"))
           .andExpect(notBlocked());
     }
 
     /**
-     * Verifies that {@code POST /api/auth/refresh} is publicly accessible without an
+     * Verifies that {@code POST /api/v1/auth/refresh} is publicly accessible without an
      * {@code Authorization} header.
      */
     @Test
-    @DisplayName("POST /api/auth/refresh is publicly accessible")
+    @DisplayName("POST /api/v1/auth/refresh is publicly accessible")
     void authRefreshIsPublic() throws Exception {
-      mockMvc.perform(post("/api/auth/refresh")
+      mockMvc.perform(post("/api/v1/auth/refresh")
               .param("refreshToken", "tok")
               .param("universityId", "UNIMOL"))
           .andExpect(notBlocked());
     }
 
     /**
-     * Verifies that {@code POST /api/auth/logout} is publicly accessible without an
+     * Verifies that {@code POST /api/v1/auth/logout} is publicly accessible without an
      * {@code Authorization} header.
      */
     @Test
-    @DisplayName("POST /api/auth/logout is publicly accessible")
+    @DisplayName("POST /api/v1/auth/logout is publicly accessible")
     void authLogoutIsPublic() throws Exception {
-      mockMvc.perform(post("/api/auth/logout")
+      mockMvc.perform(post("/api/v1/auth/logout")
               .param("refreshToken", "tok")
               .param("universityId", "UNIMOL"))
           .andExpect(notBlocked());
@@ -264,68 +264,68 @@ class SecurityConfigTest {
   class ProtectedEndpoints {
 
     /**
-     * Verifies that {@code GET /api/carriera/libretto} returns {@code 403} when no
+     * Verifies that {@code GET /api/v1/carriera/libretto} returns {@code 403} when no
      * {@code Authorization} header is present.
      */
     @Test
-    @DisplayName("GET /api/carriera/libretto returns 403 without token")
+    @DisplayName("GET /api/v1/carriera/libretto returns 403 without token")
     void librettoRequiresAuth() throws Exception {
-      mockMvc.perform(get("/api/carriera/libretto"))
+      mockMvc.perform(get("/api/v1/carriera/libretto"))
           .andExpect(status().isForbidden());
     }
 
     /**
-     * Verifies that {@code GET /api/carriera/medie} returns {@code 403} when no
+     * Verifies that {@code GET /api/v1/carriera/medie} returns {@code 403} when no
      * {@code Authorization} header is present.
      */
     @Test
-    @DisplayName("GET /api/carriera/medie returns 403 without token")
+    @DisplayName("GET /api/v1/carriera/medie returns 403 without token")
     void medieRequiresAuth() throws Exception {
-      mockMvc.perform(get("/api/carriera/medie"))
+      mockMvc.perform(get("/api/v1/carriera/medie"))
           .andExpect(status().isForbidden());
     }
 
     /**
-     * Verifies that {@code GET /api/carriera/piano} returns {@code 403} when no
+     * Verifies that {@code GET /api/v1/carriera/piano} returns {@code 403} when no
      * {@code Authorization} header is present.
      */
     @Test
-    @DisplayName("GET /api/carriera/piano returns 403 without token")
+    @DisplayName("GET /api/v1/carriera/piano returns 403 without token")
     void pianoRequiresAuth() throws Exception {
-      mockMvc.perform(get("/api/carriera/piano"))
+      mockMvc.perform(get("/api/v1/carriera/piano"))
           .andExpect(status().isForbidden());
     }
 
     /**
-     * Verifies that {@code GET /api/carriera/tasse} returns {@code 403} when no
+     * Verifies that {@code GET /api/v1/carriera/tasse} returns {@code 403} when no
      * {@code Authorization} header is present.
      */
     @Test
-    @DisplayName("GET /api/carriera/tasse returns 403 without token")
+    @DisplayName("GET /api/v1/carriera/tasse returns 403 without token")
     void tasseRequiresAuth() throws Exception {
-      mockMvc.perform(get("/api/carriera/tasse"))
+      mockMvc.perform(get("/api/v1/carriera/tasse"))
           .andExpect(status().isForbidden());
     }
 
     /**
-     * Verifies that {@code GET /api/carriera/badge} returns {@code 403} when no
+     * Verifies that {@code GET /api/v1/carriera/badge} returns {@code 403} when no
      * {@code Authorization} header is present.
      */
     @Test
-    @DisplayName("GET /api/carriera/badge returns 403 without token")
+    @DisplayName("GET /api/v1/carriera/badge returns 403 without token")
     void badgeRequiresAuth() throws Exception {
-      mockMvc.perform(get("/api/carriera/badge"))
+      mockMvc.perform(get("/api/v1/carriera/badge"))
           .andExpect(status().isForbidden());
     }
 
     /**
-     * Verifies that {@code POST /api/carriera/prenotazioni} returns {@code 403} when no
+     * Verifies that {@code POST /api/v1/carriera/prenotazioni} returns {@code 403} when no
      * {@code Authorization} header is present.
      */
     @Test
-    @DisplayName("POST /api/carriera/prenotazioni returns 403 without token")
+    @DisplayName("POST /api/v1/carriera/prenotazioni returns 403 without token")
     void prenotazioniRequiresAuth() throws Exception {
-      mockMvc.perform(post("/api/carriera/prenotazioni")
+      mockMvc.perform(post("/api/v1/carriera/prenotazioni")
               .contentType("application/json")
               .content("{\"password\":\"secret\"}"))
           .andExpect(status().isForbidden());

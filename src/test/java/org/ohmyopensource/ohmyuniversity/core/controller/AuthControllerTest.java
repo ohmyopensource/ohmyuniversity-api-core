@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaAuthException;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaUnavailableException;
 import org.ohmyopensource.ohmyuniversity.core.config.JwtAuthenticationFilter;
+import org.ohmyopensource.ohmyuniversity.core.controller.v1.AuthController;
 import org.ohmyopensource.ohmyuniversity.core.dto.LoginResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.LoginResponse.ProfiloCarriera;
 import org.ohmyopensource.ohmyuniversity.core.service.AuthService;
@@ -57,11 +58,11 @@ class AuthControllerTest {
   private JwtAuthenticationFilter jwtAuthenticationFilter;
 
   /**
-   * Verifies the HTTP contract of {@code POST /api/auth/login} across successful authentication,
+   * Verifies the HTTP contract of {@code POST /api/v1/auth/login} across successful authentication,
    * credential failures, and validation errors.
    */
   @Nested
-  @DisplayName("POST /api/auth/login")
+  @DisplayName("POST /api/v1/auth/login")
   class Login {
 
     /**
@@ -86,7 +87,7 @@ class AuthControllerTest {
 
       when(authService.login(any())).thenReturn(response);
 
-      mockMvc.perform(post("/api/auth/login")
+      mockMvc.perform(post("/api/v1/auth/login")
               .contentType(MediaType.APPLICATION_JSON)
               .content("""
                   {
@@ -104,7 +105,7 @@ class AuthControllerTest {
     }
 
     /**
-     * Verifies that {@code POST /api/auth/login} returns {@code 401 Unauthorized} when
+     * Verifies that {@code POST /api/v1/auth/login} returns {@code 401 Unauthorized} when
      * {@link AuthService#login} throws {@link CinecaAuthException}, indicating invalid Cineca
      * credentials.
      */
@@ -114,7 +115,7 @@ class AuthControllerTest {
       when(authService.login(any()))
           .thenThrow(new CinecaAuthException("Invalid credentials"));
 
-      mockMvc.perform(post("/api/auth/login")
+      mockMvc.perform(post("/api/v1/auth/login")
               .contentType(MediaType.APPLICATION_JSON)
               .content("""
                   {
@@ -127,7 +128,7 @@ class AuthControllerTest {
     }
 
     /**
-     * Verifies that {@code POST /api/auth/login} returns {@code 503 Service Unavailable} when
+     * Verifies that {@code POST /api/v1/auth/login} returns {@code 503 Service Unavailable} when
      * {@link AuthService#login} throws {@link CinecaUnavailableException}, indicating that the
      * Cineca ESSE3 service cannot be reached.
      */
@@ -137,7 +138,7 @@ class AuthControllerTest {
       when(authService.login(any()))
           .thenThrow(new CinecaUnavailableException("Cineca down"));
 
-      mockMvc.perform(post("/api/auth/login")
+      mockMvc.perform(post("/api/v1/auth/login")
               .contentType(MediaType.APPLICATION_JSON)
               .content("""
                   {
@@ -150,7 +151,7 @@ class AuthControllerTest {
     }
 
     /**
-     * Verifies that {@code POST /api/auth/login} returns {@code 404 Not Found} when
+     * Verifies that {@code POST /api/v1/auth/login} returns {@code 404 Not Found} when
      * {@link AuthService#login} throws {@link IllegalArgumentException}, indicating that the
      * requested university identifier is not registered.
      */
@@ -160,7 +161,7 @@ class AuthControllerTest {
       when(authService.login(any()))
           .thenThrow(new IllegalArgumentException("Unknown university: UNKNOWN"));
 
-      mockMvc.perform(post("/api/auth/login")
+      mockMvc.perform(post("/api/v1/auth/login")
               .contentType(MediaType.APPLICATION_JSON)
               .content("""
                   {
@@ -173,13 +174,13 @@ class AuthControllerTest {
     }
 
     /**
-     * Verifies that {@code POST /api/auth/login} returns {@code 400 Bad Request} when the request
+     * Verifies that {@code POST /api/v1/auth/login} returns {@code 400 Bad Request} when the request
      * body is missing one or more fields required by bean validation.
      */
     @Test
     @DisplayName("returns 400 when request body is missing required fields")
     void login_returns400OnMissingFields() throws Exception {
-      mockMvc.perform(post("/api/auth/login")
+      mockMvc.perform(post("/api/v1/auth/login")
               .contentType(MediaType.APPLICATION_JSON)
               .content("{}"))
           .andExpect(status().isBadRequest());
@@ -187,15 +188,15 @@ class AuthControllerTest {
   }
 
   /**
-   * Verifies the HTTP contract of {@code POST /api/auth/refresh} for both valid and invalid or
+   * Verifies the HTTP contract of {@code POST /api/v1/auth/refresh} for both valid and invalid or
    * expired refresh tokens.
    */
   @Nested
-  @DisplayName("POST /api/auth/refresh")
+  @DisplayName("POST /api/v1/auth/refresh")
   class Refresh {
 
     /**
-     * Verifies that {@code POST /api/auth/refresh} returns {@code 200 OK} with the new access token
+     * Verifies that {@code POST /api/v1/auth/refresh} returns {@code 200 OK} with the new access token
      * in the response body when a valid refresh token is provided.
      */
     @Test
@@ -204,7 +205,7 @@ class AuthControllerTest {
       when(authService.refresh("validtoken", "UNIMOL"))
           .thenReturn("new.access.token");
 
-      mockMvc.perform(post("/api/auth/refresh")
+      mockMvc.perform(post("/api/v1/auth/refresh")
               .param("refreshToken", "validtoken")
               .param("universityId", "UNIMOL"))
           .andExpect(status().isOk())
@@ -212,7 +213,7 @@ class AuthControllerTest {
     }
 
     /**
-     * Verifies that {@code POST /api/auth/refresh} returns {@code 401 Unauthorized} when
+     * Verifies that {@code POST /api/v1/auth/refresh} returns {@code 401 Unauthorized} when
      * {@link AuthService#refresh} throws {@link IllegalArgumentException}, indicating that the
      * refresh token is invalid or has expired.
      */
@@ -222,7 +223,7 @@ class AuthControllerTest {
       when(authService.refresh("expiredtoken", "UNIMOL"))
           .thenThrow(new IllegalArgumentException("Invalid or expired refresh token"));
 
-      mockMvc.perform(post("/api/auth/refresh")
+      mockMvc.perform(post("/api/v1/auth/refresh")
               .param("refreshToken", "expiredtoken")
               .param("universityId", "UNIMOL"))
           .andExpect(status().isUnauthorized());
@@ -230,15 +231,15 @@ class AuthControllerTest {
   }
 
   /**
-   * Verifies the HTTP contract of {@code POST /api/auth/logout}, including its idempotent behaviour
+   * Verifies the HTTP contract of {@code POST /api/v1/auth/logout}, including its idempotent behaviour
    * when the token does not exist.
    */
   @Nested
-  @DisplayName("POST /api/auth/logout")
+  @DisplayName("POST /api/v1/auth/logout")
   class Logout {
 
     /**
-     * Verifies that {@code POST /api/auth/logout} returns {@code 204 No Content} when the refresh
+     * Verifies that {@code POST /api/v1/auth/logout} returns {@code 204 No Content} when the refresh
      * token is successfully invalidated.
      */
     @Test
@@ -246,14 +247,14 @@ class AuthControllerTest {
     void logout_returns204() throws Exception {
       doNothing().when(authService).logout("sometoken", "UNIMOL");
 
-      mockMvc.perform(post("/api/auth/logout")
+      mockMvc.perform(post("/api/v1/auth/logout")
               .param("refreshToken", "sometoken")
               .param("universityId", "UNIMOL"))
           .andExpect(status().isNoContent());
     }
 
     /**
-     * Verifies that {@code POST /api/auth/logout} returns {@code 204 No Content} even when the
+     * Verifies that {@code POST /api/v1/auth/logout} returns {@code 204 No Content} even when the
      * provided token does not exist, confirming that logout is a fire-and-forget, idempotent
      * operation.
      */
@@ -262,7 +263,7 @@ class AuthControllerTest {
     void logout_isIdempotent() throws Exception {
       doNothing().when(authService).logout(any(), any());
 
-      mockMvc.perform(post("/api/auth/logout")
+      mockMvc.perform(post("/api/v1/auth/logout")
               .param("refreshToken", "nonexistenttoken")
               .param("universityId", "UNIMOL"))
           .andExpect(status().isNoContent());

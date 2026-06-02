@@ -18,6 +18,7 @@ import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaAuthExce
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaUnavailableException;
 import org.ohmyopensource.ohmyuniversity.core.config.JwtAuthenticationFilter;
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
+import org.ohmyopensource.ohmyuniversity.core.controller.v1.CarrieraController;
 import org.ohmyopensource.ohmyuniversity.core.dto.BadgeResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.LibrettoResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.LibrettoResponse.RigaLibretto;
@@ -91,11 +92,11 @@ class CarrieraControllerTest {
   }
 
   /**
-   * Verifies the HTTP contract of {@code GET /api/carriera/libretto}, covering successful
+   * Verifies the HTTP contract of {@code GET /api/v1/carriera/libretto}, covering successful
    * retrieval, Cineca session expiry, and service unavailability.
    */
   @Nested
-  @DisplayName("GET /api/carriera/libretto")
+  @DisplayName("GET /api/v1/carriera/libretto")
   class Libretto {
 
     /**
@@ -116,7 +117,7 @@ class CarrieraControllerTest {
 
       when(carrieraService.getLibretto(any())).thenReturn(response);
 
-      mockMvc.perform(get("/api/carriera/libretto").with(auth()))
+      mockMvc.perform(get("/api/v1/carriera/libretto").with(auth()))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.righe[0].adCod").value("411114"))
           .andExpect(jsonPath("$.righe[0].voto").value(29))
@@ -133,7 +134,7 @@ class CarrieraControllerTest {
       when(carrieraService.getLibretto(any()))
           .thenThrow(new CinecaAuthException("Session expired"));
 
-      mockMvc.perform(get("/api/carriera/libretto").with(auth()))
+      mockMvc.perform(get("/api/v1/carriera/libretto").with(auth()))
           .andExpect(status().isUnauthorized());
     }
 
@@ -148,17 +149,17 @@ class CarrieraControllerTest {
       when(carrieraService.getLibretto(any()))
           .thenThrow(new CinecaUnavailableException("Cineca down"));
 
-      mockMvc.perform(get("/api/carriera/libretto").with(auth()))
+      mockMvc.perform(get("/api/v1/carriera/libretto").with(auth()))
           .andExpect(status().isServiceUnavailable());
     }
   }
 
   /**
-   * Verifies the HTTP contract of {@code GET /api/carriera/medie}, covering successful retrieval of
+   * Verifies the HTTP contract of {@code GET /api/v1/carriera/medie}, covering successful retrieval of
    * grade averages and Cineca session expiry.
    */
   @Nested
-  @DisplayName("GET /api/carriera/medie")
+  @DisplayName("GET /api/v1/carriera/medie")
   class Medie {
 
     /**
@@ -181,7 +182,7 @@ class CarrieraControllerTest {
 
       when(carrieraService.getMedia(any())).thenReturn(response);
 
-      mockMvc.perform(get("/api/carriera/medie").with(auth()))
+      mockMvc.perform(get("/api/v1/carriera/medie").with(auth()))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.mediaAritmetica").value(26.17))
           .andExpect(jsonPath("$.mediaPesata").value(25.84))
@@ -200,17 +201,17 @@ class CarrieraControllerTest {
       when(carrieraService.getMedia(any()))
           .thenThrow(new CinecaAuthException("expired"));
 
-      mockMvc.perform(get("/api/carriera/medie").with(auth()))
+      mockMvc.perform(get("/api/v1/carriera/medie").with(auth()))
           .andExpect(status().isUnauthorized());
     }
   }
 
   /**
-   * Verifies the HTTP contract of {@code GET /api/carriera/piano}, covering successful retrieval of
+   * Verifies the HTTP contract of {@code GET /api/v1/carriera/piano}, covering successful retrieval of
    * the study plan and service unavailability.
    */
   @Nested
-  @DisplayName("GET /api/carriera/piano")
+  @DisplayName("GET /api/v1/carriera/piano")
   class Piano {
 
     /**
@@ -232,7 +233,7 @@ class CarrieraControllerTest {
 
       when(carrieraService.getPiano(any())).thenReturn(response);
 
-      mockMvc.perform(get("/api/carriera/piano").with(auth()))
+      mockMvc.perform(get("/api/v1/carriera/piano").with(auth()))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.righe[0].adCod").value("411114"))
           .andExpect(jsonPath("$.righe[0].cfu").value(6.0));
@@ -249,17 +250,17 @@ class CarrieraControllerTest {
       when(carrieraService.getPiano(any()))
           .thenThrow(new CinecaUnavailableException("down"));
 
-      mockMvc.perform(get("/api/carriera/piano").with(auth()))
+      mockMvc.perform(get("/api/v1/carriera/piano").with(auth()))
           .andExpect(status().isServiceUnavailable());
     }
   }
 
   /**
-   * Verifies the HTTP contract of {@code POST /api/carriera/prenotazioni}, covering successful
+   * Verifies the HTTP contract of {@code POST /api/v1/carriera/prenotazioni}, covering successful
    * retrieval of exam bookings, request body validation, and Cineca authentication failure.
    */
   @Nested
-  @DisplayName("POST /api/carriera/prenotazioni")
+  @DisplayName("POST /api/v1/carriera/prenotazioni")
   class Prenotazioni {
 
     /**
@@ -279,7 +280,7 @@ class CarrieraControllerTest {
 
       when(carrieraService.getPrenotazioni(any(), anyString())).thenReturn(response);
 
-      mockMvc.perform(post("/api/carriera/prenotazioni")
+      mockMvc.perform(post("/api/v1/carriera/prenotazioni")
               .with(auth())
               .contentType(MediaType.APPLICATION_JSON)
               .content("{\"password\": \"secret\"}"))
@@ -295,7 +296,7 @@ class CarrieraControllerTest {
     @Test
     @DisplayName("returns 400 when password is missing")
     void returns400WhenPasswordMissing() throws Exception {
-      mockMvc.perform(post("/api/carriera/prenotazioni")
+      mockMvc.perform(post("/api/v1/carriera/prenotazioni")
               .with(auth())
               .contentType(MediaType.APPLICATION_JSON)
               .content("{\"password\": \"\"}"))
@@ -310,7 +311,7 @@ class CarrieraControllerTest {
     @Test
     @DisplayName("returns 400 when body is empty")
     void returns400WhenBodyEmpty() throws Exception {
-      mockMvc.perform(post("/api/carriera/prenotazioni")
+      mockMvc.perform(post("/api/v1/carriera/prenotazioni")
               .with(auth())
               .contentType(MediaType.APPLICATION_JSON)
               .content("{}"))
@@ -328,7 +329,7 @@ class CarrieraControllerTest {
       when(carrieraService.getPrenotazioni(any(), anyString()))
           .thenThrow(new CinecaAuthException("auth failed"));
 
-      mockMvc.perform(post("/api/carriera/prenotazioni")
+      mockMvc.perform(post("/api/v1/carriera/prenotazioni")
               .with(auth())
               .contentType(MediaType.APPLICATION_JSON)
               .content("{\"password\": \"secret\"}"))
@@ -337,11 +338,11 @@ class CarrieraControllerTest {
   }
 
   /**
-   * Verifies the HTTP contract of {@code GET /api/carriera/tasse}, covering successful retrieval of
+   * Verifies the HTTP contract of {@code GET /api/v1/carriera/tasse}, covering successful retrieval of
    * the tax status, Cineca session expiry, and service unavailability.
    */
   @Nested
-  @DisplayName("GET /api/carriera/tasse")
+  @DisplayName("GET /api/v1/carriera/tasse")
   class Tasse {
 
     /**
@@ -361,7 +362,7 @@ class CarrieraControllerTest {
 
       when(carrieraService.getTasse(any())).thenReturn(response);
 
-      mockMvc.perform(get("/api/carriera/tasse").with(auth()))
+      mockMvc.perform(get("/api/v1/carriera/tasse").with(auth()))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.semaforo").value("VERDE"))
           .andExpect(jsonPath("$.importoDovuto").value("0.0"));
@@ -377,7 +378,7 @@ class CarrieraControllerTest {
       when(carrieraService.getTasse(any()))
           .thenThrow(new CinecaAuthException("expired"));
 
-      mockMvc.perform(get("/api/carriera/tasse").with(auth()))
+      mockMvc.perform(get("/api/v1/carriera/tasse").with(auth()))
           .andExpect(status().isUnauthorized());
     }
 
@@ -392,17 +393,17 @@ class CarrieraControllerTest {
       when(carrieraService.getTasse(any()))
           .thenThrow(new CinecaUnavailableException("down"));
 
-      mockMvc.perform(get("/api/carriera/tasse").with(auth()))
+      mockMvc.perform(get("/api/v1/carriera/tasse").with(auth()))
           .andExpect(status().isServiceUnavailable());
     }
   }
 
   /**
-   * Verifies the HTTP contract of {@code GET /api/carriera/badge}, covering successful retrieval of
+   * Verifies the HTTP contract of {@code GET /api/v1/carriera/badge}, covering successful retrieval of
    * badge data, the absence of a badge record, and Cineca session expiry.
    */
   @Nested
-  @DisplayName("GET /api/carriera/badge")
+  @DisplayName("GET /api/v1/carriera/badge")
   class Badge {
 
     /**
@@ -423,7 +424,7 @@ class CarrieraControllerTest {
 
       when(carrieraService.getBadge(any())).thenReturn(badge);
 
-      mockMvc.perform(get("/api/carriera/badge").with(auth()))
+      mockMvc.perform(get("/api/v1/carriera/badge").with(auth()))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.bdgId").value(39498))
           .andExpect(jsonPath("$.nome").value("ALESSIO"))
@@ -440,7 +441,7 @@ class CarrieraControllerTest {
     void returns404WhenNoBadge() throws Exception {
       when(carrieraService.getBadge(any())).thenReturn(null);
 
-      mockMvc.perform(get("/api/carriera/badge").with(auth()))
+      mockMvc.perform(get("/api/v1/carriera/badge").with(auth()))
           .andExpect(status().isNotFound());
     }
 
@@ -454,7 +455,7 @@ class CarrieraControllerTest {
       when(carrieraService.getBadge(any()))
           .thenThrow(new CinecaAuthException("expired"));
 
-      mockMvc.perform(get("/api/carriera/badge").with(auth()))
+      mockMvc.perform(get("/api/v1/carriera/badge").with(auth()))
           .andExpect(status().isUnauthorized());
     }
   }
