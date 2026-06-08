@@ -10,6 +10,7 @@ import org.ohmyopensource.ohmyuniversity.core.dto.MediaResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.PianoStudioResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneRequest;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.SuggerimentiResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.TasseResponse;
 import org.ohmyopensource.ohmyuniversity.core.service.CarrieraService;
 import org.slf4j.Logger;
@@ -249,6 +250,33 @@ public class CarrieraController {
         return ResponseEntity.notFound().build();
       }
       return ResponseEntity.ok(badge);
+    } catch (CinecaAuthException e) {
+      log.warn("CarrieraController: Cineca session expired for user={}", principal.omuUserId());
+      return ResponseEntity.status(401).build();
+    } catch (CinecaUnavailableException e) {
+      log.error("CarrieraController: Cineca unavailable — {}", e.getMessage());
+      return ResponseEntity.status(503).build();
+    }
+  }
+
+  /**
+   * Retrieves suggested exams for the authenticated student.
+   *
+   * <p>The endpoint returns all exams that have not yet been passed,
+   * ordered according to the recommendation criteria defined by the
+   * career service.
+   *
+   * @param principal authenticated user extracted from the JWT
+   * @return {@code 200 OK} with the suggested exams,
+   *     {@code 401 Unauthorized} if the Cineca session has expired,
+   *     or {@code 503 Service Unavailable} if the Cineca service
+   *     cannot be reached
+   */
+  @GetMapping("/esami-suggeriti")
+  public ResponseEntity<SuggerimentiResponse> getEsamiSuggeriti(
+      @AuthenticationPrincipal OmuPrincipal principal) {
+    try {
+      return ResponseEntity.ok(carrieraService.getEsamiSuggeriti(principal));
     } catch (CinecaAuthException e) {
       log.warn("CarrieraController: Cineca session expired for user={}", principal.omuUserId());
       return ResponseEntity.status(401).build();

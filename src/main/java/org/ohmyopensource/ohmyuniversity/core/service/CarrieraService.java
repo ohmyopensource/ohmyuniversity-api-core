@@ -1,6 +1,7 @@
 package org.ohmyopensource.ohmyuniversity.core.service;
 
 import java.util.List;
+import java.util.Set;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaAddebito;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaAppello;
@@ -27,6 +28,7 @@ import org.ohmyopensource.ohmyuniversity.core.dto.PianoStudioResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse.EsitoPrenotazione;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse.Prenotazione;
+import org.ohmyopensource.ohmyuniversity.core.dto.SuggerimentiResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.TasseResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.TasseResponse.Addebito;
 import org.ohmyopensource.ohmyuniversity.core.dto.TasseResponse.VoceTassa;
@@ -307,6 +309,72 @@ public class CarrieraService {
     }
 
     return toBadgeResponse(badges.get(0));
+  }
+
+  /**
+   * Returns an ordered list of suggested exams for the authenticated student.
+   *
+   * <p>The suggestion process compares the student's study plan with the
+   * academic record (libretto) and excludes all activities already passed.
+   * Remaining exams are ranked using a convenience score that prioritizes
+   * lower-year activities and, within the same year, lower-CFU exams.
+   *
+   * <p>Score formula:
+   * {@code (annoCorso * 100) + cfu}.
+   * Lower scores are suggested first.
+   *
+   * @param principal authenticated OhMyU principal
+   * @return ordered list of suggested exams, or an empty list if no valid
+   *     study plan is available
+   */
+  public SuggerimentiResponse getEsamiSuggeriti(OmuPrincipal principal) {
+    String cinecaJwt = resolveCinecaJwt(principal);
+    String baseUrl = resolveBaseUrl(principal.universityId());
+
+    List<CinecaRigaLibretto> righe = cinecaClient.getRigheLibretto(
+        baseUrl, cinecaJwt, principal.matId());
+
+    Set<String> superati = righe.stream()
+        .filter(r -> "S".equals(r.getStato()) && r.getAdCod() != null)
+        .map(CinecaRigaLibretto::getAdCod)
+        .collect(java.util.stream.Collectors.toSet());
+
+    List<CinecaTestataPiano> headers = cinecaClient.getPianoHeaders(
+        baseUrl, cinecaJwt, principal.stuId());
+
+    if (headers.isEmpty()) {
+      SuggerimentiResponse empty = new SuggerimentiResponse();
+      empty.setEsami(List.of());
+      return empty;
+    }
+
+    CinecaPianoDettaglio dettaglio = cinecaClient.getPianoDettaglio(
+        baseUrl, cinecaJwt, principal.stuId(), headers.get(0).getPianoId());
+
+    List<SuggerimentiResponse.EsameSuggerito> suggeriti = dettaglio == null
+        ? List.of()
+        : dettaglio.getAttivita().stream()
+            .filter(a -> a.getAdCod() != null && !superati.contains(a.getAdCod()))
+            .map(a -> {
+              SuggerimentiResponse.EsameSuggerito s = new SuggerimentiResponse.EsameSuggerito();
+              s.setAdCod(a.getAdCod());
+              s.setAdDes(a.getAdDes());
+              s.setCfu(a.getCfu());
+              s.setAnnoCorso(a.getAnnoCorso());
+              int anno = a.getAnnoCorso() != null ? a.getAnnoCorso() : 99;
+              int cfu = a.getCfu() != null ? a.getCfu().intValue() : 99;
+              s.setScore((anno * 100) + cfu);
+              return s;
+            })
+            .sorted(java.util.Comparator.comparingInt(SuggerimentiResponse.EsameSuggerito::getScore))
+            .toList();
+
+    log.debug("CarrieraService: {} esami suggeriti for stuId={}", suggeriti.size(),
+        principal.stuId());
+
+    SuggerimentiResponse response = new SuggerimentiResponse();
+    response.setEsami(suggeriti);
+    return response;
   }
 
   /**
