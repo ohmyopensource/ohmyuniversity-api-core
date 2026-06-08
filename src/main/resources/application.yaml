@@ -44,3 +44,5 @@ omu:
     UNIMOL:
       name: Università degli Studi del Molise
       base-url: https://unimol.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unimol.it
+      library-url: https://biblioteche.unimol.it

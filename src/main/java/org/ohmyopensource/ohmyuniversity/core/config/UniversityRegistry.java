@@ -58,10 +58,15 @@ public class UniversityRegistry {
   /**
    * Immutable configuration model for a single university.
    *
-   * @param name    human-readable university name
-   * @param baseUrl ESSE3 REST API base URL
+   * @param name       human-readable university name
+   * @param baseUrl    Cineca ESSE3 REST API base URL
+   * @param moodleUrl  URL of the university Moodle instance (WebView)
+   * @param libraryUrl URL of the university library portal (WebView)
    */
-  public record UniversityConfig(String name, String baseUrl) {
-
+  public record UniversityConfig(
+      String name,
+      String baseUrl,
+      String moodleUrl,
+      String libraryUrl) {
   }
 }
