@@ -93,7 +93,11 @@ class AuthServiceTest {
    * Returns a {@link UniversityRegistry.UniversityConfig} for the standard test university.
    */
   private UniversityRegistry.UniversityConfig uniConfig() {
-    return new UniversityRegistry.UniversityConfig(UNI_NAME, BASE_URL);
+    return new UniversityRegistry.UniversityConfig(
+        UNI_NAME,
+        BASE_URL,
+        null,
+        null);
   }
 
   /**

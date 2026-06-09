@@ -24,7 +24,9 @@ class UniversityRegistryTest {
   private static final UniversityRegistry.UniversityConfig UNIMOL_CONFIG =
       new UniversityRegistry.UniversityConfig(
           "Università degli Studi del Molise",
-          "https://unimol.esse3.cineca.it/e3rest/api");
+          "https://unimol.esse3.cineca.it/e3rest/api",
+          "https://moodle.unimol.it",
+          "https://biblioteche.unimol.it");
 
   /**
    * Initialises a fresh {@link UniversityRegistry} populated with a single
@@ -109,7 +111,11 @@ class UniversityRegistryTest {
     @DisplayName("name() and baseUrl() return correct values")
     void recordAccessors() {
       UniversityRegistry.UniversityConfig config =
-          new UniversityRegistry.UniversityConfig("Test Uni", "https://test.esse3.it/api");
+          new UniversityRegistry.UniversityConfig(
+              "Test Uni",
+              "https://test.esse3.it/api",
+              null,
+              null);
 
       assertThat(config.name()).isEqualTo("Test Uni");
       assertThat(config.baseUrl()).isEqualTo("https://test.esse3.it/api");
@@ -124,9 +130,15 @@ class UniversityRegistryTest {
     @DisplayName("two configs with same values are equal")
     void recordEquality() {
       UniversityRegistry.UniversityConfig a =
-          new UniversityRegistry.UniversityConfig("Uni", "https://url.it");
+          new UniversityRegistry.UniversityConfig("Uni",
+              "https://url.it",
+              null,
+              null);
       UniversityRegistry.UniversityConfig b =
-          new UniversityRegistry.UniversityConfig("Uni", "https://url.it");
+          new UniversityRegistry.UniversityConfig("Uni",
+              "https://url.it",
+              null,
+              null);
 
       assertThat(a).isEqualTo(b);
     }
