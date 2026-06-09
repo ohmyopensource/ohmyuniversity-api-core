@@ -43,7 +43,11 @@ public class DotenvLoader implements EnvironmentPostProcessor, Ordered {
       "KAFKA_BOOTSTRAP_SERVERS",
       "JWT_SECRET",
       "JWT_EXPIRATION_MS",
-      "JWT_REFRESH_EXPIRATION_MS"
+      "JWT_REFRESH_EXPIRATION_MS",
+      "MICROSOFT_CLIENT_ID",
+      "MICROSOFT_CLIENT_SECRET",
+      "MICROSOFT_TENANT_ID",
+      "MICROSOFT_REDIRECT_URI"
   };
 
   // ============ Override Methods ============
