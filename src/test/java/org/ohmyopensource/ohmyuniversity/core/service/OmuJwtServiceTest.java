@@ -136,8 +136,8 @@ class OmuJwtServiceTest {
         "user-uuid-123", "CF", "UNIMOL", null, null, null);
 
     String[] parts = token.split("\\.");
-    String tamperedSignature = parts[2].substring(0, parts[2].length() - 1) + "X";
-    String tampered = parts[0] + "." + parts[1] + "." + tamperedSignature;
+    String tamperedPayload = parts[1] + "TAMPERED";
+    String tampered = parts[0] + "." + tamperedPayload + "." + parts[2];
 
     assertThatThrownBy(() -> jwtService.validate(tampered))
         .isInstanceOf(JwtException.class);
