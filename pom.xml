@@ -179,20 +179,6 @@
 			<version>3.0.3</version>
 		</dependency>
 
-		<!-- Microsoft Graph SDK -->
-		<!--<dependency>
-			<groupId>com.microsoft.graph</groupId>
-			<artifactId>microsoft-graph</artifactId>
-			<version>6.4.0</version>
-		</dependency>-->
-
-		<!-- Microsoft Identity for OAuth2 -->
-		<!--<dependency>
-			<groupId>com.azure</groupId>
-			<artifactId>azure-identity</artifactId>
-			<version>1.13.0</version>
-		</dependency>-->
-
 		<!--
 			================================
 			TEST
@@ -373,7 +359,7 @@
 										<limit>
 											<counter>LINE</counter>
 											<value>COVEREDRATIO</value>
-											<minimum>0.50</minimum>
+											<minimum>0.60</minimum>
 										</limit>
 									</limits>
 								</rule>
