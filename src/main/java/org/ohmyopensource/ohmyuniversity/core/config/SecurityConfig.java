@@ -65,6 +65,7 @@ public class SecurityConfig {
             .requestMatchers("/api/v1/auth/**").permitAll()
             .requestMatchers("/api/v1/email/auth/callback").permitAll()
             .requestMatchers("/actuator/health").permitAll()
+            .requestMatchers("/error").permitAll()
             .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
             .anyRequest().authenticated())
         .addFilterBefore(jwtAuthenticationFilter,
