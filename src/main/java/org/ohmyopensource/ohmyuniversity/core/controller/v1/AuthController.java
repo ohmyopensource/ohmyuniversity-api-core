@@ -68,7 +68,8 @@ public class AuthController {
       LoginResponse response = authService.login(request);
       return ResponseEntity.ok(response);
     } catch (CinecaAuthException e) {
-      log.warn("AuthController: login failed — invalid credentials: {}", e.getMessage());
+      log.warn("AuthController: login failed — invalid credentials: {}",
+          e.getMessage().replaceAll("[\r\n]", ""));
       return ResponseEntity.status(401).build();
     } catch (CinecaUnavailableException e) {
       log.error("AuthController: Cineca unavailable: {}", e.getMessage());
@@ -82,8 +83,8 @@ public class AuthController {
   /**
    * Refreshes an access token using a valid refresh token.
    *
-   * <p>This endpoint does NOT contact Cineca directly. It only validates and rotates OhMyUniversity
-   * tokens.
+   * <p>This endpoint does NOT contact Cineca directly. It only validates and rotates
+   * OhMyUniversity! tokens.
    *
    * @param refreshToken valid refresh token issued at login
    * @param universityId target university session scope

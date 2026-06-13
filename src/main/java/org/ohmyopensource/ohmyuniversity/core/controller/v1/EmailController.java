@@ -83,7 +83,8 @@ public class EmailController {
       emailService.handleCallback(code, state);
       return ResponseEntity.noContent().build();
     } catch (EmailProviderException e) {
-      log.warn("EmailController: callback failed — {}", e.getMessage());
+      log.warn("EmailController: callback failed — {}",
+          e.getMessage().replaceAll("[\r\n]", ""));
       return ResponseEntity.badRequest().build();
     }
   }

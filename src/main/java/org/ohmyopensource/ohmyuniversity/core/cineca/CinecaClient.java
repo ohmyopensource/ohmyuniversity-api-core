@@ -55,7 +55,8 @@ public class CinecaClient {
    */
   public CinecaClient() {
     this.webClient = WebClient.builder()
-        .codecs(config -> config.defaultCodecs().maxInMemorySize(5 * 1024 * 1024))
+        .codecs(config -> config.defaultCodecs()
+            .maxInMemorySize(5 * 1024 * 1024))
         .build();
   }
 
@@ -84,7 +85,9 @@ public class CinecaClient {
     String url = cinecaBaseUrl + LOGIN_PATH;
     String basicAuth = basicAuth(username, password);
 
-    log.info("CinecaClient: login attempt for user '{}' at {}", username, cinecaBaseUrl);
+    log.info("CinecaClient: login attempt for user '{}' at {}",
+        username.replaceAll("[\r\n]", ""),
+        cinecaBaseUrl.replaceAll("[\r\n]", ""));
 
     try {
       return webClient.get()

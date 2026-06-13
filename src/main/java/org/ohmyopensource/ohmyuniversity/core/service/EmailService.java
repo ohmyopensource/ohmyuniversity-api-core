@@ -66,11 +66,13 @@ public class EmailService {
    * @param state omuUserId passed as state parameter
    */
   public void handleCallback(String code, String state) {
-    log.info("EmailService: handling OAuth2 callback for user={}", state);
+    log.info("EmailService: handling OAuth2 callback for user={}",
+        state.replaceAll("[\r\n]", ""));
     String accessToken = emailProvider.exchangeCodeForToken(code, state);
     String key = String.format(TOKEN_KEY, state);
     redis.opsForValue().set(key, accessToken, TOKEN_TTL);
-    log.info("EmailService: email token stored for user={}", state);
+    log.info("EmailService: email token stored for user={}",
+        state.replaceAll("[\r\n]", ""));
   }
 
   /**

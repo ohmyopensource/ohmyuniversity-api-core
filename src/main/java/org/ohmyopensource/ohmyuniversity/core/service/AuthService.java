@@ -103,7 +103,8 @@ public class AuthService {
     String codiceFiscale = cinecaUser.getCodiceFiscale();
 
     log.info("AuthService: login successful for user='{}' at university='{}'",
-        cinecaUser.getUserId(), request.getUniversityId());
+        cinecaUser.getUserId(),
+        request.getUniversityId().replaceAll("[\r\n]", ""));
 
     OmuUser omuUser = userRepository.findByCodiceFiscale(codiceFiscale)
         .orElseGet(() -> {
