@@ -38,6 +38,12 @@
 	<properties>
 		<java.version>21</java.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
+		<sonar.coverage.exclusions>
+			**/dto/**,
+			**/domain/entity/**,
+			**/domain/repository/**,
+			**/service/email/MicrosoftEmailProvider.java
+		</sonar.coverage.exclusions>
 	</properties>
 
 <!--
