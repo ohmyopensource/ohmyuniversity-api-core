@@ -154,6 +154,21 @@ public class AuthService {
 
     TrattoCarriera defaultTratte = tratti != null && !tratti.isEmpty() ? tratti.get(0) : null;
 
+    if (defaultTratte != null) {
+      if (defaultTratte.getStuId() != null) {
+        sessionStore.storeStuId(omuUserId, request.getUniversityId(),
+            defaultTratte.getStuId());
+      }
+      if (defaultTratte.getMatId() != null) {
+        sessionStore.storeMatId(omuUserId, request.getUniversityId(),
+            defaultTratte.getMatId());
+      }
+      if (defaultTratte.getMatricola() != null) {
+        sessionStore.storeMatricola(omuUserId, request.getUniversityId(),
+            defaultTratte.getMatricola());
+      }
+    }
+
     String accessToken = jwtService.issue(
         omuUserId,
         codiceFiscale,
@@ -247,11 +262,17 @@ public class AuthService {
           "No connection found for university: " + universityId);
     }
 
+    Long stuId = sessionStore.getStuId(omuUserId, universityId).orElse(null);
+    Long matId = sessionStore.getMatId(omuUserId, universityId).orElse(null);
+    String matricola = sessionStore.getMatricola(omuUserId, universityId).orElse(null);
+
     return jwtService.issue(
         omuUserId,
         omuUser.getCodiceFiscale(),
         universityId,
-        null, null, null);
+        stuId,
+        matId,
+        matricola);
   }
 
   /**

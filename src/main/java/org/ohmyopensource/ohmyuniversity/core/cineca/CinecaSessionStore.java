@@ -29,11 +29,15 @@ public class CinecaSessionStore {
   private static final Duration CINECA_JWT_TTL = Duration.ofMinutes(14);
   private static final Duration CINECA_AUTH_TTL = Duration.ofMinutes(14);
   private static final Duration CINECA_PERS_TTL = Duration.ofMinutes(14);
+  private static final Duration CINECA_CAREER_TTL = Duration.ofMinutes(14);
   private static final Duration OMU_REFRESH_TTL = Duration.ofDays(7);
 
   private static final String KEY_CINECA_JWT = "cineca:jwt:%s:%s";
   private static final String KEY_CINECA_AUTH = "cineca:auth:%s:%s";
   private static final String KEY_CINECA_PERS = "cineca:pers:%s:%s";
+  private static final String KEY_CINECA_STU_ID = "cineca:stuid:%s:%s";
+  private static final String KEY_CINECA_MAT_ID = "cineca:matid:%s:%s";
+  private static final String KEY_CINECA_MATRICOLA = "cineca:matricola:%s:%s";
   private static final String KEY_OMU_REFRESH = "omu:refresh:%s";
 
   private final StringRedisTemplate redis;
@@ -149,6 +153,84 @@ public class CinecaSessionStore {
   }
 
   /**
+   * Stores the active Cineca career identifier (stuId) for JWT refresh.
+   *
+   * <p>Persisted with the same TTL as the Cineca JWT so that the refresh endpoint
+   * can re-issue a fully populated access token without a new Cineca login.
+   *
+   * @param omuUserId    internal OhMyUniversity user identifier
+   * @param universityId target university identifier (tenant)
+   * @param stuId        Cineca student career identifier
+   */
+  public void storeStuId(String omuUserId, String universityId, Long stuId) {
+    String key = String.format(KEY_CINECA_STU_ID, omuUserId, universityId);
+    redis.opsForValue().set(key, stuId.toString(), CINECA_CAREER_TTL);
+  }
+
+  /**
+   * Retrieves the active Cineca career identifier (stuId) from Redis.
+   *
+   * @param omuUserId    internal OhMyUniversity user identifier
+   * @param universityId target university identifier (tenant)
+   * @return optional containing stuId if present and not expired
+   */
+  public Optional<Long> getStuId(String omuUserId, String universityId) {
+    String value = redis.opsForValue().get(
+        String.format(KEY_CINECA_STU_ID, omuUserId, universityId));
+    return value == null ? Optional.empty() : Optional.of(Long.parseLong(value));
+  }
+
+  /**
+   * Stores the active Cineca career segment identifier (matId) for JWT refresh.
+   *
+   * @param omuUserId    internal OhMyUniversity user identifier
+   * @param universityId target university identifier (tenant)
+   * @param matId        Cineca career segment identifier
+   */
+  public void storeMatId(String omuUserId, String universityId, Long matId) {
+    String key = String.format(KEY_CINECA_MAT_ID, omuUserId, universityId);
+    redis.opsForValue().set(key, matId.toString(), CINECA_CAREER_TTL);
+  }
+
+  /**
+   * Retrieves the active Cineca career segment identifier (matId) from Redis.
+   *
+   * @param omuUserId    internal OhMyUniversity user identifier
+   * @param universityId target university identifier (tenant)
+   * @return optional containing matId if present and not expired
+   */
+  public Optional<Long> getMatId(String omuUserId, String universityId) {
+    String value = redis.opsForValue().get(
+        String.format(KEY_CINECA_MAT_ID, omuUserId, universityId));
+    return value == null ? Optional.empty() : Optional.of(Long.parseLong(value));
+  }
+
+  /**
+   * Stores the active student registration number (matricola) for JWT refresh.
+   *
+   * @param omuUserId    internal OhMyUniversity user identifier
+   * @param universityId target university identifier (tenant)
+   * @param matricola    student registration number
+   */
+  public void storeMatricola(String omuUserId, String universityId, String matricola) {
+    String key = String.format(KEY_CINECA_MATRICOLA, omuUserId, universityId);
+    redis.opsForValue().set(key, matricola, CINECA_CAREER_TTL);
+  }
+
+  /**
+   * Retrieves the active student registration number (matricola) from Redis.
+   *
+   * @param omuUserId    internal OhMyUniversity user identifier
+   * @param universityId target university identifier (tenant)
+   * @return optional containing matricola if present and not expired
+   */
+  public Optional<String> getMatricola(String omuUserId, String universityId) {
+    String value = redis.opsForValue().get(
+        String.format(KEY_CINECA_MATRICOLA, omuUserId, universityId));
+    return Optional.ofNullable(value);
+  }
+
+  /**
    * Stores a refresh token mapped to a user ID.
    *
    * @param refreshToken refresh token
@@ -189,6 +271,9 @@ public class CinecaSessionStore {
     deleteCinecaJwt(omuUserId, universityId);
     redis.delete(String.format(KEY_CINECA_AUTH, omuUserId, universityId));
     redis.delete(String.format(KEY_CINECA_PERS, omuUserId, universityId));
+    redis.delete(String.format(KEY_CINECA_STU_ID, omuUserId, universityId));
+    redis.delete(String.format(KEY_CINECA_MAT_ID, omuUserId, universityId));
+    redis.delete(String.format(KEY_CINECA_MATRICOLA, omuUserId, universityId));
     log.info("CinecaSessionStore: cleared session for user={} uni={}", omuUserId, universityId);
   }
 }
