@@ -16,6 +16,9 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p>This ensures tests run in an isolated and reproducible environment,
  * independent of local or CI infrastructure setup.
+ *
+ * <p>Note: {@code apache/kafka:4.0.0} is used instead of {@code kafka-native}
+ * because the native image causes segfaults on GitHub Actions CI runners.
  */
 @TestConfiguration(proxyBeanMethods = false)
 class TestcontainersConfiguration {
@@ -28,7 +31,7 @@ class TestcontainersConfiguration {
   @Bean
   @ServiceConnection
   KafkaContainer kafkaContainer() {
-    return new KafkaContainer(DockerImageName.parse("apache/kafka-native:latest"));
+    return new KafkaContainer(DockerImageName.parse("apache/kafka:4.0.0"));
   }
 
   /**
@@ -40,20 +43,20 @@ class TestcontainersConfiguration {
   @Bean
   @ServiceConnection
   PostgreSQLContainer postgresContainer() {
-    return new PostgreSQLContainer(DockerImageName.parse("postgres:latest"));
+    return new PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"));
   }
 
   /**
    * Redis container used for caching and session storage in tests.
    *
-   * <p>Exposes default Redis port (6379) for Spring Boot auto-configuration.
+   * <p>Exposes default Redis port (6379) for Spring Boot autoconfiguration.
    *
    * @return running Redis GenericContainer instance
    */
   @Bean
   @ServiceConnection(name = "redis")
   GenericContainer<?> redisContainer() {
-    return new GenericContainer<>(DockerImageName.parse("redis:latest")).withExposedPorts(6379);
+    return new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
+        .withExposedPorts(6379);
   }
-
 }
