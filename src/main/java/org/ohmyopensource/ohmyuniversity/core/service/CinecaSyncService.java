@@ -23,24 +23,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service responsible for syncing Cineca libretto data and publishing
- * Kafka integration events when new facts are discovered.
+ * Service responsible for syncing Cineca libretto data and publishing Kafka integration events when
+ * new facts are discovered.
  *
  * <p>This service implements the per-user sync model: each time a student
- * logs in, their libretto is fetched from Cineca and compared against the
- * local {@code cineca_sync_state} table. If a fact (course edition, enrollment,
- * teaching assignment, campus assignment) has not been notified yet, the
- * corresponding Kafka event is published and the state is recorded.
+ * logs in, their libretto is fetched from Cineca and compared against the local
+ * {@code cineca_sync_state} table. If a fact (course edition, enrollment, teaching assignment,
+ * campus assignment) has not been notified yet, the corresponding Kafka event is published and the
+ * state is recorded.
  *
  * <p>Sync constraints:
- * - Only works with per-user Cineca JWT (no UTENTE_TECNICO available).
- * - Course edition event must be published before enrollment and teaching
- *   assignment events for the same channel (ordering constraint required
- *   by the chat consumer, which silently drops member events if the channel
- *   does not exist yet).
- * - Campus assignment events use {@code universityId} as a proxy for
- *   {@code campusId} (single-campus universities like UNIMOL). To be
- *   refined when Cineca exposes explicit campus data.
+ * - Only works with per-user Cineca JWT (no UTENTE_TECNICO available). - Course edition event must
+ * be published before enrollment and teaching assignment events for the same channel (ordering
+ * constraint required by the chat consumer, which silently drops member events if the channel does
+ * not exist yet). - Campus assignment events use {@code universityId} as a proxy for
+ * {@code campusId} (single-campus universities like UNIMOL). To be refined when Cineca exposes
+ * explicit campus data.
  *
  * <p>The sync runs asynchronously to avoid blocking the login response.
  * Errors are logged but not rethrown.
@@ -51,8 +49,8 @@ public class CinecaSyncService {
   private static final Logger log = LoggerFactory.getLogger(CinecaSyncService.class);
 
   /**
-   * Sentinel adsceId used for campus assignment events, which are not
-   * tied to a specific course activity but to the user/university pair.
+   * Sentinel adsceId used for campus assignment events, which are not tied to a specific course
+   * activity but to the user/university pair.
    */
   private static final long CAMPUS_ASSIGNMENT_ADSCE_SENTINEL = -1L;
 
@@ -66,10 +64,10 @@ public class CinecaSyncService {
   /**
    * Constructs the sync service with all required dependencies.
    *
-   * @param cinecaCarrieraClient  client for Cineca libretto REST calls
-   * @param syncStateRepository   repository for deduplication state
-   * @param userRepository        repository for OmuUser lookup
-   * @param kafkaEventPublisher   publisher for Kafka integration events
+   * @param cinecaCarrieraClient client for Cineca libretto REST calls
+   * @param syncStateRepository  repository for deduplication state
+   * @param userRepository       repository for OmuUser lookup
+   * @param kafkaEventPublisher  publisher for Kafka integration events
    */
   public CinecaSyncService(
       CinecaCarrieraClient cinecaCarrieraClient,
@@ -88,9 +86,8 @@ public class CinecaSyncService {
    * Triggers an asynchronous Cineca sync for a student after login.
    *
    * <p>This method is executed in a separate thread (via {@code @Async})
-   * so it does not block the login response. The student's libretto is
-   * fetched from Cineca and compared against the local sync state.
-   * New facts are published as Kafka events and recorded.
+   * so it does not block the login response. The student's libretto is fetched from Cineca and
+   * compared against the local sync state. New facts are published as Kafka events and recorded.
    *
    * <p>Publishing order per course edition:
    * <ol>
@@ -115,12 +112,14 @@ public class CinecaSyncService {
       String cinecaBaseUrl,
       String academicYear) {
 
-    log.debug("CinecaSyncService: starting sync for user={} university={}", omuUserId,
-        universityId);
+    String safeUserId = omuUserId.replaceAll("[\r\n]", "");
+    String safeUniId = universityId.replaceAll("[\r\n]", "");
+
+    log.debug("CinecaSyncService: starting sync for user={} university={}", safeUserId, safeUniId);
 
     OmuUser user = userRepository.findById(UUID.fromString(omuUserId)).orElse(null);
     if (user == null) {
-      log.warn("CinecaSyncService: user not found, aborting sync for omuUserId={}", omuUserId);
+      log.warn("CinecaSyncService: user not found, aborting sync for omuUserId={}", safeUserId);
       return;
     }
 
@@ -129,20 +128,20 @@ public class CinecaSyncService {
       syncCampusAssignment(user, universityId);
     } catch (Exception e) {
       log.error("CinecaSyncService: sync failed for user={} university={}: {}",
-          omuUserId, universityId, e.getMessage());
+          safeUserId, safeUniId, e.getMessage());
     }
   }
 
   /**
-   * Fetches the student's libretto from Cineca and publishes events
-   * for newly discovered course editions, enrollments, and teaching assignments.
+   * Fetches the student's libretto from Cineca and publishes events for newly discovered course
+   * editions, enrollments, and teaching assignments.
    *
-   * @param user         the OhMyU user entity
-   * @param universityId the university identifier
-   * @param cinecaJwt    the Cineca Bearer JWT
-   * @param matId        the student's Cineca matricola ID
+   * @param user          the OhMyU user entity
+   * @param universityId  the university identifier
+   * @param cinecaJwt     the Cineca Bearer JWT
+   * @param matId         the student's Cineca matricola ID
    * @param cinecaBaseUrl base URL of the Cineca ESSE3 API
-   * @param academicYear the current academic year string (e.g. "2026")
+   * @param academicYear  the current academic year string (e.g. "2026")
    */
   private void syncLibretto(
       OmuUser user,
@@ -204,15 +203,15 @@ public class CinecaSyncService {
     }
 
     log.info("CinecaSyncService: libretto sync completed for user={} university={} rows={}",
-        user.getId(), universityId, righe.size());
+        user.getId(), universityId.replaceAll("[\r\n]", ""), righe.size());
   }
 
   /**
    * Publishes a campus assignment event if not already notified.
    *
    * <p>Uses {@code universityId} as a proxy for {@code campusId} since
-   * Cineca does not expose explicit campus identifiers in the student login
-   * response for single-campus universities (e.g. UNIMOL).
+   * Cineca does not expose explicit campus identifiers in the student login response for
+   * single-campus universities (e.g. UNIMOL).
    *
    * @param user         the OhMyU user entity
    * @param universityId the university identifier (used as campusId proxy)
@@ -230,15 +229,15 @@ public class CinecaSyncService {
   }
 
   /**
-   * Publishes a Kafka event only if the corresponding sync state does not exist yet.
-   * On first publish, saves the sync state to prevent future duplicates.
+   * Publishes a Kafka event only if the corresponding sync state does not exist yet. On first
+   * publish, saves the sync state to prevent future duplicates.
    *
-   * @param user               the OhMyU user entity
-   * @param universityId       the university identifier
-   * @param adsceId            the Cineca activity identifier
-   * @param eventType          the type of event to check/publish
-   * @param externalChannelId  the channel ID to store in state (nullable)
-   * @param publishAction      the action to execute if this is a new event
+   * @param user              the OhMyU user entity
+   * @param universityId      the university identifier
+   * @param adsceId           the Cineca activity identifier
+   * @param eventType         the type of event to check/publish
+   * @param externalChannelId the channel ID to store in state (nullable)
+   * @param publishAction     the action to execute if this is a new event
    */
   private void publishIfNew(
       OmuUser user,
@@ -273,12 +272,12 @@ public class CinecaSyncService {
   }
 
   /**
-   * Checks if a libretto row corresponds to a course where this user
-   * is also the titular professor.
+   * Checks if a libretto row corresponds to a course where this user is also the titular
+   * professor.
    *
    * <p>Note: this is a best-effort check based on available libretto data.
-   * A more accurate check would require a dedicated Cineca docenti endpoint,
-   * which requires a UTENTE_TECNICO profile not currently available.
+   * A more accurate check would require a dedicated Cineca docenti endpoint, which requires a
+   * UTENTE_TECNICO profile not currently available.
    *
    * @param riga the libretto row to evaluate
    * @return {@code true} if the row indicates a titular professor assignment
@@ -346,6 +345,6 @@ public class CinecaSyncService {
         .replaceAll("[^\\p{ASCII}]", "")
         .toLowerCase(Locale.ROOT)
         .replaceAll("[^a-z0-9]+", "-")
-        .replaceAll("^-|-$", "");
+        .replaceAll("(?:^-)|(?:-$)", "");
   }
 }

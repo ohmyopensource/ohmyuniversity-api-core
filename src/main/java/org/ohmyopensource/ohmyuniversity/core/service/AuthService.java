@@ -24,11 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Service responsible for managing the authentication flow of OhMyUniversity.
  *
  * <p>It handles:
- * - Cineca authentication against ESSE3
- * - User provisioning and persistence
- * - University connection management
- * - Cineca session storage (JWT + auth token)
- * - OhMyU JWT access/refresh token issuance
+ * - Cineca authentication against ESSE3 - User provisioning and persistence - University connection
+ * management - Cineca session storage (JWT + auth token) - OhMyU JWT access/refresh token issuance
  *
  * <p>This service is a critical entry point for the system authentication layer and coordinates
  * both external (Cineca) and internal (OhMyU) identity contexts.
@@ -52,12 +49,10 @@ public class AuthService {
    * Constructs the authentication service and injects all required dependencies.
    *
    * <p>This service depends on:
-   * - CinecaClient for external ESSE3 authentication
-   * - CinecaSessionStore for Redis-based session persistence
-   * - OmuJwtService for JWT creation and validation
-   * - OmuUserRepository for user persistence
-   * - UniversityConnectionRepository for Cineca account mapping
-   * - UniversityRegistry for resolving university configurations
+   * - CinecaClient for external ESSE3 authentication - CinecaSessionStore for Redis-based session
+   * persistence - OmuJwtService for JWT creation and validation - OmuUserRepository for user
+   * persistence - UniversityConnectionRepository for Cineca account mapping - UniversityRegistry
+   * for resolving university configurations
    *
    * <p>All dependencies are required and must be provided by the Spring context.
    */
@@ -68,7 +63,7 @@ public class AuthService {
       OmuUserRepository userRepository,
       UniversityConnectionRepository connectionRepository,
       UniversityRegistry universityRegistry,
-      CinecaSyncService cinecaSyncService ) {
+      CinecaSyncService cinecaSyncService) {
     this.cinecaClient = cinecaClient;
     this.sessionStore = sessionStore;
     this.jwtService = jwtService;
@@ -188,7 +183,7 @@ public class AuthService {
     if (defaultTratte != null && cinecaResponse.getJwt() != null) {
       cinecaSyncService.syncAfterLogin(
           omuUserId,
-          request.getUniversityId(),
+          request.getUniversityId().replaceAll("[\r\n]", ""),
           cinecaResponse.getJwt(),
           defaultTratte.getMatId(),
           uniConfig.baseUrl(),
@@ -205,8 +200,7 @@ public class AuthService {
    * Logs out the user by invalidating refresh token and clearing Cineca session data.
    *
    * <p>This method ensures:
-   * - refresh token invalidation
-   * - removal of Cineca session data from Redis
+   * - refresh token invalidation - removal of Cineca session data from Redis
    *
    * @param refreshToken refresh token to invalidate
    * @param universityId university context to clear session for
@@ -224,10 +218,8 @@ public class AuthService {
    * Redis it is reused. If it is expired, the user must re-login to get a fresh Cineca session.
    *
    * <p>The method:
-   * - validates refresh token
-   * - verifies user existence
-   * - checks Cineca session validity in Redis
-   * - issues a new JWT access token
+   * - validates refresh token - verifies user existence - checks Cineca session validity in Redis -
+   * issues a new JWT access token
    *
    * @param refreshToken refresh token used for session renewal
    * @param universityId university context
@@ -279,10 +271,8 @@ public class AuthService {
    * Maps a Cineca career profile (TrattoCarriera) into the internal API DTO.
    *
    * <p>This method normalizes raw ESSE3 data into a stable representation used by the frontend,
-   * enriching it with:
-   * - university context
-   * - activation state
-   * - optional course metadata (when available)
+   * enriching it with: - university context - activation state - optional course metadata (when
+   * available)
    *
    * @param t              Cineca career segment from ESSE3
    * @param universityId   university identifier
