@@ -2,6 +2,7 @@ package org.ohmyopensource.ohmyuniversity.core;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 /**
  * Entry point of the OhMyUniversity core microservice.
@@ -10,6 +11,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * security, persistence, and external integrations (Cineca clients, Redis, Kafka, etc.).
  */
 @SpringBootApplication
+@EnableAsync
 public class OhmyuniversityCoreApplication {
 
   /**

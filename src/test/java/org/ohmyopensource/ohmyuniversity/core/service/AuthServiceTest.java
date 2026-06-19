@@ -83,10 +83,12 @@ class AuthServiceTest {
     userRepository = mock(OmuUserRepository.class);
     connectionRepository = mock(UniversityConnectionRepository.class);
     universityRegistry = mock(UniversityRegistry.class);
+    CinecaSyncService cinecaSyncService = mock(CinecaSyncService.class);
 
     authService = new AuthService(
         cinecaClient, sessionStore, jwtService,
-        userRepository, connectionRepository, universityRegistry);
+        userRepository, connectionRepository, universityRegistry,
+        cinecaSyncService);
   }
 
   /**

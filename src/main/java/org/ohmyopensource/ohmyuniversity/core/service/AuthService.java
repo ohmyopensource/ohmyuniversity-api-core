@@ -44,6 +44,7 @@ public class AuthService {
   private final OmuUserRepository userRepository;
   private final UniversityConnectionRepository connectionRepository;
   private final UniversityRegistry universityRegistry;
+  private final CinecaSyncService cinecaSyncService;
 
   // ============ Constructor ============
 
@@ -66,13 +67,15 @@ public class AuthService {
       OmuJwtService jwtService,
       OmuUserRepository userRepository,
       UniversityConnectionRepository connectionRepository,
-      UniversityRegistry universityRegistry) {
+      UniversityRegistry universityRegistry,
+      CinecaSyncService cinecaSyncService ) {
     this.cinecaClient = cinecaClient;
     this.sessionStore = sessionStore;
     this.jwtService = jwtService;
     this.userRepository = userRepository;
     this.connectionRepository = connectionRepository;
     this.universityRegistry = universityRegistry;
+    this.cinecaSyncService = cinecaSyncService;
   }
 
   // ============ Class Methods ============
@@ -166,6 +169,19 @@ public class AuthService {
     response.setAccessToken(accessToken);
     response.setRefreshToken(refreshToken);
     response.setProfili(profili);
+
+    if (defaultTratte != null && cinecaResponse.getJwt() != null) {
+      cinecaSyncService.syncAfterLogin(
+          omuUserId,
+          request.getUniversityId(),
+          cinecaResponse.getJwt(),
+          defaultTratte.getMatId(),
+          uniConfig.baseUrl(),
+          defaultTratte.getDettaglioTratto() != null
+              ? String.valueOf(defaultTratte.getDettaglioTratto().getAaIscrId())
+              : String.valueOf(java.time.Year.now().getValue())
+      );
+    }
 
     return response;
   }
