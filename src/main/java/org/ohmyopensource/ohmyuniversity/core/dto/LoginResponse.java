@@ -18,16 +18,18 @@ import java.util.List;
  */
 public class LoginResponse {
 
-  private String accessToken;
-  private String refreshToken;
-  private List<ProfiloCarriera> profili;
+    private String accessToken;
+    private String refreshToken;
+    private String nome;
+    private String cognome;
+    private List<ProfiloCarriera> profili;
 
-  // ============ Getters | Setters | Bool ============
+
+    // ============ Getters | Setters | Bool ============
 
   public String getAccessToken() {
     return accessToken;
   }
-
   public void setAccessToken(String accessToken) {
     this.accessToken = accessToken;
   }
@@ -35,15 +37,19 @@ public class LoginResponse {
   public String getRefreshToken() {
     return refreshToken;
   }
-
   public void setRefreshToken(String refreshToken) {
     this.refreshToken = refreshToken;
   }
 
+  public String getNome() { return nome; }
+  public void setNome(String nome) { this.nome = nome; }
+
+  public String getCognome() { return cognome; }
+  public void setCognome(String cognome) { this.cognome = cognome; }
+
   public List<ProfiloCarriera> getProfili() {
     return profili;
   }
-
   public void setProfili(List<ProfiloCarriera> profili) {
     this.profili = profili;
   }

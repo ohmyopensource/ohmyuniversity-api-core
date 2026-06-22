@@ -179,6 +179,8 @@ public class AuthService {
     response.setAccessToken(accessToken);
     response.setRefreshToken(refreshToken);
     response.setProfili(profili);
+    response.setNome(cinecaUser.getFirstName());
+    response.setCognome(cinecaUser.getLastName());
 
     if (defaultTratte != null && cinecaResponse.getJwt() != null) {
       cinecaSyncService.syncAfterLogin(
