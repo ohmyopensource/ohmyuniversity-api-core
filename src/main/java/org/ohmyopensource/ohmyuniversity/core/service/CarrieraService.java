@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaAddebito;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaAppello;
@@ -28,6 +29,7 @@ import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityConnec
 import org.ohmyopensource.ohmyuniversity.core.dto.AppelliLibrettoResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.AppelloResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.BadgeResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.CarrieraInfoResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.LibrettoResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.LibrettoResponse.RigaLibretto;
 import org.ohmyopensource.ohmyuniversity.core.dto.MediaResponse;
@@ -36,6 +38,7 @@ import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse.EsitoPrenotazione;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse.Prenotazione;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioniLibrettoResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.ProfiloResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.QuestionariResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.StoricoEsamiResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.SuggerimentiResponse;
@@ -689,6 +692,150 @@ public class CarrieraService {
   }
 
   /**
+   * Retrieves full personal profile for the authenticated student.
+   */
+  public ProfiloResponse getProfilo(OmuPrincipal principal) {
+    String cinecaJwt = resolveCinecaJwt(principal);
+    String baseUrl = resolveBaseUrl(principal.universityId());
+
+    Long persId = sessionStore.getCinecaPersId(principal.omuUserId(), principal.universityId())
+        .orElseThrow(() -> new CinecaClient.CinecaAuthException(
+            "PersId not found in session — please log in again"));
+
+    CinecaCarrieraClient.CinecaPersona p = cinecaClient.getPersona(baseUrl, cinecaJwt, persId);
+    if (p == null) {
+      throw new CinecaClient.CinecaAuthException("Persona not found for persId=" + persId);
+    }
+
+    log.debug("CarrieraService: fetched profilo for persId={}", persId);
+
+    ProfiloResponse r = new ProfiloResponse();
+    r.setPersId(p.getPersId());
+    r.setNome(p.getNome());
+    r.setCognome(p.getCognome());
+    r.setCodFis(p.getCodFis());
+    r.setDataNascita(p.getDataNascita());
+    r.setSesso(p.getSesso());
+    r.setLuogoNascita(
+        p.getComuNascDes() != null ? p.getComuNascDes() + " (" + p.getComuNascSigla() + ")" : null);
+    r.setProvinciaNascita(p.getProvNascDes());
+    r.setCittadinanza(p.getDesCittadinanza());
+    r.setStatoCivile(p.getStatoCivileDes());
+    r.setProfessione(p.getProfessione());
+    r.setEmail(p.getEmail());
+    r.setEmailAte(p.getEmailAte());
+    r.setEmailCertificata(p.getEmailCertificata());
+    r.setCellulare(p.getCellulare());
+    r.setTelefono(p.getTelRes());
+    r.setUserId(p.getUserId());
+
+    // Residenza
+    String indirizzoRes = Stream.of(p.getViaRes(), p.getNumCivRes())
+        .filter(s -> s != null && !s.isBlank())
+        .collect(java.util.stream.Collectors.joining(", "));
+    r.setIndirizzoResidenza(indirizzoRes);
+    r.setCapResidenza(p.getCapRes());
+    r.setComuneResidenza(
+        p.getComuResDes() != null ? p.getComuResDes() + " (" + p.getComuResSigla() + ")" : null);
+    r.setProvinciaResidenza(p.getProvResDes());
+    r.setNazioneResidenza(p.getNaziResDes());
+
+    // Domicilio
+    boolean domComeRes = p.getDomComeResFlg() != null && p.getDomComeResFlg() == 1;
+    r.setDomicilioComeResidenza(domComeRes);
+    if (!domComeRes) {
+      String indirizzoDom = Stream.of(p.getViaDom(), p.getNumCivDom())
+          .filter(s -> s != null && !s.isBlank())
+          .collect(java.util.stream.Collectors.joining(" "));
+      r.setIndirizzoDomicilio(indirizzoDom);
+      r.setCapDomicilio(p.getCapDom());
+      r.setComuneDomicilio(
+          p.getComuDomDes() != null ? p.getComuDomDes() + " (" + p.getComuDomSigla() + ")" : null);
+      r.setNazioneDomicilio(p.getNaziDomDes());
+    }
+
+    // Emergenza
+    r.setEmergenzaNome(p.getEmergNome());
+    r.setEmergenzaCognome(p.getEmergCognome());
+    r.setEmergenzaTelefono(p.getEmergTel());
+    r.setEmergenzaEmail(p.getEmergEmail());
+    r.setEmergenzaRapporto(p.getEmergRapporto());
+
+    return r;
+  }
+
+  /**
+   * Retrieves career type and course information from carriere-service-v1.
+   */
+  public CarrieraInfoResponse getCarrieraInfo(OmuPrincipal principal) {
+    String cinecaJwt = resolveCinecaJwt(principal);
+    String baseUrl = resolveBaseUrl(principal.universityId());
+
+    CinecaCarrieraClient.CinecaCarriera c = cinecaClient.getCarriera(baseUrl, cinecaJwt);
+    if (c == null) throw new CinecaClient.CinecaUnavailableException("No carriera found");
+
+    log.debug("CarrieraService: fetched carriera info tipoCorsoCod={}", c.getTipoCorsoCod());
+
+    CarrieraInfoResponse r = new CarrieraInfoResponse();
+    r.setStuId(c.getStuId());
+    r.setMatId(c.getMatId());
+    r.setMatricola(c.getMatricola());
+    r.setPersId(c.getPersId());
+    r.setNome(c.getNome());
+    r.setCognome(c.getCognome());
+    r.setCodFis(c.getCodFis());
+    r.setDataNascita(c.getDataNascita());
+    r.setSesso(c.getSesso());
+    r.setEmail(c.getEmail());
+    r.setEmailAte(c.getEmailAte());
+    r.setEmailCertificata(c.getEmailCertificata());
+    r.setTipoCorsoCod(c.getTipoCorsoCod());
+    r.setTipoCorsoDes(c.getTipoCorsoDes());
+    r.setCdsCod(c.getCdsCod());
+    r.setCdsDes(c.getCdsDes());
+    r.setFacCod(c.getFacCod());
+    r.setFacDes(c.getFacDes());
+    r.setAnnoCorso(c.getAnnoCorso());
+    r.setAaIscrId(c.getAaIscrId());
+    r.setAaOrdId(c.getAaOrdId());
+    r.setDataImm(c.getDataImm());
+    r.setDataIscr(c.getDataIscr());
+    r.setDataFineCarriera(c.getDataFineCarriera());
+    r.setStaStuCod(c.getStaStuCod());
+    r.setStatiStuDes(c.getStatiStuDes());
+    r.setProfstuDes(c.getProfstuDes());
+    r.setPtFlg(c.getPtFlg());
+    r.setSospFlg(c.getSospFlg());
+    r.setAttlauFlg(c.getAttlauFlg());
+    r.setSediDes(c.getSediDes());
+    r.setSedeId(c.getSedeId());
+    r.setUserId(c.getUserId());
+    return r;
+  }
+
+
+  /**
+   * Retrieves the profile photo bytes for the authenticated student.
+   */
+  public byte[] getFotoPersona(OmuPrincipal principal) {
+    String cinecaJwt = resolveCinecaJwt(principal);
+    String baseUrl = resolveBaseUrl(principal.universityId());
+
+    Long persId = sessionStore.getCinecaPersId(principal.omuUserId(), principal.universityId())
+        .orElseThrow(() -> new CinecaClient.CinecaAuthException("PersId not found"));
+
+    return cinecaClient.getFotoPersona(baseUrl, cinecaJwt, persId);
+  }
+
+  public String getCinecaJwt(OmuPrincipal principal) {
+    return resolveCinecaJwt(principal);
+  }
+
+  public String getBaseUrl(String universityId) {
+    return resolveBaseUrl(universityId);
+  }
+
+  /**
    * Retrieves questionnaire status split into pending and completed.
    */
   public QuestionariResponse getQuestionari(OmuPrincipal principal) {
@@ -697,7 +844,7 @@ public class CarrieraService {
 
     List<CinecaCarrieraClient.CinecaRigaConQuestionario> daCompilare =
         cinecaClient.getQuestionariLibretto(baseUrl, cinecaJwt, principal.matId(), "C");
-    
+
     List<CinecaCarrieraClient.CinecaRigaConQuestionario> compilati =
         cinecaClient.getQuestionariLibretto(baseUrl, cinecaJwt, principal.matId(), "P")
             .stream()

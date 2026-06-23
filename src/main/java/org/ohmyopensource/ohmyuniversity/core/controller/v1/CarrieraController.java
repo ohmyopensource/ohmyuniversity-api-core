@@ -6,12 +6,14 @@ import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.dto.AppelliLibrettoResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.AppelloResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.BadgeResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.CarrieraInfoResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.LibrettoResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.MediaResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.PianoStudioResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneRequest;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioniLibrettoResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.ProfiloResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.QuestionariResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.StoricoEsamiResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.SuggerimentiResponse;
@@ -19,6 +21,7 @@ import org.ohmyopensource.ohmyuniversity.core.dto.TasseResponse;
 import org.ohmyopensource.ohmyuniversity.core.service.CarrieraService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -356,6 +359,70 @@ public class CarrieraController {
       @AuthenticationPrincipal OmuPrincipal principal) {
     try {
       return ResponseEntity.ok(carrieraService.getEsamiSuggeriti(principal));
+    } catch (CinecaAuthException e) {
+      log.warn("CarrieraController: Cineca session expired for user={}", principal.omuUserId());
+      return ResponseEntity.status(401).build();
+    } catch (CinecaUnavailableException e) {
+      log.error("CarrieraController: Cineca unavailable — {}", e.getMessage());
+      return ResponseEntity.status(503).build();
+    }
+  }
+
+  /**
+   * Retrieves full personal profile for the authenticated student.
+   *
+   * @param principal authenticated OhMyUniversity user
+   * @return 200 OK with profile data, 401 if session expired, 503 if Cineca unavailable
+   */
+  @GetMapping("/profilo")
+  public ResponseEntity<ProfiloResponse> getProfilo(
+      @AuthenticationPrincipal OmuPrincipal principal) {
+    try {
+      return ResponseEntity.ok(carrieraService.getProfilo(principal));
+    } catch (CinecaAuthException e) {
+      log.warn("CarrieraController: Cineca session expired for user={}", principal.omuUserId());
+      return ResponseEntity.status(401).build();
+    } catch (CinecaUnavailableException e) {
+      log.error("CarrieraController: Cineca unavailable — {}", e.getMessage());
+      return ResponseEntity.status(503).build();
+    }
+  }
+
+  /**
+   * Retrieves career type and course information.
+   *
+   * @param principal authenticated OhMyUniversity user
+   * @return 200 OK with career info, 401 if session expired, 503 if unavailable
+   */
+  @GetMapping("/info")
+  public ResponseEntity<CarrieraInfoResponse> getCarrieraInfo(
+      @AuthenticationPrincipal OmuPrincipal principal) {
+    try {
+      return ResponseEntity.ok(carrieraService.getCarrieraInfo(principal));
+    } catch (CinecaAuthException e) {
+      log.warn("CarrieraController: Cineca session expired for user={}", principal.omuUserId());
+      return ResponseEntity.status(401).build();
+    } catch (CinecaUnavailableException e) {
+      log.error("CarrieraController: Cineca unavailable — {}", e.getMessage());
+      return ResponseEntity.status(503).build();
+    }
+  }
+
+  /**
+   * Returns the profile photo for the authenticated student.
+   *
+   * @param principal authenticated OhMyUniversity user
+   * @return 200 OK with JPEG image bytes, 401 if session expired, 503 if unavailable
+   */
+  @GetMapping(value = "/foto", produces = MediaType.IMAGE_JPEG_VALUE)
+  public ResponseEntity<byte[]> getFoto(
+      @AuthenticationPrincipal OmuPrincipal principal) {
+    try {
+      byte[] foto = carrieraService.getFotoPersona(principal);
+      if (foto == null) return ResponseEntity.notFound().build();
+      return ResponseEntity.ok()
+          .contentType(MediaType.IMAGE_JPEG)
+          .body(foto);
     } catch (CinecaAuthException e) {
       log.warn("CarrieraController: Cineca session expired for user={}", principal.omuUserId());
       return ResponseEntity.status(401).build();
