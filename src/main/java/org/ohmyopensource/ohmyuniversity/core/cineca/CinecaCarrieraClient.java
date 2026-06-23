@@ -422,7 +422,12 @@ public class CinecaCarrieraClient {
         .collectList()
         .block();
 
-    return result != null && !result.isEmpty() ? result.get(0) : null;
+    if (result == null || result.isEmpty()) return null;
+
+    return result.stream()
+        .filter(c -> "A".equals(c.getStaStuCod()))
+        .findFirst()
+        .orElse(result.get(0));
   }
 
   public byte[] getFotoPersona(String cinecaBaseUrl, String cinecaJwt, Long persId) {

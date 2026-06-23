@@ -147,7 +147,13 @@ public class AuthService {
         .map(t -> toProfiloCarriera(t, request.getUniversityId(), uniConfig.name()))
         .toList();
 
-    TrattoCarriera defaultTratte = tratti != null && !tratti.isEmpty() ? tratti.get(0) : null;
+    TrattoCarriera defaultTratte = null;
+    if (tratti != null && !tratti.isEmpty()) {
+      defaultTratte = tratti.stream()
+          .filter(t -> "A".equals(t.getStaStuCod()))
+          .findFirst()
+          .orElse(tratti.get(0));
+    }
 
     if (defaultTratte != null) {
       if (defaultTratte.getStuId() != null) {
