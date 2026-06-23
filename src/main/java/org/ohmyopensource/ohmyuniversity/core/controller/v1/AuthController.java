@@ -1,14 +1,17 @@
 package org.ohmyopensource.ohmyuniversity.core.controller.v1;
 
 import jakarta.validation.Valid;
+import java.util.Map;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaAuthException;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaUnavailableException;
+import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.dto.LoginRequest;
 import org.ohmyopensource.ohmyuniversity.core.dto.LoginResponse;
 import org.ohmyopensource.ohmyuniversity.core.service.AuthService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -120,5 +123,31 @@ public class AuthController {
       @RequestParam String universityId) {
     authService.logout(refreshToken, universityId);
     return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * Switches the active career for the authenticated user.
+   *
+   * @param stuId        new student career ID
+   * @param matId        new matricola ID
+   * @param matricola    new matricola string
+   * @param principal    authenticated user
+   * @return new access token
+   */
+  @PostMapping("/switch-carriera")
+  public ResponseEntity<Map<String, String>> switchCarriera(
+      @RequestParam Long stuId,
+      @RequestParam Long matId,
+      @RequestParam String matricola,
+      @AuthenticationPrincipal OmuPrincipal principal) {
+    try {
+      String newToken = authService.switchCarriera(
+          principal.omuUserId(), principal.universityId(),
+          stuId, matId, matricola);
+      return ResponseEntity.ok(Map.of("accessToken", newToken));
+    } catch (Exception e) {
+      log.warn("AuthController: switch carriera failed — {}", e.getMessage());
+      return ResponseEntity.status(400).build();
+    }
   }
 }

@@ -771,7 +771,8 @@ public class CarrieraService {
     String cinecaJwt = resolveCinecaJwt(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
 
-    CinecaCarrieraClient.CinecaCarriera c = cinecaClient.getCarriera(baseUrl, cinecaJwt);
+    CinecaCarrieraClient.CinecaCarriera c =
+        cinecaClient.getCarriera(baseUrl, cinecaJwt, principal.matId());
     if (c == null) throw new CinecaClient.CinecaUnavailableException("No carriera found");
 
     log.debug("CarrieraService: fetched carriera info tipoCorsoCod={}", c.getTipoCorsoCod());

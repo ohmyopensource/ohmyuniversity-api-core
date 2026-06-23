@@ -276,6 +276,34 @@ public class AuthService {
   }
 
   /**
+   * Switches the active career context for the authenticated user.
+   * Updates Redis with the new stuId, matId and matricola and issues a new JWT.
+   *
+   * @param omuUserId    internal user ID
+   * @param universityId university context
+   * @param stuId        new student career ID
+   * @param matId        new matricola ID
+   * @param matricola    new matricola string
+   * @return new OhMyU access token
+   */
+  public String switchCarriera(String omuUserId, String universityId,
+      Long stuId, Long matId, String matricola) {
+
+    sessionStore.storeStuId(omuUserId, universityId, stuId);
+    sessionStore.storeMatId(omuUserId, universityId, matId);
+    sessionStore.storeMatricola(omuUserId, universityId, matricola);
+
+    OmuUser omuUser = userRepository.findById(java.util.UUID.fromString(omuUserId))
+        .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+    log.info("AuthService: switched carriera for user={} stuId={} matId={}",
+        omuUserId, stuId, matId);
+
+    return jwtService.issue(omuUserId, omuUser.getCodiceFiscale(),
+        universityId, stuId, matId, matricola);
+  }
+
+  /**
    * Maps a Cineca career profile (TrattoCarriera) into the internal API DTO.
    *
    * <p>This method normalizes raw ESSE3 data into a stable representation used by the frontend,

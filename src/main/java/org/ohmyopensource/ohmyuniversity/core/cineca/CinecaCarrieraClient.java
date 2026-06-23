@@ -406,9 +406,7 @@ public class CinecaCarrieraClient {
         .block();
   }
 
-  public CinecaCarriera getCarriera(String cinecaBaseUrl, String cinecaJwt) {
-    log.debug("CinecaCarrieraClient: GET carriera");
-
+  public CinecaCarriera getCarriera(String cinecaBaseUrl, String cinecaJwt, Long matId) {
     List<CinecaCarriera> result = webClient.get()
         .uri(cinecaBaseUrl + "/carriere-service-v1/carriere"
             + "?optionalFields=tipoCorsoCod,tipoCorsoDes")
@@ -424,10 +422,14 @@ public class CinecaCarrieraClient {
 
     if (result == null || result.isEmpty()) return null;
 
+    // Filtra per matId dal JWT — corrisponde alla carriera selezionata
     return result.stream()
-        .filter(c -> "A".equals(c.getStaStuCod()))
+        .filter(c -> matId != null && matId.equals(c.getMatId()))
         .findFirst()
-        .orElse(result.get(0));
+        .orElseGet(() -> result.stream()
+            .filter(c -> "A".equals(c.getStaStuCod()))
+            .findFirst()
+            .orElse(result.get(0)));
   }
 
   public byte[] getFotoPersona(String cinecaBaseUrl, String cinecaJwt, Long persId) {
