@@ -3,6 +3,7 @@ package org.ohmyopensource.ohmyuniversity.core.controller.v1;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaAuthException;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaUnavailableException;
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
+import org.ohmyopensource.ohmyuniversity.core.dto.AppelliLibrettoResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.AppelloResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.BadgeResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.LibrettoResponse;
@@ -10,6 +11,9 @@ import org.ohmyopensource.ohmyuniversity.core.dto.MediaResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.PianoStudioResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneRequest;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioniLibrettoResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.QuestionariResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.StoricoEsamiResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.SuggerimentiResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.TasseResponse;
 import org.ohmyopensource.ohmyuniversity.core.service.CarrieraService;
@@ -23,7 +27,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
 
 /**
  * Controller responsible for exposing all student career-related APIs.
@@ -67,8 +70,8 @@ public class CarrieraController {
    *                  - matId
    *                  - universityId
    * @return 200 OK with {@link LibrettoResponse} containing all transcript rows 401 Unauthorized if
-   *     Cineca session has expired or JWT is invalid 503 Service Unavailable if Cineca ESSE3 is
-   *     unreachable
+   * Cineca session has expired or JWT is invalid 503 Service Unavailable if Cineca ESSE3 is
+   * unreachable
    */
   @GetMapping("/libretto")
   public ResponseEntity<LibrettoResponse> getLibretto(
@@ -95,7 +98,7 @@ public class CarrieraController {
    *
    * @param principal authenticated user extracted from JWT
    * @return 200 OK with {@link MediaResponse} 401 if Cineca session expired 503 if Cineca service
-   *     is unavailable
+   * is unavailable
    */
   @GetMapping("/medie")
   public ResponseEntity<MediaResponse> getMedia(
@@ -119,7 +122,7 @@ public class CarrieraController {
    *
    * @param principal authenticated user extracted from JWT
    * @return 200 OK with {@link PianoStudioResponse} 401 if Cineca session expired or JWT invalid
-   *     503 if Cineca service is unreachable
+   * 503 if Cineca service is unreachable
    */
   @GetMapping("/piano")
   public ResponseEntity<PianoStudioResponse> getPiano(
@@ -148,7 +151,7 @@ public class CarrieraController {
    * @param cdsId     degree course identifier (Cineca cdsId)
    * @param adId      teaching activity identifier (Cineca adId)
    * @return 200 OK with {@link AppelloResponse} 401 if Cineca session expired 503 if Cineca service
-   *     is unavailable
+   * is unavailable
    */
   @GetMapping("/appelli")
   public ResponseEntity<AppelloResponse> getAppelli(
@@ -157,6 +160,85 @@ public class CarrieraController {
       @RequestParam Long adId) {
     try {
       return ResponseEntity.ok(carrieraService.getAppelli(principal, cdsId, adId));
+    } catch (CinecaAuthException e) {
+      log.warn("CarrieraController: Cineca session expired for user={}", principal.omuUserId());
+      return ResponseEntity.status(401).build();
+    } catch (CinecaUnavailableException e) {
+      log.error("CarrieraController: Cineca unavailable — {}", e.getMessage());
+      return ResponseEntity.status(503).build();
+    }
+  }
+
+  /**
+   * Retrieves all bookable exam sessions for the student using the libretto-service endpoint.
+   *
+   * <p>This endpoint uses /libretto-service-v2/libretti/{matId}/appelli which is accessible
+   * to STUDENTE role, bypassing the checkAbildocStu restriction that blocks the standard
+   * calesa-service endpoint on some universities (e.g. UNIMOL).
+   *
+   * @param principal authenticated OhMyUniversity user injected from security context
+   * @return 200 OK with bookable exam sessions, 401 if Cineca session expired, 503 if Cineca is
+   * unavailable
+   */
+  @GetMapping("/appelli-prenotabili")
+  public ResponseEntity<AppelliLibrettoResponse> getAppelliPrenotabili(
+      @AuthenticationPrincipal OmuPrincipal principal) {
+    try {
+      return ResponseEntity.ok(carrieraService.getAppelliPrenotabili(principal));
+    } catch (CinecaAuthException e) {
+      log.warn("CarrieraController: Cineca session expired for user={}", principal.omuUserId());
+      return ResponseEntity.status(401).build();
+    } catch (CinecaUnavailableException e) {
+      log.error("CarrieraController: Cineca unavailable — {}", e.getMessage());
+      return ResponseEntity.status(503).build();
+    }
+  }
+
+  @GetMapping("/prenotazioni-libretto")
+  public ResponseEntity<PrenotazioniLibrettoResponse> getPrenotazioniLibretto(
+      @AuthenticationPrincipal OmuPrincipal principal) {
+    try {
+      return ResponseEntity.ok(carrieraService.getPrenotazioniLibretto(principal));
+    } catch (CinecaAuthException e) {
+      log.warn("CarrieraController: Cineca session expired for user={}", principal.omuUserId());
+      return ResponseEntity.status(401).build();
+    } catch (CinecaUnavailableException e) {
+      log.error("CarrieraController: Cineca unavailable — {}", e.getMessage());
+      return ResponseEntity.status(503).build();
+    }
+  }
+
+  /**
+   * Returns complete exam attempt history grouped by course activity.
+   *
+   * @param principal authenticated OhMyUniversity user
+   * @return 200 OK with full history, 401 if session expired, 503 if Cineca unavailable
+   */
+  @GetMapping("/storico-esami")
+  public ResponseEntity<StoricoEsamiResponse> getStoricoEsami(
+      @AuthenticationPrincipal OmuPrincipal principal) {
+    try {
+      return ResponseEntity.ok(carrieraService.getStoricoEsami(principal));
+    } catch (CinecaAuthException e) {
+      log.warn("CarrieraController: Cineca session expired for user={}", principal.omuUserId());
+      return ResponseEntity.status(401).build();
+    } catch (CinecaUnavailableException e) {
+      log.error("CarrieraController: Cineca unavailable — {}", e.getMessage());
+      return ResponseEntity.status(503).build();
+    }
+  }
+
+  /**
+   * Returns questionnaire status split into pending and completed.
+   *
+   * @param principal authenticated OhMyUniversity user
+   * @return 200 OK, 401 if session expired, 503 if Cineca unavailable
+   */
+  @GetMapping("/questionari")
+  public ResponseEntity<QuestionariResponse> getQuestionari(
+      @AuthenticationPrincipal OmuPrincipal principal) {
+    try {
+      return ResponseEntity.ok(carrieraService.getQuestionari(principal));
     } catch (CinecaAuthException e) {
       log.warn("CarrieraController: Cineca session expired for user={}", principal.omuUserId());
       return ResponseEntity.status(401).build();
@@ -179,8 +261,8 @@ public class CarrieraController {
    * @param principal authenticated user extracted from JWT
    * @param request   request body containing Cineca password
    * @return 200 OK with {@link PrenotazioneResponse} 400 Bad Request if password is missing or
-   *     empty 401 Unauthorized if Cineca authentication fails 503 Service Unavailable if Cineca is
-   *     unreachable
+   * empty 401 Unauthorized if Cineca authentication fails 503 Service Unavailable if Cineca is
+   * unreachable
    */
   @PostMapping("/prenotazioni")
   public ResponseEntity<PrenotazioneResponse> getPrenotazioni(
@@ -215,7 +297,7 @@ public class CarrieraController {
    *
    * @param principal authenticated OhMyUniversity user injected from security context
    * @return HTTP 200 with fee status, 401 if Cineca session is expired, 503 if Cineca is
-   *     unavailable
+   * unavailable
    */
   @GetMapping("/tasse")
   public ResponseEntity<TasseResponse> getTasse(
@@ -239,7 +321,7 @@ public class CarrieraController {
    *
    * @param principal authenticated user extracted from JWT
    * @return 200 OK with {@link BadgeResponse} 404 Not Found if no badge is associated with the
-   *     student 401 if Cineca session expired 503 if Cineca service is unavailable
+   * student 401 if Cineca session expired 503 if Cineca service is unavailable
    */
   @GetMapping("/badge")
   public ResponseEntity<BadgeResponse> getBadge(
@@ -263,14 +345,11 @@ public class CarrieraController {
    * Retrieves suggested exams for the authenticated student.
    *
    * <p>The endpoint returns all exams that have not yet been passed,
-   * ordered according to the recommendation criteria defined by the
-   * career service.
+   * ordered according to the recommendation criteria defined by the career service.
    *
    * @param principal authenticated user extracted from the JWT
-   * @return {@code 200 OK} with the suggested exams,
-   *     {@code 401 Unauthorized} if the Cineca session has expired,
-   *     or {@code 503 Service Unavailable} if the Cineca service
-   *     cannot be reached
+   * @return {@code 200 OK} with the suggested exams, {@code 401 Unauthorized} if the Cineca session
+   * has expired, or {@code 503 Service Unavailable} if the Cineca service cannot be reached
    */
   @GetMapping("/esami-suggeriti")
   public ResponseEntity<SuggerimentiResponse> getEsamiSuggeriti(

@@ -26,8 +26,9 @@ import reactor.core.publisher.Mono;
  *
  * <p>Notes on Cineca API behavior:
  * - Most endpoints return JSON arrays even when a single element is expected
- * - Some fields are wrapped as objects in the form { value: "..." }
- * - Certain responses contain nested or non-uniform structures
+ * - Some fields are wrapped as objects in the form {value: "..." }
+ * - Certain responses contain nested or non-uniform
+ * structures
  *
  * <p>This class acts as a low-level HTTP integration layer and does not contain business logic.
  */
@@ -109,7 +110,7 @@ public class CinecaCarrieraClient {
    * @param cinecaJwt     JWT token used to authenticate the request
    * @param matId         student identifier
    * @return list of {@link CinecaMedia} associated with the student, or an empty list if no data is
-   *     available
+   * available
    */
   public List<CinecaMedia> getMedia(String cinecaBaseUrl, String cinecaJwt, Long matId) {
     String url = cinecaBaseUrl + "/libretto-service-v2/libretti/" + matId + "/medie";
@@ -148,7 +149,7 @@ public class CinecaCarrieraClient {
    * @param cinecaJwt     JWT token used to authenticate the request
    * @param stuId         student identifier
    * @return list of {@link CinecaTestataPiano} representing the student's study plan headers, or an
-   *     empty list if no data is available
+   * empty list if no data is available
    */
   public List<CinecaTestataPiano> getPianoHeaders(
       String cinecaBaseUrl, String cinecaJwt, Long stuId) {
@@ -189,7 +190,7 @@ public class CinecaCarrieraClient {
    * @param stuId         student identifier
    * @param pianoId       study plan identifier
    * @return detailed study plan information as {@link CinecaPianoDettaglio}, or {@code null} if not
-   *     available
+   * available
    */
   public CinecaPianoDettaglio getPianoDettaglio(
       String cinecaBaseUrl, String cinecaJwt, Long stuId, Long pianoId) {
@@ -227,8 +228,7 @@ public class CinecaCarrieraClient {
    * - fixed query parameter q=APPELLI_PRENOTABILI
    *
    * <p>In case of remote errors:
-   * - HTTP 4xx: the response body is logged and an authentication/authorization exception is
-   * thrown
+   * - HTTP 4xx: the response body is logged and an authentication/authorization exception is thrown
    * - HTTP 5xx: a service unavailability exception is thrown
    *
    * <p>If the response is null, an empty list is returned.
@@ -240,7 +240,7 @@ public class CinecaCarrieraClient {
    * @param adId            teaching activity identifier
    * @param stuId           student identifier
    * @return list of available exam sessions as {@link CinecaAppello}, or an empty list if no data
-   *     is available
+   * is available
    */
   public List<CinecaAppello> getAppelli(
       String cinecaBaseUrl,
@@ -298,8 +298,7 @@ public class CinecaCarrieraClient {
    * - A valid session must be established externally and provided via Redis token
    *
    * <p>In case of remote errors:
-   * - HTTP 4xx: the response body is logged and an authentication/authorization exception is
-   * thrown
+   * - HTTP 4xx: the response body is logged and an authentication/authorization exception is thrown
    * - HTTP 5xx: a service unavailability exception is thrown
    *
    * @param cinecaBaseUrl   base URL of the university ESSE3 instance
@@ -308,7 +307,7 @@ public class CinecaCarrieraClient {
    * @param cinecaAuthToken Cineca session token (JSESSIONID) retrieved from Redis
    * @param matId           student career track identifier
    * @return list of booking history entries as {@link CinecaPrenotazione}, or an empty list if none
-   *     available
+   * available
    */
   public List<CinecaPrenotazione> getPrenotazioni(
       String cinecaBaseUrl,
@@ -360,7 +359,7 @@ public class CinecaCarrieraClient {
    * @param cinecaJwt     JWT token used to authenticate the request
    * @param stuId         student identifier
    * @return list of {@link CinecaBadge} associated with the student, or an empty list if no data is
-   *     available
+   * available
    */
   public List<CinecaBadge> getBadges(String cinecaBaseUrl, String cinecaJwt, Long stuId) {
     String url = cinecaBaseUrl + "/badge-service-v1/badges?stuId=" + stuId;
@@ -375,6 +374,130 @@ public class CinecaCarrieraClient {
         .onStatus(HttpStatusCode::is5xxServerError, r ->
             Mono.error(new CinecaClient.CinecaUnavailableException("Cineca error on badge")))
         .bodyToFlux(CinecaBadge.class)
+        .collectList()
+        .block();
+
+    return result != null ? result : List.of();
+  }
+
+  /**
+   * Retrieves all bookable exam sessions for a student from the libretto-service.
+   *
+   * <p>Uses /libretto-service-v2/libretti/{matId}/appelli with q=APPELLI_PRENOTABILI_E_FUTURI.
+   * This endpoint is accessible by STUDENTE role via checkMatId, unlike the calesa-service endpoint
+   * which requires checkAbildocStu (blocked on UNIMOL for students).
+   *
+   * @param cinecaBaseUrl base URL of the Cineca service
+   * @param cinecaJwt     JWT token used to authenticate the request
+   * @param matId         student matricola / career ID
+   * @return list of bookable exam sessions, or empty list if none available
+   */
+  public List<CinecaAppelloLibretto> getAppelliLibretto(
+      String cinecaBaseUrl, String cinecaJwt, Long matId) {
+
+    List<CinecaAppelloLibretto> result = webClient.get()
+        .uri(uriBuilder -> uriBuilder
+            .scheme("https")
+            .host(cinecaBaseUrl.replace("https://", "").split("/")[0])
+            .pathSegment("e3rest", "api", "libretto-service-v2",
+                "libretti", matId.toString(), "appelli")
+            .queryParam("q", "APPELLI_PRENOTABILI_E_FUTURI")
+            .queryParam("optionalFields", "prenotabile,prenotato,staSceCod,adStuCod,adStuDes")
+            .build())
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + cinecaJwt)
+        .retrieve()
+        .onStatus(HttpStatusCode::is4xxClientError, r ->
+            r.bodyToMono(String.class).flatMap(body -> {
+              log.error("Cineca appelli libretto 4xx body: {}", body);
+              return Mono.error(new CinecaClient.CinecaAuthException(
+                  "Unauthorized for appelli libretto matId=" + matId));
+            }))
+        .onStatus(HttpStatusCode::is5xxServerError, r ->
+            Mono.error(new CinecaClient.CinecaUnavailableException(
+                "Cineca error on appelli libretto")))
+        .bodyToFlux(CinecaAppelloLibretto.class)
+        .collectList()
+        .block();
+
+    return result != null ? result : List.of();
+  }
+
+  /**
+   * Retrieves current exam bookings for a student from libretto-service.
+   * Accessible with checkMatId — no password required.
+   *
+   * @param cinecaBaseUrl base URL of the Cineca service
+   * @param cinecaJwt     JWT token
+   * @param matId         student matricola ID
+   * @return list of current bookings
+   */
+  public List<CinecaIscrizioneAppello> getPrenotazioniLibretto(
+      String cinecaBaseUrl, String cinecaJwt, Long matId) {
+
+    log.debug("CinecaCarrieraClient: GET prenotazioni libretto matId={}", matId);
+
+    List<CinecaIscrizioneAppello> result = webClient.get()
+        .uri(uriBuilder -> uriBuilder
+            .scheme("https")
+            .host(cinecaBaseUrl.replace("https://", "").split("/")[0])
+            .pathSegment("e3rest", "api", "libretto-service-v2",
+                "libretti", matId.toString(), "prenotazioni")
+            .queryParam("optionalFields",
+                "aulaDes,dataOraTurno,dataInizioIscr,dataFineIscr,adStuDes,tipoIscrCod")
+            .build())
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + cinecaJwt)
+        .retrieve()
+        .onStatus(HttpStatusCode::is4xxClientError, r ->
+            r.bodyToMono(String.class).flatMap(body -> {
+              log.error("Cineca prenotazioni libretto 4xx body: {}", body);
+              return Mono.error(new CinecaClient.CinecaAuthException(
+                  "Unauthorized for prenotazioni libretto matId=" + matId));
+            }))
+        .onStatus(HttpStatusCode::is5xxServerError, r ->
+            Mono.error(new CinecaClient.CinecaUnavailableException(
+                "Cineca error on prenotazioni libretto")))
+        .bodyToFlux(CinecaIscrizioneAppello.class)
+        .collectList()
+        .block();
+
+    return result != null ? result : List.of();
+  }
+
+  /**
+   * Retrieves questionnaire status for all libretto activities.
+   *
+   * @param cinecaBaseUrl base URL
+   * @param cinecaJwt     JWT token
+   * @param matId         student matricola ID
+   * @param questFilter   "C" = da compilare, "P" = tutti con questionari
+   * @return list of libretto rows with questionnaire status
+   */
+  public List<CinecaRigaConQuestionario> getQuestionariLibretto(
+      String cinecaBaseUrl, String cinecaJwt, Long matId, String questFilter) {
+
+    log.debug("CinecaCarrieraClient: GET questionari libretto matId={} filter={}", matId,
+        questFilter);
+
+    List<CinecaRigaConQuestionario> result = webClient.get()
+        .uri(uriBuilder -> uriBuilder
+            .scheme("https")
+            .host(cinecaBaseUrl.replace("https://", "").split("/")[0])
+            .pathSegment("e3rest", "api", "questionari-service-v1",
+                "questionari", "libretto", matId.toString())
+            .queryParam("questFilter", questFilter)
+            .build())
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + cinecaJwt)
+        .retrieve()
+        .onStatus(HttpStatusCode::is4xxClientError, r ->
+            r.bodyToMono(String.class).flatMap(body -> {
+              log.error("Cineca questionari 4xx: {}", body);
+              return Mono.error(new CinecaClient.CinecaAuthException(
+                  "Unauthorized for questionari matId=" + matId));
+            }))
+        .onStatus(HttpStatusCode::is5xxServerError, r ->
+            Mono.error(new CinecaClient.CinecaUnavailableException(
+                "Cineca error on questionari")))
+        .bodyToFlux(CinecaRigaConQuestionario.class)
         .collectList()
         .block();
 
@@ -456,7 +579,7 @@ public class CinecaCarrieraClient {
    * @param cinecaJwt     JWT token used to authenticate the request
    * @param stuId         student identifier
    * @return list of {@link CinecaAddebito} representing financial charges, or an empty list if none
-   *     are available
+   * are available
    */
   public List<CinecaAddebito> getAddebiti(String cinecaBaseUrl, String cinecaJwt, Long stuId) {
     log.debug("CinecaCarrieraClient: GET addebiti stuId={}", stuId);
@@ -481,6 +604,65 @@ public class CinecaCarrieraClient {
         .block();
 
     return result != null ? result : List.of();
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class CinecaRigaConQuestionario {
+
+    @JsonProperty("adCod")
+    private String adCod;
+    @JsonProperty("adDes")
+    private String adDes;
+    @JsonProperty("adsceId")
+    private Long adsceId;
+    @JsonProperty("annoCorso")
+    private Integer annoCorso;
+    @JsonProperty("peso")
+    private Double peso;
+    @JsonProperty("statoLink")
+    private Integer statoLink;
+    @JsonProperty("numPrenotazioni")
+    private Integer numPrenotazioni;
+    @JsonProperty("matId")
+    private Long matId;
+    @JsonProperty("stuId")
+    private Long stuId;
+
+    public String getAdCod() {
+      return adCod;
+    }
+
+    public String getAdDes() {
+      return adDes;
+    }
+
+    public Long getAdsceId() {
+      return adsceId;
+    }
+
+    public Integer getAnnoCorso() {
+      return annoCorso;
+    }
+
+    public Double getPeso() {
+      return peso;
+    }
+
+    public Integer getStatoLink() {
+      return statoLink;
+    }
+
+    public Integer getNumPrenotazioni() {
+      return numPrenotazioni;
+    }
+
+    public Long getMatId() {
+      return matId;
+    }
+
+    public Long getStuId() {
+      return stuId;
+    }
   }
 
   /**
@@ -1504,6 +1686,321 @@ public class CinecaCarrieraClient {
 
     public String getCodiceAvviso() {
       return codiceAvviso;
+    }
+  }
+
+  /**
+   * Represents an exam session linked to a libretto row, retrieved from
+   * /libretto-service-v2/libretti/{matId}/appelli.
+   */
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class CinecaAppelloLibretto {
+
+    @JsonProperty("appId")
+    private Long appId;
+    @JsonProperty("appelloId")
+    private Long appelloId;
+    @JsonProperty("cdsId")
+    private Long cdsId;
+    @JsonProperty("adId")
+    private Long adId;
+    @JsonProperty("adCod")
+    private String adCod;
+    @JsonProperty("adDes")
+    private String adDes;
+    @JsonProperty("adStuCod")
+    private String adStuCod;
+    @JsonProperty("adStuDes")
+    private String adStuDes;
+    @JsonProperty("adsceId")
+    private Long adsceId;
+    @JsonProperty("matId")
+    private Long matId;
+    @JsonProperty("dataInizioApp")
+    private String dataInizioApp;
+    @JsonProperty("dataInizioIscr")
+    private String dataInizioIscr;
+    @JsonProperty("dataFineIscr")
+    private String dataFineIscr;
+    @JsonProperty("oraEsa")
+    private String oraEsa;
+    @JsonProperty("stato")
+    private String stato;
+    @JsonProperty("statoDes")
+    private String statoDes;
+    @JsonProperty("statoAperturaApp")
+    private String statoAperturaApp;
+    @JsonProperty("presidenteNome")
+    private String presidenteNome;
+    @JsonProperty("presidenteCognome")
+    private String presidenteCognome;
+    @JsonProperty("note")
+    private String note;
+    @JsonProperty("numIscritti")
+    private Integer numIscritti;
+    @JsonProperty("tipoAppCod")
+    private String tipoAppCod;
+    @JsonProperty("tipoIscrCod")
+    private Object tipoIscrCod;
+    @JsonProperty("desApp")
+    private String desApp;
+
+    public Long getAppId() {
+      return appId;
+    }
+
+    public Long getAppelloId() {
+      return appelloId;
+    }
+
+    public Long getCdsId() {
+      return cdsId;
+    }
+
+    public Long getAdId() {
+      return adId;
+    }
+
+    public String getAdCod() {
+      return adCod;
+    }
+
+    public String getAdDes() {
+      return adDes;
+    }
+
+    public String getAdStuCod() {
+      return adStuCod;
+    }
+
+    public String getAdStuDes() {
+      return adStuDes;
+    }
+
+    public Long getAdsceId() {
+      return adsceId;
+    }
+
+    public Long getMatId() {
+      return matId;
+    }
+
+    public String getDataInizioApp() {
+      return dataInizioApp;
+    }
+
+    public String getDataInizioIscr() {
+      return dataInizioIscr;
+    }
+
+    public String getDataFineIscr() {
+      return dataFineIscr;
+    }
+
+    public String getOraEsa() {
+      return oraEsa;
+    }
+
+    public String getStato() {
+      return stato;
+    }
+
+    public String getStatoDes() {
+      return statoDes;
+    }
+
+    public String getStatoAperturaApp() {
+      return statoAperturaApp;
+    }
+
+    public String getPresidenteNome() {
+      return presidenteNome;
+    }
+
+    public String getPresidenteCognome() {
+      return presidenteCognome;
+    }
+
+    public String getNote() {
+      return note;
+    }
+
+    public Integer getNumIscritti() {
+      return numIscritti;
+    }
+
+    public String getTipoAppCod() {
+      return tipoAppCod;
+    }
+
+    public String getTipoIscrCod() {
+      if (tipoIscrCod == null) {
+        return null;
+      }
+      if (tipoIscrCod instanceof String s) {
+        return s;
+      }
+      if (tipoIscrCod instanceof java.util.Map<?, ?> map) {
+        Object v = map.get("value");
+        return v != null ? v.toString() : null;
+      }
+      return tipoIscrCod.toString();
+    }
+
+    public String getDesApp() {
+      return desApp;
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class CinecaIscrizioneAppello {
+
+    @JsonProperty("applistaId")
+    private Long applistaId;
+    @JsonProperty("cdsId")
+    private Long cdsId;
+    @JsonProperty("adId")
+    private Long adId;
+    @JsonProperty("appId")
+    private Long appId;
+    @JsonProperty("adStuCod")
+    private String adStuCod;
+    @JsonProperty("adStuDes")
+    private String adStuDes;
+    @JsonProperty("adsceId")
+    private Long adsceId;
+    @JsonProperty("dataOraTurno")
+    private String dataOraTurno;
+    @JsonProperty("dataInizioIscr")
+    private String dataInizioIscr;
+    @JsonProperty("dataFineIscr")
+    private String dataFineIscr;
+    @JsonProperty("aulaDes")
+    private String aulaDes;
+    @JsonProperty("pesoAd")
+    private Double pesoAd;
+    @JsonProperty("posizApp")
+    private Integer posizApp;
+    @JsonProperty("domandeEsame")
+    private String domandeEsame;
+    @JsonProperty("tipoIscrCod")
+    private Object tipoIscrCod;
+    @JsonProperty("esito")
+    private EsitoIscrizione esito;
+
+    public Long getApplistaId() {
+      return applistaId;
+    }
+
+    public Long getCdsId() {
+      return cdsId;
+    }
+
+    public Long getAdId() {
+      return adId;
+    }
+
+    public Long getAppId() {
+      return appId;
+    }
+
+    public String getAdStuCod() {
+      return adStuCod;
+    }
+
+    public String getAdStuDes() {
+      return adStuDes;
+    }
+
+    public Long getAdsceId() {
+      return adsceId;
+    }
+
+    public String getDataOraTurno() {
+      return dataOraTurno;
+    }
+
+    public String getDataInizioIscr() {
+      return dataInizioIscr;
+    }
+
+    public String getDataFineIscr() {
+      return dataFineIscr;
+    }
+
+    public String getAulaDes() {
+      return aulaDes;
+    }
+
+    public Double getPesoAd() {
+      return pesoAd;
+    }
+
+    public Integer getPosizApp() {
+      return posizApp;
+    }
+
+    public String getDomandeEsame() {
+      return domandeEsame;
+    }
+
+    public EsitoIscrizione getEsito() {
+      return esito;
+    }
+
+    public String getTipoIscrCod() {
+      if (tipoIscrCod == null) {
+        return null;
+      }
+      if (tipoIscrCod instanceof String s) {
+        return s;
+      }
+      if (tipoIscrCod instanceof java.util.Map<?, ?> map) {
+        Object v = map.get("value");
+        return v != null ? v.toString() : null;
+      }
+      return tipoIscrCod.toString();
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class EsitoIscrizione {
+
+      @JsonProperty("superatoFlg")
+      private Integer superatoFlg;
+      @JsonProperty("ritiratoFlg")
+      private Integer ritiratoFlg;
+      @JsonProperty("assenteFlg")
+      private Integer assenteFlg;
+      @JsonProperty("votoEsa")
+      private Integer votoEsa;
+      @JsonProperty("tipoGiudCod")
+      private String tipoGiudCod;
+      @JsonProperty("tipoGiudizioDes")
+      private String tipoGiudizioDes;
+
+      public boolean isSuperato() {
+        return superatoFlg != null && superatoFlg == 1;
+      }
+
+      public boolean isRitirato() {
+        return ritiratoFlg != null && ritiratoFlg == 1;
+      }
+
+      public boolean isAssente() {
+        return assenteFlg != null && assenteFlg == 1;
+      }
+
+      public Integer getVotoEsa() {
+        return votoEsa;
+      }
+
+      public String getTipoGiudCod() {
+        return tipoGiudCod;
+      }
+
+      public String getTipoGiudizioDes() {
+        return tipoGiudizioDes;
+      }
     }
   }
 }

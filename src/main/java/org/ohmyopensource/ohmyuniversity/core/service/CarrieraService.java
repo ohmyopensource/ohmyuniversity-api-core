@@ -1,10 +1,16 @@
 package org.ohmyopensource.ohmyuniversity.core.service;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaAddebito;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaAppello;
+import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaAppelloLibretto;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaAttivitaPiano;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaBadge;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaMedia;
@@ -19,6 +25,7 @@ import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.UniversityConnection;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityConnectionRepository;
+import org.ohmyopensource.ohmyuniversity.core.dto.AppelliLibrettoResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.AppelloResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.BadgeResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.LibrettoResponse;
@@ -28,6 +35,9 @@ import org.ohmyopensource.ohmyuniversity.core.dto.PianoStudioResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse.EsitoPrenotazione;
 import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse.Prenotazione;
+import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioniLibrettoResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.QuestionariResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.StoricoEsamiResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.SuggerimentiResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.TasseResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.TasseResponse.Addebito;
@@ -51,7 +61,8 @@ public class CarrieraService {
 
   private static final String TIPO_MEDIA_ARITMETICA = "A";
   private static final String TIPO_MEDIA_PESATA = "P";
-
+  private static final DateTimeFormatter CINECA_DATE_FMT =
+      DateTimeFormatter.ofPattern("dd/MM/yyyy");
   private final CinecaCarrieraClient cinecaClient;
   private final CinecaSessionStore sessionStore;
   private final UniversityRegistry universityRegistry;
@@ -223,6 +234,32 @@ public class CarrieraService {
   }
 
   /**
+   * Retrieves all bookable exam sessions for the student using the libretto-service endpoint.
+   *
+   * <p>Unlike {@link #getAppelli}, this method uses
+   * /libretto-service-v2/libretti/{matId}/appelli which is accessible to STUDENTE role via
+   * checkMatId, bypassing the checkAbildocStu restriction that blocks the calesa-service endpoint
+   * on some universities (e.g. UNIMOL).
+   *
+   * @param principal authenticated OhMyUniversity principal
+   * @return response containing all bookable and future exam sessions
+   */
+  public AppelliLibrettoResponse getAppelliPrenotabili(OmuPrincipal principal) {
+    String cinecaJwt = resolveCinecaJwt(principal);
+    String baseUrl = resolveBaseUrl(principal.universityId());
+
+    List<CinecaAppelloLibretto> appelli = cinecaClient.getAppelliLibretto(
+        baseUrl, cinecaJwt, principal.matId());
+
+    log.debug("CarrieraService: fetched {} appelli prenotabili for matId={}",
+        appelli.size(), principal.matId());
+
+    AppelliLibrettoResponse response = new AppelliLibrettoResponse();
+    response.setAppelli(appelli.stream().map(this::toAppelloLibretto).toList());
+    return response;
+  }
+
+  /**
    * Retrieves the student's exam booking history.
    *
    * <p>The Cineca password is provided at request time and is never persisted.
@@ -251,9 +288,8 @@ public class CarrieraService {
    * Retrieves the student's tuition fee situation from Cineca.
    *
    * <p>Resolves the Cineca JWT and university ESSE3 base URL from the
-   * authenticated principal, then fetches:
-   * - the semaforo summary containing payment status and due amounts
-   * - the full list of accounting charges (addebiti)
+   * authenticated principal, then fetches: - the semaforo summary containing payment status and due
+   * amounts - the full list of accounting charges (addebiti)
    *
    * <p>The Cineca response is mapped into {@link TasseResponse},
    * converting Cineca fee entries into internal DTOs.
@@ -315,17 +351,15 @@ public class CarrieraService {
    * Returns an ordered list of suggested exams for the authenticated student.
    *
    * <p>The suggestion process compares the student's study plan with the
-   * academic record (libretto) and excludes all activities already passed.
-   * Remaining exams are ranked using a convenience score that prioritizes
-   * lower-year activities and, within the same year, lower-CFU exams.
+   * academic record (libretto) and excludes all activities already passed. Remaining exams are
+   * ranked using a convenience score that prioritizes lower-year activities and, within the same
+   * year, lower-CFU exams.
    *
    * <p>Score formula:
-   * {@code (annoCorso * 100) + cfu}.
-   * Lower scores are suggested first.
+   * {@code (annoCorso * 100) + cfu}. Lower scores are suggested first.
    *
    * @param principal authenticated OhMyU principal
-   * @return ordered list of suggested exams, or an empty list if no valid
-   *     study plan is available
+   * @return ordered list of suggested exams, or an empty list if no valid study plan is available
    */
   public SuggerimentiResponse getEsamiSuggeriti(OmuPrincipal principal) {
     String cinecaJwt = resolveCinecaJwt(principal);
@@ -366,7 +400,8 @@ public class CarrieraService {
               s.setScore((anno * 100) + cfu);
               return s;
             })
-            .sorted(java.util.Comparator.comparingInt(SuggerimentiResponse.EsameSuggerito::getScore))
+            .sorted(
+                java.util.Comparator.comparingInt(SuggerimentiResponse.EsameSuggerito::getScore))
             .toList();
 
     log.debug("CarrieraService: {} esami suggeriti for stuId={}", suggeriti.size(),
@@ -499,6 +534,195 @@ public class CarrieraService {
     app.setPrenotato(a.getPrenotato());
     app.setPrenotazioneId(a.getPrenotazioneId());
     return app;
+  }
+
+  /**
+   * Maps a Cineca libretto-based exam session into the public API DTO.
+   *
+   * @param a source Cineca exam session from libretto-service
+   * @return mapped exam session DTO
+   */
+  private AppelliLibrettoResponse.AppelloLibretto toAppelloLibretto(CinecaAppelloLibretto a) {
+    AppelliLibrettoResponse.AppelloLibretto app = new AppelliLibrettoResponse.AppelloLibretto();
+    app.setAppId(a.getAppId());
+    app.setAppelloId(a.getAppelloId());
+    app.setCdsId(a.getCdsId());
+    app.setAdId(a.getAdId());
+    app.setAdCod(a.getAdCod());
+    app.setAdDes(a.getAdDes());
+    app.setAdsceId(a.getAdsceId());
+    app.setDataInizioApp(a.getDataInizioApp());
+    app.setDataInizioIscr(a.getDataInizioIscr());
+    app.setDataFineIscr(a.getDataFineIscr());
+    app.setOraEsa(a.getOraEsa());
+    app.setStato(a.getStato());
+    app.setStatoDes(a.getStatoDes());
+    app.setDocente(a.getPresidenteNome() + " " + a.getPresidenteCognome());
+    app.setNote(a.getNote());
+    app.setNumIscritti(a.getNumIscritti());
+    app.setTipoIscrCod(a.getTipoIscrCod());
+    app.setDesApp(a.getDesApp());
+    return app;
+  }
+
+  /**
+   * Retrieves current exam bookings from libretto-service without requiring password.
+   */
+  public PrenotazioniLibrettoResponse getPrenotazioniLibretto(OmuPrincipal principal) {
+    String cinecaJwt = resolveCinecaJwt(principal);
+    String baseUrl = resolveBaseUrl(principal.universityId());
+
+    List<CinecaCarrieraClient.CinecaIscrizioneAppello> all =
+        cinecaClient.getPrenotazioniLibretto(baseUrl, cinecaJwt, principal.matId());
+
+    log.debug("CarrieraService: fetched {} raw prenotazioni for matId={}",
+        all.size(), principal.matId());
+
+    List<PrenotazioniLibrettoResponse.IscrizioneAppello> attive = all.stream()
+        .filter(i -> {
+          if (i.getEsito() != null &&
+              (i.getEsito().isSuperato() || i.getEsito().isRitirato())) {
+            return false;
+          }
+          String dataOra = i.getDataOraTurno();
+          if (dataOra == null || dataOra.isBlank()) {
+            return false;
+          }
+          try {
+            LocalDate data = LocalDate.parse(dataOra.split(" ")[0], CINECA_DATE_FMT);
+            return !data.isBefore(LocalDate.now());
+          } catch (Exception e) {
+            return false;
+          }
+        })
+        .map(this::toIscrizioneAppello)
+        .toList();
+
+    PrenotazioniLibrettoResponse response = new PrenotazioniLibrettoResponse();
+    response.setPrenotazioni(attive);
+    return response;
+  }
+
+  /**
+   * Returns full exam attempt history grouped by course activity.
+   */
+  public StoricoEsamiResponse getStoricoEsami(OmuPrincipal principal) {
+    String cinecaJwt = resolveCinecaJwt(principal);
+    String baseUrl = resolveBaseUrl(principal.universityId());
+
+    List<CinecaCarrieraClient.CinecaIscrizioneAppello> all =
+        cinecaClient.getPrenotazioniLibretto(baseUrl, cinecaJwt, principal.matId());
+
+    log.debug("CarrieraService: building storico from {} prenotazioni for matId={}",
+        all.size(), principal.matId());
+
+    Map<Long, StoricoEsamiResponse.EsameConStorico> map = new LinkedHashMap<>();
+
+    for (CinecaCarrieraClient.CinecaIscrizioneAppello i : all) {
+      Long key = i.getAdsceId();
+      if (key == null) {
+        continue;
+      }
+
+      StoricoEsamiResponse.EsameConStorico esame = map.computeIfAbsent(key, k -> {
+        StoricoEsamiResponse.EsameConStorico e = new StoricoEsamiResponse.EsameConStorico();
+        e.setAdCod(i.getAdStuCod());
+        e.setAdDes(i.getAdStuDes());
+        e.setAdsceId(k);
+        e.setCfu(i.getPesoAd());
+        e.setTentativi(new ArrayList<>());
+        return e;
+      });
+
+      StoricoEsamiResponse.Tentativo t = new StoricoEsamiResponse.Tentativo();
+      t.setApplistaId(i.getApplistaId());
+      t.setDataOraTurno(i.getDataOraTurno());
+      t.setDataInizioIscr(i.getDataInizioIscr());
+      t.setDataFineIscr(i.getDataFineIscr());
+      t.setTipoIscrCod(i.getTipoIscrCod());
+      t.setDomandeEsame(i.getDomandeEsame());
+      t.setPosizApp(i.getPosizApp());
+
+      String dataOra = i.getDataOraTurno();
+      if (dataOra != null && !dataOra.isBlank()) {
+        try {
+          LocalDate data = LocalDate.parse(dataOra.split(" ")[0], CINECA_DATE_FMT);
+          t.setFuturo(!data.isBefore(LocalDate.now()));
+        } catch (Exception ignored) {
+        }
+      }
+
+      if (i.getEsito() != null) {
+        t.setSuperato(i.getEsito().isSuperato());
+        t.setRitirato(i.getEsito().isRitirato());
+        t.setAssente(i.getEsito().isAssente());
+        t.setVotoEsa(i.getEsito().getVotoEsa());
+        t.setTipoGiudCod(i.getEsito().getTipoGiudCod());
+        t.setTipoGiudizioDes(i.getEsito().getTipoGiudizioDes());
+      }
+
+      esame.getTentativi().add(t);
+    }
+
+    StoricoEsamiResponse response = new StoricoEsamiResponse();
+    response.setEsami(new ArrayList<>(map.values()));
+    return response;
+  }
+
+  private PrenotazioniLibrettoResponse.IscrizioneAppello toIscrizioneAppello(
+      CinecaCarrieraClient.CinecaIscrizioneAppello i) {
+    PrenotazioniLibrettoResponse.IscrizioneAppello p =
+        new PrenotazioniLibrettoResponse.IscrizioneAppello();
+    p.setApplistaId(i.getApplistaId());
+    p.setCdsId(i.getCdsId());
+    p.setAdId(i.getAdId());
+    p.setAppId(i.getAppId());
+    p.setAdStuCod(i.getAdStuCod());
+    p.setAdStuDes(i.getAdStuDes());
+    p.setAdsceId(i.getAdsceId());
+    p.setDataOraTurno(i.getDataOraTurno());
+    p.setDataInizioIscr(i.getDataInizioIscr());
+    p.setDataFineIscr(i.getDataFineIscr());
+    p.setAulaDes(i.getAulaDes());
+    p.setTipoIscrCod(i.getTipoIscrCod());
+    return p;
+  }
+
+  /**
+   * Retrieves questionnaire status split into pending and completed.
+   */
+  public QuestionariResponse getQuestionari(OmuPrincipal principal) {
+    String cinecaJwt = resolveCinecaJwt(principal);
+    String baseUrl = resolveBaseUrl(principal.universityId());
+
+    List<CinecaCarrieraClient.CinecaRigaConQuestionario> daCompilare =
+        cinecaClient.getQuestionariLibretto(baseUrl, cinecaJwt, principal.matId(), "C");
+    
+    List<CinecaCarrieraClient.CinecaRigaConQuestionario> compilati =
+        cinecaClient.getQuestionariLibretto(baseUrl, cinecaJwt, principal.matId(), "P")
+            .stream()
+            .filter(r -> r.getStatoLink() != null && r.getStatoLink() == 1)
+            .toList();
+
+    log.debug("CarrieraService: questionari daCompilare={} compilati={} for matId={}",
+        daCompilare.size(), compilati.size(), principal.matId());
+
+    QuestionariResponse response = new QuestionariResponse();
+    response.setDaCompilare(daCompilare.stream().map(this::toQuestionarioEsame).toList());
+    response.setCompilati(compilati.stream().map(this::toQuestionarioEsame).toList());
+    return response;
+  }
+
+  private QuestionariResponse.QuestionarioEsame toQuestionarioEsame(
+      CinecaCarrieraClient.CinecaRigaConQuestionario r) {
+    QuestionariResponse.QuestionarioEsame q = new QuestionariResponse.QuestionarioEsame();
+    q.setAdCod(r.getAdCod());
+    q.setAdDes(r.getAdDes());
+    q.setAdsceId(r.getAdsceId());
+    q.setAnnoCorso(r.getAnnoCorso());
+    q.setCfu(r.getPeso());
+    q.setStatoLink(r.getStatoLink());
+    return q;
   }
 
   /**
