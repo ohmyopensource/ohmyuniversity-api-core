@@ -60,6 +60,12 @@ public class CarrieraController {
     this.carrieraService = carrieraService;
   }
 
+  // ============ Getters | Setters | Bool ============
+
+  private boolean isDocente(OmuPrincipal principal) {
+    return principal.stuId() == null || principal.matId() == null;
+  }
+
   // ============ Class Methods ============
 
   /**

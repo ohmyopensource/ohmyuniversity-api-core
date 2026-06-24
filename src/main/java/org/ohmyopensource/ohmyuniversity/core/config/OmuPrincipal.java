@@ -23,6 +23,6 @@ public record OmuPrincipal(
     String universityId,
     Long stuId,
     Long matId,
-    String matricola) {
-
+    String matricola,
+    boolean hasCarriera) {
 }

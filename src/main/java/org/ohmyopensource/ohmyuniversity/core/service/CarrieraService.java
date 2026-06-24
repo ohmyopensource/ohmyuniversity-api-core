@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient;
@@ -699,15 +700,24 @@ public class CarrieraService {
     String baseUrl = resolveBaseUrl(principal.universityId());
 
     Long persId = sessionStore.getCinecaPersId(principal.omuUserId(), principal.universityId())
-        .orElseThrow(() -> new CinecaClient.CinecaAuthException(
-            "PersId not found in session — please log in again"));
+        .orElse(null);
+
+    if (persId == null) {
+      ProfiloResponse r = new ProfiloResponse();
+      r.setCodFis(principal.codiceFiscale());
+      r.setNome(sessionStore.getUserNome(principal.omuUserId()).orElse(""));
+      r.setCognome(sessionStore.getUserCognome(principal.omuUserId()).orElse(""));
+      r.setUserId(sessionStore.getUserId(principal.omuUserId()).orElse(""));
+      r.setDomicilioComeResidenza(true);
+      return r;
+    }
 
     CinecaCarrieraClient.CinecaPersona p = cinecaClient.getPersona(baseUrl, cinecaJwt, persId);
     if (p == null) {
       throw new CinecaClient.CinecaAuthException("Persona not found for persId=" + persId);
     }
 
-    log.debug("CarrieraService: fetched profilo for persId={}", persId);
+    log.debug("CarrieraService: fetched profilo for persId={}", p.getPersId());
 
     ProfiloResponse r = new ProfiloResponse();
     r.setPersId(p.getPersId());

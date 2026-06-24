@@ -675,6 +675,24 @@ public class CinecaCarrieraClient {
     return result != null ? result : List.of();
   }
 
+  public CinecaPersona getPersonaByCodiceFiscale(String cinecaBaseUrl, String cinecaJwt, String codiceFiscale) {
+    log.debug("CinecaCarrieraClient: GET persona by codiceFiscale");
+
+    List<CinecaPersona> result = webClient.get()
+        .uri(cinecaBaseUrl + "/anagrafica-service-v2/persone/?codiceFiscale={cf}", codiceFiscale)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + cinecaJwt)
+        .retrieve()
+        .onStatus(HttpStatusCode::is4xxClientError, r ->
+            Mono.error(new CinecaClient.CinecaAuthException("Unauthorized for persona by CF")))
+        .onStatus(HttpStatusCode::is5xxServerError, r ->
+            Mono.error(new CinecaClient.CinecaUnavailableException("Cineca error on persona by CF")))
+        .bodyToFlux(CinecaPersona.class)
+        .collectList()
+        .block();
+
+    return result != null && !result.isEmpty() ? result.get(0) : null;
+  }
+
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaRigaConQuestionario {
 

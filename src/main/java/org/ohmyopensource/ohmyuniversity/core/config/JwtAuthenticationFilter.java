@@ -99,7 +99,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
           claims.get("uni", String.class),
           stuIdNum != null ? stuIdNum.longValue() : null,
           matIdNum != null ? matIdNum.longValue() : null,
-          claims.get("matricola", String.class));
+          claims.get("matricola", String.class),
+          Boolean.TRUE.equals(claims.get("hasCarriera", Boolean.class)));
 
       UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
           principal,

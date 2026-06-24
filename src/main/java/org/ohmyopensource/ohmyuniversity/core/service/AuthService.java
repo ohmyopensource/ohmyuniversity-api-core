@@ -133,6 +133,11 @@ public class AuthService {
       sessionStore.storeCinecaJwt(omuUserId, request.getUniversityId(),
           cinecaResponse.getJwt());
     }
+
+    sessionStore.storeUserNome(omuUserId, cinecaUser.getFirstName());
+    sessionStore.storeUserCognome(omuUserId, cinecaUser.getLastName());
+    sessionStore.storeUserId(omuUserId, cinecaUser.getUserId());
+
     if (cinecaResponse.getAuthToken() != null) {
       sessionStore.storeCinecaAuthToken(omuUserId, request.getUniversityId(),
           cinecaResponse.getAuthToken());
@@ -140,6 +145,20 @@ public class AuthService {
     if (cinecaUser.getPersId() != null) {
       sessionStore.storeCinecaPersId(omuUserId, request.getUniversityId(),
           cinecaUser.getPersId());
+    } else if (cinecaResponse.getJwt() != null) {
+      try {
+        String payload = cinecaResponse.getJwt().split("\\.")[1];
+        String decoded = new String(java.util.Base64.getUrlDecoder().decode(payload));
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        com.fasterxml.jackson.databind.JsonNode node = mapper.readTree(decoded);
+        if (node.has("persId") && !node.get("persId").isNull()) {
+          sessionStore.storeCinecaPersId(omuUserId, request.getUniversityId(),
+              node.get("persId").asLong());
+          log.debug("AuthService: persId extracted from Cineca JWT for user={}", omuUserId);
+        }
+      } catch (Exception e) {
+        log.warn("AuthService: could not extract persId from Cineca JWT for user={}", omuUserId);
+      }
     }
 
     List<TrattoCarriera> tratti = cinecaUser.getTrattiCarriera();

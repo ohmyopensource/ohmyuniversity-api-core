@@ -79,6 +79,7 @@ public class OmuJwtService {
         .claim("stuId", stuId)
         .claim("matId", matId)
         .claim("matricola", matricola)
+        .claim("hasCarriera", stuId != null && matId != null)
         .issuedAt(Date.from(now))
         .expiration(Date.from(expiry))
         .signWith(signingKey)

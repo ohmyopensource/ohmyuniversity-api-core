@@ -31,6 +31,7 @@ public class CinecaSessionStore {
   private static final Duration CINECA_PERS_TTL = Duration.ofMinutes(90);
   private static final Duration CINECA_CAREER_TTL = Duration.ofMinutes(90);
   private static final Duration OMU_REFRESH_TTL = Duration.ofDays(7);
+  private static final Duration USER_INFO_TTL = Duration.ofDays(7);
 
   private static final String KEY_CINECA_JWT = "cineca:jwt:%s:%s";
   private static final String KEY_CINECA_AUTH = "cineca:auth:%s:%s";
@@ -38,6 +39,9 @@ public class CinecaSessionStore {
   private static final String KEY_CINECA_STU_ID = "cineca:stuid:%s:%s";
   private static final String KEY_CINECA_MAT_ID = "cineca:matid:%s:%s";
   private static final String KEY_CINECA_MATRICOLA = "cineca:matricola:%s:%s";
+  private static final String KEY_USER_ID = "omu:userid:%s";
+  private static final String KEY_USER_NOME = "omu:nome:%s";
+  private static final String KEY_USER_COGNOME = "omu:cognome:%s";
   private static final String KEY_OMU_REFRESH = "omu:refresh:%s";
 
   private final StringRedisTemplate redis;
@@ -275,5 +279,29 @@ public class CinecaSessionStore {
     redis.delete(String.format(KEY_CINECA_MAT_ID, omuUserId, universityId));
     redis.delete(String.format(KEY_CINECA_MATRICOLA, omuUserId, universityId));
     log.info("CinecaSessionStore: cleared session for user={} uni={}", omuUserId, universityId);
+  }
+
+  public void storeUserNome(String omuUserId, String nome) {
+    redis.opsForValue().set(String.format(KEY_USER_NOME, omuUserId), nome, USER_INFO_TTL);
+  }
+
+  public void storeUserCognome(String omuUserId, String cognome) {
+    redis.opsForValue().set(String.format(KEY_USER_COGNOME, omuUserId), cognome, USER_INFO_TTL);
+  }
+
+  public Optional<String> getUserNome(String omuUserId) {
+    return Optional.ofNullable(redis.opsForValue().get(String.format(KEY_USER_NOME, omuUserId)));
+  }
+
+  public Optional<String> getUserCognome(String omuUserId) {
+    return Optional.ofNullable(redis.opsForValue().get(String.format(KEY_USER_COGNOME, omuUserId)));
+  }
+
+  public void storeUserId(String omuUserId, String userId) {
+    redis.opsForValue().set(String.format(KEY_USER_ID, omuUserId), userId, USER_INFO_TTL);
+  }
+
+  public Optional<String> getUserId(String omuUserId) {
+    return Optional.ofNullable(redis.opsForValue().get(String.format(KEY_USER_ID, omuUserId)));
   }
 }
