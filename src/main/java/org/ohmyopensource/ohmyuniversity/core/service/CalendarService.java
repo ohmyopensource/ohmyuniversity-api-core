@@ -252,6 +252,7 @@ public class CalendarService {
     event.setColor(request.getColor());
     event.setUrl(request.getUrl());
     event.setNotes(request.getNotes());
+    event.setLocation(request.getLocation());
   }
 
   /**
@@ -272,6 +273,7 @@ public class CalendarService {
     r.setColor(e.getColor());
     r.setUrl(e.getUrl());
     r.setNotes(e.getNotes());
+    r.setLocation(e.getLocation());
     r.setCreatedAt(e.getCreatedAt().toString());
     r.setUpdatedAt(e.getUpdatedAt().toString());
     return r;

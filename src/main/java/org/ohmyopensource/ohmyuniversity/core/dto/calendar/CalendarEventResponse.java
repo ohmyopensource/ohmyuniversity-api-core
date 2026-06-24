@@ -20,6 +20,7 @@ public class CalendarEventResponse {
   private String color;
   private String url;
   private String notes;
+  private String location;
   private String createdAt;
   private String updatedAt;
 
@@ -94,6 +95,9 @@ public class CalendarEventResponse {
   public void setNotes(String notes) {
     this.notes = notes;
   }
+
+  public String getLocation() { return location; }
+  public void setLocation(String location) { this.location = location; }
 
   public String getCreatedAt() {
     return createdAt;

@@ -63,6 +63,9 @@ public class CalendarEvent {
   @Column(columnDefinition = "TEXT")
   private String notes;
 
+  @Column(name = "location", length = 500)
+  private String location;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private final Instant createdAt = Instant.now();
 
@@ -144,6 +147,9 @@ public class CalendarEvent {
   public void setNotes(String notes) {
     this.notes = notes;
   }
+
+  public String getLocation() { return location; }
+  public void setLocation(String location) { this.location = location; }
 
   public Instant getCreatedAt() {
     return createdAt;

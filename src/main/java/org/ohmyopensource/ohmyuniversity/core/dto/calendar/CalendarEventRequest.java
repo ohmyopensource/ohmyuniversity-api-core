@@ -36,6 +36,8 @@ public class CalendarEventRequest {
 
   private String notes;
 
+  private String location;
+
   // ============ Getters | Setters | Bool ============
 
   public String getTitle() {
@@ -100,4 +102,7 @@ public class CalendarEventRequest {
   public void setNotes(String notes) {
     this.notes = notes;
   }
+
+  public String getLocation() { return location; }
+  public void setLocation(String location) { this.location = location; }
 }
