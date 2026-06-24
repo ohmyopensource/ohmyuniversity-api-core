@@ -7,9 +7,9 @@ import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.dto.calendar.CalendarEventRequest;
 import org.ohmyopensource.ohmyuniversity.core.dto.calendar.CalendarEventResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.calendar.UniversityEventResponse;
-import org.ohmyopensource.ohmyuniversity.core.service.CalendarService;
-import org.ohmyopensource.ohmyuniversity.core.service.CalendarService.EventAlreadyImportedException;
-import org.ohmyopensource.ohmyuniversity.core.service.CalendarService.EventNotFoundException;
+import org.ohmyopensource.ohmyuniversity.core.service.AgendaService;
+import org.ohmyopensource.ohmyuniversity.core.service.AgendaService.EventAlreadyImportedException;
+import org.ohmyopensource.ohmyuniversity.core.service.AgendaService.EventNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -34,30 +34,30 @@ import org.springframework.web.bind.annotation.RestController;
  * associated with the OhMyU user identity, not a specific university.
  *
  * <p>Endpoints:
- * - GET    /api/v1/calendar/events                        — list personal events
- * - POST   /api/v1/calendar/events                        — create personal event
- * - PUT    /api/v1/calendar/events/{id}                   — update personal event
- * - DELETE /api/v1/calendar/events/{id}                   — delete personal event
- * - GET    /api/v1/calendar/university-events             — list university events
- * - POST   /api/v1/calendar/university-events/{id}/import — import university event
+ * - GET    /api/v1/agenda/events                        — list personal events
+ * - POST   /api/v1/agenda/events                        — create personal event
+ * - PUT    /api/v1/agenda/events/{id}                   — update personal event
+ * - DELETE /api/v1/agenda/events/{id}                   — delete personal event
+ * - GET    /api/v1/agenda/university-events             — list university events
+ * - POST   /api/v1/agenda/university-events/{id}/import — import university event
  */
 @RestController
-@RequestMapping("/api/v1/calendar")
-public class CalendarController {
+@RequestMapping("/api/v1/agenda")
+public class AgendaController {
 
-  private static final Logger log = LoggerFactory.getLogger(CalendarController.class);
+  private static final Logger log = LoggerFactory.getLogger(AgendaController.class);
 
-  private final CalendarService calendarService;
+  private final AgendaService agendaService;
 
   // ============ Constructor ============
 
   /**
    * Creates the controller and injects the calendar service.
    *
-   * @param calendarService service orchestrating calendar operations
+   * @param agendaService service orchestrating calendar operations
    */
-  public CalendarController(CalendarService calendarService) {
-    this.calendarService = calendarService;
+  public AgendaController(AgendaService agendaService) {
+    this.agendaService = agendaService;
   }
 
   // ============ Class Methods ============
@@ -78,7 +78,7 @@ public class CalendarController {
       @AuthenticationPrincipal OmuPrincipal principal,
       @RequestParam(required = false) String from,
       @RequestParam(required = false) String to) {
-    return ResponseEntity.ok(calendarService.getEvents(principal, from, to));
+    return ResponseEntity.ok(agendaService.getEvents(principal, from, to));
   }
 
   /**
@@ -92,7 +92,7 @@ public class CalendarController {
   public ResponseEntity<CalendarEventResponse> createEvent(
       @AuthenticationPrincipal OmuPrincipal principal,
       @Valid @RequestBody CalendarEventRequest request) {
-    CalendarEventResponse response = calendarService.createEvent(principal, request);
+    CalendarEventResponse response = agendaService.createEvent(principal, request);
     return ResponseEntity.status(201).body(response);
   }
 
@@ -110,7 +110,7 @@ public class CalendarController {
       @PathVariable UUID id,
       @Valid @RequestBody CalendarEventRequest request) {
     try {
-      return ResponseEntity.ok(calendarService.updateEvent(principal, id, request));
+      return ResponseEntity.ok(agendaService.updateEvent(principal, id, request));
     } catch (EventNotFoundException e) {
       log.warn("CalendarController: event not found id={}", id);
       return ResponseEntity.notFound().build();
@@ -129,7 +129,7 @@ public class CalendarController {
       @AuthenticationPrincipal OmuPrincipal principal,
       @PathVariable UUID id) {
     try {
-      calendarService.deleteEvent(principal, id);
+      agendaService.deleteEvent(principal, id);
       return ResponseEntity.noContent().build();
     } catch (EventNotFoundException e) {
       log.warn("CalendarController: event not found id={}", id);
@@ -149,7 +149,7 @@ public class CalendarController {
   @GetMapping("/university-events")
   public ResponseEntity<List<UniversityEventResponse>> getUniversityEvents(
       @AuthenticationPrincipal OmuPrincipal principal) {
-    return ResponseEntity.ok(calendarService.getUniversityEvents(principal));
+    return ResponseEntity.ok(agendaService.getUniversityEvents(principal));
   }
 
   /**
@@ -165,7 +165,7 @@ public class CalendarController {
       @AuthenticationPrincipal OmuPrincipal principal,
       @PathVariable UUID id) {
     try {
-      calendarService.importUniversityEvent(principal, id);
+      agendaService.importUniversityEvent(principal, id);
       return ResponseEntity.noContent().build();
     } catch (EventNotFoundException e) {
       log.warn("CalendarController: university event not found id={}", id);

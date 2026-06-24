@@ -14,8 +14,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.testcontainers.utility.TestcontainersConfiguration;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaRigaLibretto;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaCareerClient;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaCareerClient.CinecaTranscriptRow;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.CinecaSyncState;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.OmuUser;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.CinecaSyncStateRepository;
@@ -35,7 +35,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  *
  * <p>These tests verify the deduplication behaviour using the actual
  * {@code cineca_sync_state} table managed by Flyway. {@link KafkaEventPublisher}
- * and {@link CinecaCarrieraClient} are mocked to isolate the sync engine
+ * and {@link CinecaCareerClient} are mocked to isolate the sync engine
  * from external dependencies.
  *
  * <p>These tests require Docker to be available and are conditionally
@@ -65,7 +65,7 @@ class CinecaSyncServiceIntegrationTest {
   private CinecaSyncStateRepository syncStateRepository;
 
   @MockitoBean
-  private CinecaCarrieraClient cinecaCarrieraClient;
+  private CinecaCareerClient careerClient;
 
   @MockitoBean
   private KafkaEventPublisher kafkaEventPublisher;
@@ -86,11 +86,11 @@ class CinecaSyncServiceIntegrationTest {
   }
 
   /**
-   * Builds a mock {@link CinecaRigaLibretto} with the given identifiers.
+   * Builds a mock {@link CinecaTranscriptRow} with the given identifiers.
    */
-  private CinecaRigaLibretto buildRiga(Long adsceId, String adCod, String adDes,
+  private CinecaTranscriptRow buildRiga(Long adsceId, String adCod, String adDes,
       Integer annoCorso) {
-    CinecaRigaLibretto riga = org.mockito.Mockito.mock(CinecaRigaLibretto.class);
+    CinecaTranscriptRow riga = org.mockito.Mockito.mock(CinecaTranscriptRow.class);
     when(riga.getAdsceId()).thenReturn(adsceId);
     when(riga.getAdCod()).thenReturn(adCod);
     when(riga.getAdDes()).thenReturn(adDes);
@@ -106,8 +106,8 @@ class CinecaSyncServiceIntegrationTest {
   @Test
   @DisplayName("first login → events published and sync state persisted in DB")
   void firstLoginPersistsSyncState() {
-    CinecaRigaLibretto riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
-    when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+    CinecaTranscriptRow riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
+    when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
         .thenReturn(List.of(riga));
 
     cinecaSyncService.syncAfterLogin(
@@ -137,8 +137,8 @@ class CinecaSyncServiceIntegrationTest {
   @Test
   @DisplayName("second login with same libretto → no new events published (DB dedup)")
   void secondLoginDeduplication() {
-    CinecaRigaLibretto riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
-    when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+    CinecaTranscriptRow riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
+    when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
         .thenReturn(List.of(riga));
 
     String userId = savedUser.getId().toString();
@@ -161,18 +161,18 @@ class CinecaSyncServiceIntegrationTest {
   @Test
   @DisplayName("new row added between logins → only new row triggers events")
   void newRowBetweenLoginsTriggesEvents() {
-    CinecaRigaLibretto riga1 = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
-    CinecaRigaLibretto riga2 = buildRiga(99999L, "FI01", "Fisica I", 1);
+    CinecaTranscriptRow riga1 = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
+    CinecaTranscriptRow riga2 = buildRiga(99999L, "FI01", "Fisica I", 1);
 
     String userId = savedUser.getId().toString();
 
-    when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+    when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
         .thenReturn(List.of(riga1));
     cinecaSyncService.syncAfterLogin(userId, UNIVERSITY_ID, JWT, MAT_ID, BASE_URL, ACADEMIC_YEAR);
 
     org.mockito.Mockito.clearInvocations(kafkaEventPublisher);
 
-    when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+    when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
         .thenReturn(List.of(riga1, riga2));
     cinecaSyncService.syncAfterLogin(userId, UNIVERSITY_ID, JWT, MAT_ID, BASE_URL, ACADEMIC_YEAR);
 
@@ -189,8 +189,8 @@ class CinecaSyncServiceIntegrationTest {
   @Test
   @DisplayName("sync state unique constraint enforced — no duplicate rows in DB")
   void uniqueConstraintEnforced() {
-    CinecaRigaLibretto riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
-    when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+    CinecaTranscriptRow riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
+    when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
         .thenReturn(List.of(riga));
 
     String userId = savedUser.getId().toString();

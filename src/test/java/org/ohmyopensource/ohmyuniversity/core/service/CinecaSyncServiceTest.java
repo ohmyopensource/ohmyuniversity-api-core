@@ -14,8 +14,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaRigaLibretto;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaCareerClient;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaCareerClient.CinecaTranscriptRow;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.CinecaSyncState;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.CinecaSyncState.EventType;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.OmuUser;
@@ -48,7 +48,7 @@ class CinecaSyncServiceTest {
   private static final Long MAT_ID = 106279L;
   private static final Long ADSCE_ID = 12345L;
 
-  private CinecaCarrieraClient cinecaCarrieraClient;
+  private CinecaCareerClient careerClient;
   private CinecaSyncStateRepository syncStateRepository;
   private OmuUserRepository userRepository;
   private KafkaEventPublisher kafkaEventPublisher;
@@ -60,13 +60,13 @@ class CinecaSyncServiceTest {
    */
   @BeforeEach
   void setUp() {
-    cinecaCarrieraClient = mock(CinecaCarrieraClient.class);
+    careerClient = mock(CinecaCareerClient.class);
     syncStateRepository = mock(CinecaSyncStateRepository.class);
     userRepository = mock(OmuUserRepository.class);
     kafkaEventPublisher = mock(KafkaEventPublisher.class);
 
     syncService = new CinecaSyncService(
-        cinecaCarrieraClient,
+        careerClient,
         syncStateRepository,
         userRepository,
         kafkaEventPublisher);
@@ -85,7 +85,7 @@ class CinecaSyncServiceTest {
   }
 
   /**
-   * Builds a mock {@link CinecaRigaLibretto} with the given identifiers.
+   * Builds a mock {@link CinecaTranscriptRow} with the given identifiers.
    *
    * @param adsceId Cineca activity identifier
    * @param adCod   course code
@@ -93,9 +93,9 @@ class CinecaSyncServiceTest {
    * @param annoCorso academic year of the course
    * @return configured mock
    */
-  private CinecaRigaLibretto buildRiga(Long adsceId, String adCod, String adDes,
+  private CinecaTranscriptRow buildRiga(Long adsceId, String adCod, String adDes,
       Integer annoCorso) {
-    CinecaRigaLibretto riga = mock(CinecaRigaLibretto.class);
+    CinecaTranscriptRow riga = mock(CinecaTranscriptRow.class);
     when(riga.getAdsceId()).thenReturn(adsceId);
     when(riga.getAdCod()).thenReturn(adCod);
     when(riga.getAdDes()).thenReturn(adDes);
@@ -141,7 +141,7 @@ class CinecaSyncServiceTest {
 
       syncService.syncAfterLogin(USER_ID, UNIVERSITY_ID, JWT, MAT_ID, BASE_URL, ACADEMIC_YEAR);
 
-      verify(cinecaCarrieraClient, never()).getRigheLibretto(any(), any(), any());
+      verify(careerClient, never()).getTranscript(any(), any(), any());
       verify(kafkaEventPublisher, never()).publishCourseEditionDiscovered(any());
       verify(kafkaEventPublisher, never()).publishEnrollmentDiscovered(any());
       verify(kafkaEventPublisher, never()).publishCampusAssignmentDiscovered(any());
@@ -166,7 +166,7 @@ class CinecaSyncServiceTest {
     void emptyLibretto() {
       OmuUser user = buildMockUser(USER_ID);
       when(userRepository.findById(UUID.fromString(USER_ID))).thenReturn(Optional.of(user));
-      when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+      when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
           .thenReturn(List.of());
       noEventsNotifiedYet();
 
@@ -195,10 +195,10 @@ class CinecaSyncServiceTest {
     @DisplayName("single row, no prior state → course-edition and enrollment published")
     void singleRowFirstLogin() {
       OmuUser user = buildMockUser(USER_ID);
-      CinecaRigaLibretto riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
+      CinecaTranscriptRow riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
 
       when(userRepository.findById(UUID.fromString(USER_ID))).thenReturn(Optional.of(user));
-      when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+      when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
           .thenReturn(List.of(riga));
       noEventsNotifiedYet();
 
@@ -220,10 +220,10 @@ class CinecaSyncServiceTest {
     @DisplayName("single row → sync state saved twice (COURSE_EDITION + ENROLLMENT)")
     void syncStateSavedTwicePerRow() {
       OmuUser user = buildMockUser(USER_ID);
-      CinecaRigaLibretto riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
+      CinecaTranscriptRow riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
 
       when(userRepository.findById(UUID.fromString(USER_ID))).thenReturn(Optional.of(user));
-      when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+      when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
           .thenReturn(List.of(riga));
       noEventsNotifiedYet();
 
@@ -240,11 +240,11 @@ class CinecaSyncServiceTest {
     @DisplayName("multiple rows → one course-edition and enrollment event per row")
     void multipleRowsPublishPerRow() {
       OmuUser user = buildMockUser(USER_ID);
-      CinecaRigaLibretto riga1 = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
-      CinecaRigaLibretto riga2 = buildRiga(99999L, "FI01", "Fisica I", 1);
+      CinecaTranscriptRow riga1 = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
+      CinecaTranscriptRow riga2 = buildRiga(99999L, "FI01", "Fisica I", 1);
 
       when(userRepository.findById(UUID.fromString(USER_ID))).thenReturn(Optional.of(user));
-      when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+      when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
           .thenReturn(List.of(riga1, riga2));
       noEventsNotifiedYet();
 
@@ -263,11 +263,11 @@ class CinecaSyncServiceTest {
     @DisplayName("row with null adsceId → skipped, no event published")
     void nullAdsceIdSkipped() {
       OmuUser user = buildMockUser(USER_ID);
-      CinecaRigaLibretto rigaNull = mock(CinecaRigaLibretto.class);
+      CinecaTranscriptRow rigaNull = mock(CinecaTranscriptRow.class);
       when(rigaNull.getAdsceId()).thenReturn(null);
 
       when(userRepository.findById(UUID.fromString(USER_ID))).thenReturn(Optional.of(user));
-      when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+      when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
           .thenReturn(List.of(rigaNull));
       noEventsNotifiedYet();
 
@@ -294,10 +294,10 @@ class CinecaSyncServiceTest {
     @DisplayName("all events already notified → no Kafka event published on second login")
     void allAlreadyNotified() {
       OmuUser user = buildMockUser(USER_ID);
-      CinecaRigaLibretto riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
+      CinecaTranscriptRow riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
 
       when(userRepository.findById(UUID.fromString(USER_ID))).thenReturn(Optional.of(user));
-      when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+      when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
           .thenReturn(List.of(riga));
       allEventsAlreadyNotified();
 
@@ -317,10 +317,10 @@ class CinecaSyncServiceTest {
     @DisplayName("COURSE_EDITION already notified, ENROLLMENT not → only enrollment published")
     void partialDeduplication() {
       OmuUser user = buildMockUser(USER_ID);
-      CinecaRigaLibretto riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
+      CinecaTranscriptRow riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
 
       when(userRepository.findById(UUID.fromString(USER_ID))).thenReturn(Optional.of(user));
-      when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+      when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
           .thenReturn(List.of(riga));
 
       when(syncStateRepository.existsByUserIdAndUniversityIdAndAdsceIdAndEventType(
@@ -350,10 +350,10 @@ class CinecaSyncServiceTest {
     @DisplayName("already notified → syncStateRepository.save never called")
     void noStateSavedWhenAlreadyNotified() {
       OmuUser user = buildMockUser(USER_ID);
-      CinecaRigaLibretto riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
+      CinecaTranscriptRow riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
 
       when(userRepository.findById(UUID.fromString(USER_ID))).thenReturn(Optional.of(user));
-      when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+      when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
           .thenReturn(List.of(riga));
       allEventsAlreadyNotified();
 
@@ -383,10 +383,10 @@ class CinecaSyncServiceTest {
     @DisplayName("course-edition published before enrollment in same sync call")
     void courseEditionBeforeEnrollment() {
       OmuUser user = buildMockUser(USER_ID);
-      CinecaRigaLibretto riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
+      CinecaTranscriptRow riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
 
       when(userRepository.findById(UUID.fromString(USER_ID))).thenReturn(Optional.of(user));
-      when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+      when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
           .thenReturn(List.of(riga));
       noEventsNotifiedYet();
 
@@ -425,7 +425,7 @@ class CinecaSyncServiceTest {
     void campusAssignmentPublishedOnFirstLogin() {
       OmuUser user = buildMockUser(USER_ID);
       when(userRepository.findById(UUID.fromString(USER_ID))).thenReturn(Optional.of(user));
-      when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+      when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
           .thenReturn(List.of());
       noEventsNotifiedYet();
 
@@ -444,7 +444,7 @@ class CinecaSyncServiceTest {
     void campusAssignmentPayloadUsesUniversityIdAsCampusId() {
       OmuUser user = buildMockUser(USER_ID);
       when(userRepository.findById(UUID.fromString(USER_ID))).thenReturn(Optional.of(user));
-      when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+      when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
           .thenReturn(List.of());
       noEventsNotifiedYet();
 
@@ -467,7 +467,7 @@ class CinecaSyncServiceTest {
     void campusAssignmentNotPublishedTwice() {
       OmuUser user = buildMockUser(USER_ID);
       when(userRepository.findById(UUID.fromString(USER_ID))).thenReturn(Optional.of(user));
-      when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+      when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
           .thenReturn(List.of());
       allEventsAlreadyNotified();
 
@@ -492,10 +492,10 @@ class CinecaSyncServiceTest {
     @DisplayName("course-edition event contains non-blank externalChannelId")
     void externalChannelIdNotBlank() {
       OmuUser user = buildMockUser(USER_ID);
-      CinecaRigaLibretto riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
+      CinecaTranscriptRow riga = buildRiga(ADSCE_ID, "AN01", "Analisi I", 1);
 
       when(userRepository.findById(UUID.fromString(USER_ID))).thenReturn(Optional.of(user));
-      when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+      when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
           .thenReturn(List.of(riga));
       noEventsNotifiedYet();
 
@@ -521,10 +521,10 @@ class CinecaSyncServiceTest {
     @DisplayName("annoCorso=1 (odd) → semester=1 in externalChannelId")
     void oddAnnoCorsoMapsToSemester1() {
       OmuUser user = buildMockUser(USER_ID);
-      CinecaRigaLibretto riga = buildRiga(ADSCE_ID, "FI01", "Fisica I", 1);
+      CinecaTranscriptRow riga = buildRiga(ADSCE_ID, "FI01", "Fisica I", 1);
 
       when(userRepository.findById(UUID.fromString(USER_ID))).thenReturn(Optional.of(user));
-      when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+      when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
           .thenReturn(List.of(riga));
       noEventsNotifiedYet();
 
@@ -546,10 +546,10 @@ class CinecaSyncServiceTest {
     @DisplayName("annoCorso=2 (even) → semester=2 in externalChannelId")
     void evenAnnoCorsoMapsToSemester2() {
       OmuUser user = buildMockUser(USER_ID);
-      CinecaRigaLibretto riga = buildRiga(ADSCE_ID, "FI02", "Fisica II", 2);
+      CinecaTranscriptRow riga = buildRiga(ADSCE_ID, "FI02", "Fisica II", 2);
 
       when(userRepository.findById(UUID.fromString(USER_ID))).thenReturn(Optional.of(user));
-      when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+      when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
           .thenReturn(List.of(riga));
       noEventsNotifiedYet();
 
@@ -571,10 +571,10 @@ class CinecaSyncServiceTest {
     @DisplayName("null adCod → externalChannelId contains 'unknown' slug")
     void nullAdCodFallsBackToUnknown() {
       OmuUser user = buildMockUser(USER_ID);
-      CinecaRigaLibretto riga = buildRiga(ADSCE_ID, null, "Corso senza codice", 1);
+      CinecaTranscriptRow riga = buildRiga(ADSCE_ID, null, "Corso senza codice", 1);
 
       when(userRepository.findById(UUID.fromString(USER_ID))).thenReturn(Optional.of(user));
-      when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+      when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
           .thenReturn(List.of(riga));
       noEventsNotifiedYet();
 
@@ -607,7 +607,7 @@ class CinecaSyncServiceTest {
     void cinecaThrowsException() {
       OmuUser user = buildMockUser(USER_ID);
       when(userRepository.findById(UUID.fromString(USER_ID))).thenReturn(Optional.of(user));
-      when(cinecaCarrieraClient.getRigheLibretto(BASE_URL, JWT, MAT_ID))
+      when(careerClient.getTranscript(BASE_URL, JWT, MAT_ID))
           .thenThrow(new RuntimeException("Cineca unavailable"));
 
       org.assertj.core.api.Assertions.assertThatNoException().isThrownBy(() ->

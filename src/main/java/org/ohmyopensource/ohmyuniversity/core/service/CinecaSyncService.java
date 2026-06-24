@@ -4,8 +4,8 @@ import java.text.Normalizer;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaCarrieraClient.CinecaRigaLibretto;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaCareerClient;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaCareerClient.CinecaTranscriptRow;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.CinecaSyncState;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.CinecaSyncState.EventType;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.OmuUser;
@@ -27,21 +27,28 @@ import org.springframework.transaction.annotation.Transactional;
  * new facts are discovered.
  *
  * <p>This service implements the per-user sync model: each time a student
- * logs in, their libretto is fetched from Cineca and compared against the local
+ * logs in, their transcript is fetched from Cineca and compared against the local
  * {@code cineca_sync_state} table. If a fact (course edition, enrollment, teaching assignment,
  * campus assignment) has not been notified yet, the corresponding Kafka event is published and the
  * state is recorded.
- *
- * <p>Sync constraints:
- * - Only works with per-user Cineca JWT (no UTENTE_TECNICO available). - Course edition event must
- * be published before enrollment and teaching assignment events for the same channel (ordering
- * constraint required by the chat consumer, which silently drops member events if the channel does
- * not exist yet). - Campus assignment events use {@code universityId} as a proxy for
- * {@code campusId} (single-campus universities like UNIMOL). To be refined when Cineca exposes
- * explicit campus data.
+ * <p>
+ * /**
+ * <p>Sync constraints:</p>
+ * <ul>
+ *   <li>Only works with per-user Cineca JWT (no UTENTE_TECNICO available).</li>
+ *   <li> Course edition event must be published before enrollment and teaching assignment events
+ *     for the same channel (ordering constraint required by the chat consumer). </li>
+ *   <li> Campus assignment events use {@code universityId} as a proxy for {@code campusId}
+ *     (applicable for single-campus universities such as UNIMOL). </li>
+ * </ul>
  *
  * <p>The sync runs asynchronously to avoid blocking the login response.
  * Errors are logged but not rethrown.
+ *
+ * <p>Note: this service receives Cineca credentials as explicit parameters from
+ * {@code AuthService} rather than resolving them from a principal, because it runs after login
+ * before a full OhMyU session is established. It therefore does not extend
+ * {@code AbstractEsse3Service}.
  */
 @Service
 public class CinecaSyncService {
@@ -54,7 +61,7 @@ public class CinecaSyncService {
    */
   private static final long CAMPUS_ASSIGNMENT_ADSCE_SENTINEL = -1L;
 
-  private final CinecaCarrieraClient cinecaCarrieraClient;
+  private final CinecaCareerClient careerClient;
   private final CinecaSyncStateRepository syncStateRepository;
   private final OmuUserRepository userRepository;
   private final KafkaEventPublisher kafkaEventPublisher;
@@ -64,17 +71,17 @@ public class CinecaSyncService {
   /**
    * Constructs the sync service with all required dependencies.
    *
-   * @param cinecaCarrieraClient client for Cineca libretto REST calls
-   * @param syncStateRepository  repository for deduplication state
-   * @param userRepository       repository for OmuUser lookup
-   * @param kafkaEventPublisher  publisher for Kafka integration events
+   * @param careerClient        client for Cineca transcript REST calls
+   * @param syncStateRepository repository for deduplication state
+   * @param userRepository      repository for OmuUser lookup
+   * @param kafkaEventPublisher publisher for Kafka integration events
    */
   public CinecaSyncService(
-      CinecaCarrieraClient cinecaCarrieraClient,
+      CinecaCareerClient careerClient,
       CinecaSyncStateRepository syncStateRepository,
       OmuUserRepository userRepository,
       KafkaEventPublisher kafkaEventPublisher) {
-    this.cinecaCarrieraClient = cinecaCarrieraClient;
+    this.careerClient = careerClient;
     this.syncStateRepository = syncStateRepository;
     this.userRepository = userRepository;
     this.kafkaEventPublisher = kafkaEventPublisher;
@@ -85,9 +92,8 @@ public class CinecaSyncService {
   /**
    * Triggers an asynchronous Cineca sync for a student after login.
    *
-   * <p>This method is executed in a separate thread (via {@code @Async})
-   * so it does not block the login response. The student's libretto is fetched from Cineca and
-   * compared against the local sync state. New facts are published as Kafka events and recorded.
+   * <p>Fetches the student's transcript from Cineca and compares it against
+   * the local sync state. New facts are published as Kafka events and recorded.
    *
    * <p>Publishing order per course edition:
    * <ol>
@@ -96,11 +102,12 @@ public class CinecaSyncService {
    *   <li>{@code teaching-assignment.discovered} — professor added to channel</li>
    * </ol>
    *
-   * @param omuUserId    the OhMyU user UUID string
-   * @param universityId the university identifier (e.g. "UNIMOL")
-   * @param cinecaJwt    the Cineca Bearer JWT for this user
-   * @param matId        the student's Cineca matricola ID
-   * @param academicYear the current academic year (e.g. "2026")
+   * @param omuUserId     the OhMyU user UUID string
+   * @param universityId  the university identifier (e.g. "UNIMOL")
+   * @param cinecaJwt     the Cineca Bearer JWT for this user
+   * @param matId         the student's Cineca matricola ID
+   * @param cinecaBaseUrl base URL of the Cineca ESSE3 API
+   * @param academicYear  the current academic year (e.g. "2026")
    */
   @Async
   @Transactional
@@ -124,7 +131,7 @@ public class CinecaSyncService {
     }
 
     try {
-      syncLibretto(user, universityId, cinecaJwt, matId, cinecaBaseUrl, academicYear);
+      syncTranscript(user, universityId, cinecaJwt, matId, cinecaBaseUrl, academicYear);
       syncCampusAssignment(user, universityId);
     } catch (Exception e) {
       log.error("CinecaSyncService: sync failed for user={} university={}: {}",
@@ -133,7 +140,7 @@ public class CinecaSyncService {
   }
 
   /**
-   * Fetches the student's libretto from Cineca and publishes events for newly discovered course
+   * Fetches the student's transcript from Cineca and publishes events for newly discovered course
    * editions, enrollments, and teaching assignments.
    *
    * @param user          the OhMyU user entity
@@ -143,7 +150,7 @@ public class CinecaSyncService {
    * @param cinecaBaseUrl base URL of the Cineca ESSE3 API
    * @param academicYear  the current academic year string (e.g. "2026")
    */
-  private void syncLibretto(
+  private void syncTranscript(
       OmuUser user,
       String universityId,
       String cinecaJwt,
@@ -151,37 +158,36 @@ public class CinecaSyncService {
       String cinecaBaseUrl,
       String academicYear) {
 
-    List<CinecaRigaLibretto> righe =
-        cinecaCarrieraClient.getRigheLibretto(cinecaBaseUrl, cinecaJwt, matId);
+    List<CinecaTranscriptRow> rows = careerClient.getTranscript(cinecaBaseUrl, cinecaJwt, matId);
 
-    if (righe.isEmpty()) {
-      log.debug("CinecaSyncService: empty libretto for user={}", user.getId());
+    if (rows.isEmpty()) {
+      log.debug("CinecaSyncService: empty transcript for user={}", user.getId());
       return;
     }
 
-    for (CinecaRigaLibretto riga : righe) {
-      if (riga.getAdsceId() == null) {
+    for (CinecaTranscriptRow row : rows) {
+      if (row.getAdsceId() == null) {
         continue;
       }
 
-      String semester = (riga.getAnnoCorso() != null && riga.getAnnoCorso() % 2 == 0) ? "2" : "1";
+      String semester = (row.getAnnoCorso() != null && row.getAnnoCorso() % 2 == 0) ? "2" : "1";
 
       String externalChannelId = buildExternalChannelId(
-          riga.getAdCod(), universityId, academicYear, semester);
+          row.getAdCod(), universityId, academicYear, semester);
 
-      publishIfNew(user, universityId, riga.getAdsceId(), EventType.COURSE_EDITION,
+      publishIfNew(user, universityId, row.getAdsceId(), EventType.COURSE_EDITION,
           externalChannelId, () ->
               kafkaEventPublisher.publishCourseEditionDiscovered(
                   new CourseEditionDiscoveredEvent(
                       externalChannelId,
-                      buildChannelName(riga.getAdDes(), universityId, academicYear, semester),
-                      riga.getAdsceId().toString(),
+                      buildChannelName(row.getAdDes(), universityId, academicYear, semester),
+                      row.getAdsceId().toString(),
                       academicYear,
                       semester
                   )
               ));
 
-      publishIfNew(user, universityId, riga.getAdsceId(), EventType.ENROLLMENT,
+      publishIfNew(user, universityId, row.getAdsceId(), EventType.ENROLLMENT,
           null, () ->
               kafkaEventPublisher.publishEnrollmentDiscovered(
                   new EnrollmentDiscoveredEvent(
@@ -190,8 +196,8 @@ public class CinecaSyncService {
                   )
               ));
 
-      if (riga.getEsito() == null && isDocenteTitolare(riga)) {
-        publishIfNew(user, universityId, riga.getAdsceId(), EventType.TEACHING_ASSIGNMENT,
+      if (row.getEsito() == null && isDocenteTitolare(row)) {
+        publishIfNew(user, universityId, row.getAdsceId(), EventType.TEACHING_ASSIGNMENT,
             null, () ->
                 kafkaEventPublisher.publishTeachingAssignmentDiscovered(
                     new TeachingAssignmentDiscoveredEvent(
@@ -202,16 +208,15 @@ public class CinecaSyncService {
       }
     }
 
-    log.info("CinecaSyncService: libretto sync completed for user={} university={} rows={}",
-        user.getId(), universityId.replaceAll("[\r\n]", ""), righe.size());
+    log.info("CinecaSyncService: transcript sync completed for user={} university={} rows={}",
+        user.getId(), universityId.replaceAll("[\r\n]", ""), rows.size());
   }
 
   /**
    * Publishes a campus assignment event if not already notified.
    *
-   * <p>Uses {@code universityId} as a proxy for {@code campusId} since
-   * Cineca does not expose explicit campus identifiers in the student login response for
-   * single-campus universities (e.g. UNIMOL).
+   * <p>Uses {@code universityId} as a proxy for {@code campusId} since Cineca does not
+   * expose explicit campus identifiers for single-campus universities (e.g. UNIMOL).
    *
    * @param user         the OhMyU user entity
    * @param universityId the university identifier (used as campusId proxy)
@@ -272,18 +277,16 @@ public class CinecaSyncService {
   }
 
   /**
-   * Checks if a libretto row corresponds to a course where this user is also the titular
-   * professor.
+   * Checks if a transcript row indicates a titular professor assignment.
    *
-   * <p>Note: this is a best-effort check based on available libretto data.
-   * A more accurate check would require a dedicated Cineca docenti endpoint, which requires a
-   * UTENTE_TECNICO profile not currently available.
+   * <p>Note: best-effort check based on available transcript data.
+   * A more accurate check would require the Cineca docenti endpoint (UTENTE_TECNICO only).
    *
-   * @param riga the libretto row to evaluate
+   * @param row the transcript row to evaluate
    * @return {@code true} if the row indicates a titular professor assignment
    */
-  private boolean isDocenteTitolare(CinecaRigaLibretto riga) {
-    // @TODO
+  private boolean isDocenteTitolare(CinecaTranscriptRow row) {
+    // @TODO: to check titolareFlg when Cineca exposes it for STUDENTE role
     return false;
   }
 
@@ -291,7 +294,7 @@ public class CinecaSyncService {
    * Builds a deterministic external channel ID from course and context identifiers.
    *
    * <p>Format: {@code {course-slug}-{university-slug}-{year}-{semester}}
-   * Example: {@code analisi-i-unimol-2026-1}
+   * Example: {@code inf0001-unimol-2026-1}
    *
    * @param adCod        Cineca course code (used as slug base)
    * @param universityId university identifier
@@ -304,7 +307,6 @@ public class CinecaSyncService {
       String universityId,
       String academicYear,
       String semester) {
-
     String courseSlug = toSlug(adCod != null ? adCod : "unknown");
     String uniSlug = toSlug(universityId);
     return courseSlug + "-" + uniSlug + "-" + academicYear + "-" + semester;
@@ -327,7 +329,6 @@ public class CinecaSyncService {
       String universityId,
       String academicYear,
       String semester) {
-
     String desc = adDes != null ? adDes : "Corso";
     return desc + " — " + universityId.toUpperCase(Locale.ROOT)
         + " — " + academicYear + "/" + semester;

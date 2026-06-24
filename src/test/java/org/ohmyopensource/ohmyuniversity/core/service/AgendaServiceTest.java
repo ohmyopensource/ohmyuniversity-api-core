@@ -31,19 +31,19 @@ import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityEventR
 import org.ohmyopensource.ohmyuniversity.core.dto.calendar.CalendarEventRequest;
 import org.ohmyopensource.ohmyuniversity.core.dto.calendar.CalendarEventResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.calendar.UniversityEventResponse;
-import org.ohmyopensource.ohmyuniversity.core.service.CalendarService.EventAlreadyImportedException;
-import org.ohmyopensource.ohmyuniversity.core.service.CalendarService.EventNotFoundException;
+import org.ohmyopensource.ohmyuniversity.core.service.AgendaService.EventAlreadyImportedException;
+import org.ohmyopensource.ohmyuniversity.core.service.AgendaService.EventNotFoundException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
- * Unit tests for {@link CalendarService}.
+ * Unit tests for {@link AgendaService}.
  *
  * <p>All repositories are replaced by Mockito mocks so that no database or Spring context is
  * required. Each test group covers a single public method of the service, verifying both the happy
  * path and the relevant exception paths.
  */
 @ExtendWith(MockitoExtension.class)
-class CalendarServiceTest {
+class AgendaServiceTest {
 
   @Mock
   private CalendarEventRepository eventRepository;
@@ -58,7 +58,7 @@ class CalendarServiceTest {
   private OmuUserRepository userRepository;
 
   @InjectMocks
-  private CalendarService calendarService;
+  private AgendaService agendaService;
 
   private OmuPrincipal principal;
   private UUID userId;
@@ -77,7 +77,7 @@ class CalendarServiceTest {
         "UNIMOL",
         89486L,
         106279L,
-        "178026");
+        "178026", true);
     user = new OmuUser();
   }
 
@@ -114,7 +114,7 @@ class CalendarServiceTest {
   }
 
   /**
-   * Verifies {@link CalendarService#getEvents} covering retrieval without filters and with date
+   * Verifies {@link AgendaService#getEvents} covering retrieval without filters and with date
    * range filters.
    */
   @Nested
@@ -133,7 +133,7 @@ class CalendarServiceTest {
       when(eventRepository.findByUserIdOrderByStartDateAsc(userId))
           .thenReturn(List.of(event));
 
-      List<CalendarEventResponse> result = calendarService.getEvents(principal, null, null);
+      List<CalendarEventResponse> result = agendaService.getEvents(principal, null, null);
 
       assertThat(result).hasSize(1);
       assertThat(result.get(0).getTitle()).isEqualTo("Esame Sistemi");
@@ -152,7 +152,7 @@ class CalendarServiceTest {
       when(eventRepository.findByUserIdAndDateRange(any(), any(), any()))
           .thenReturn(List.of(event));
 
-      List<CalendarEventResponse> result = calendarService.getEvents(
+      List<CalendarEventResponse> result = agendaService.getEvents(
           principal, "2026-07-01T00:00:00Z", "2026-07-31T23:59:59Z");
 
       assertThat(result).hasSize(1);
@@ -160,7 +160,7 @@ class CalendarServiceTest {
     }
 
     /**
-     * Verifies that when the repository returns an empty list, {@link CalendarService#getEvents}
+     * Verifies that when the repository returns an empty list, {@link AgendaService#getEvents}
      * returns an empty list without throwing.
      */
     @Test
@@ -168,14 +168,14 @@ class CalendarServiceTest {
     void returnsEmptyList() {
       when(eventRepository.findByUserIdOrderByStartDateAsc(userId)).thenReturn(List.of());
 
-      List<CalendarEventResponse> result = calendarService.getEvents(principal, null, null);
+      List<CalendarEventResponse> result = agendaService.getEvents(principal, null, null);
 
       assertThat(result).isEmpty();
     }
   }
 
   /**
-   * Verifies {@link CalendarService#createEvent} covering successful creation and the default type
+   * Verifies {@link AgendaService#createEvent} covering successful creation and the default type
    * fallback.
    */
   @Nested
@@ -183,7 +183,7 @@ class CalendarServiceTest {
   class CreateEvent {
 
     /**
-     * Verifies that {@link CalendarService#createEvent} resolves the user, maps the request to a
+     * Verifies that {@link AgendaService#createEvent} resolves the user, maps the request to a
      * {@link CalendarEvent} entity, persists it via the repository, and returns a correctly
      * populated {@link CalendarEventResponse}.
      */
@@ -194,7 +194,7 @@ class CalendarServiceTest {
       CalendarEvent saved = sampleEvent();
       when(eventRepository.save(any())).thenReturn(saved);
 
-      CalendarEventResponse result = calendarService.createEvent(principal, sampleRequest());
+      CalendarEventResponse result = agendaService.createEvent(principal, sampleRequest());
 
       assertThat(result.getTitle()).isEqualTo("Esame Sistemi");
       assertThat(result.getType()).isEqualTo(CalendarEventType.EXAM);
@@ -217,34 +217,34 @@ class CalendarServiceTest {
       request.setTitle("Evento generico");
       request.setStartDate("2026-07-15T09:00:00Z");
 
-      CalendarEventResponse result = calendarService.createEvent(principal, request);
+      CalendarEventResponse result = agendaService.createEvent(principal, request);
 
       assertThat(result.getType()).isEqualTo(CalendarEventType.PERSONAL);
     }
 
     /**
      * Verifies that when the authenticated user is not found in the database,
-     * {@link CalendarService#createEvent} throws {@link IllegalStateException}.
+     * {@link AgendaService#createEvent} throws {@link IllegalStateException}.
      */
     @Test
     @DisplayName("throws IllegalStateException when user not found")
     void throwsWhenUserNotFound() {
       when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-      assertThatThrownBy(() -> calendarService.createEvent(principal, sampleRequest()))
+      assertThatThrownBy(() -> agendaService.createEvent(principal, sampleRequest()))
           .isInstanceOf(IllegalStateException.class);
     }
   }
 
   /**
-   * Verifies {@link CalendarService#updateEvent} covering successful update and event not found.
+   * Verifies {@link AgendaService#updateEvent} covering successful update and event not found.
    */
   @Nested
   @DisplayName("updateEvent")
   class UpdateEvent {
 
     /**
-     * Verifies that {@link CalendarService#updateEvent} loads the event by id and user id, applies
+     * Verifies that {@link AgendaService#updateEvent} loads the event by id and user id, applies
      * the request fields, persists the updated entity, and returns a correctly populated
      * {@link CalendarEventResponse}.
      */
@@ -260,7 +260,7 @@ class CalendarServiceTest {
       CalendarEventRequest request = sampleRequest();
       request.setTitle("Esame Aggiornato");
 
-      CalendarEventResponse result = calendarService.updateEvent(principal, eventId, request);
+      CalendarEventResponse result = agendaService.updateEvent(principal, eventId, request);
 
       assertThat(result.getTitle()).isEqualTo("Esame Aggiornato");
       verify(eventRepository).save(existing);
@@ -268,7 +268,7 @@ class CalendarServiceTest {
 
     /**
      * Verifies that when the event is not found or belongs to another user,
-     * {@link CalendarService#updateEvent} throws {@link EventNotFoundException}.
+     * {@link AgendaService#updateEvent} throws {@link EventNotFoundException}.
      */
     @Test
     @DisplayName("throws EventNotFoundException when event not found")
@@ -276,20 +276,20 @@ class CalendarServiceTest {
       UUID eventId = UUID.randomUUID();
       when(eventRepository.findByIdAndUserId(eventId, userId)).thenReturn(Optional.empty());
 
-      assertThatThrownBy(() -> calendarService.updateEvent(principal, eventId, sampleRequest()))
+      assertThatThrownBy(() -> agendaService.updateEvent(principal, eventId, sampleRequest()))
           .isInstanceOf(EventNotFoundException.class);
     }
   }
 
   /**
-   * Verifies {@link CalendarService#deleteEvent} covering successful deletion and event not found.
+   * Verifies {@link AgendaService#deleteEvent} covering successful deletion and event not found.
    */
   @Nested
   @DisplayName("deleteEvent")
   class DeleteEvent {
 
     /**
-     * Verifies that {@link CalendarService#deleteEvent} loads the event by id and user id and
+     * Verifies that {@link AgendaService#deleteEvent} loads the event by id and user id and
      * delegates deletion to {@link CalendarEventRepository#delete}.
      */
     @Test
@@ -300,14 +300,14 @@ class CalendarServiceTest {
       when(eventRepository.findByIdAndUserId(eventId, userId))
           .thenReturn(Optional.of(existing));
 
-      calendarService.deleteEvent(principal, eventId);
+      agendaService.deleteEvent(principal, eventId);
 
       verify(eventRepository).delete(existing);
     }
 
     /**
      * Verifies that when the event is not found or belongs to another user,
-     * {@link CalendarService#deleteEvent} throws {@link EventNotFoundException}.
+     * {@link AgendaService#deleteEvent} throws {@link EventNotFoundException}.
      */
     @Test
     @DisplayName("throws EventNotFoundException when event not found")
@@ -315,13 +315,13 @@ class CalendarServiceTest {
       UUID eventId = UUID.randomUUID();
       when(eventRepository.findByIdAndUserId(eventId, userId)).thenReturn(Optional.empty());
 
-      assertThatThrownBy(() -> calendarService.deleteEvent(principal, eventId))
+      assertThatThrownBy(() -> agendaService.deleteEvent(principal, eventId))
           .isInstanceOf(EventNotFoundException.class);
     }
   }
 
   /**
-   * Verifies {@link CalendarService#getUniversityEvents} covering retrieval with and without
+   * Verifies {@link AgendaService#getUniversityEvents} covering retrieval with and without
    * already-imported events.
    */
   @Nested
@@ -329,7 +329,7 @@ class CalendarServiceTest {
   class GetUniversityEvents {
 
     /**
-     * Verifies that {@link CalendarService#getUniversityEvents} returns university events with the
+     * Verifies that {@link AgendaService#getUniversityEvents} returns university events with the
      * {@code imported} flag set to {@code false} when the student has not yet imported any of
      * them.
      */
@@ -341,7 +341,7 @@ class CalendarServiceTest {
           .thenReturn(List.of(event));
       when(importRepository.findByUserId(userId)).thenReturn(List.of());
 
-      List<UniversityEventResponse> result = calendarService.getUniversityEvents(principal);
+      List<UniversityEventResponse> result = agendaService.getUniversityEvents(principal);
 
       assertThat(result).hasSize(1);
       assertThat(result.get(0).getTitle()).isEqualTo("Inaugurazione Anno Accademico");
@@ -349,7 +349,7 @@ class CalendarServiceTest {
     }
 
     /**
-     * Verifies that {@link CalendarService#getUniversityEvents} sets the {@code imported} flag to
+     * Verifies that {@link AgendaService#getUniversityEvents} sets the {@code imported} flag to
      * {@code true} for events the student has already imported into their personal calendar.
      */
     @Test
@@ -364,7 +364,7 @@ class CalendarServiceTest {
           .thenReturn(List.of(event));
       when(importRepository.findByUserId(userId)).thenReturn(List.of(imp));
 
-      List<UniversityEventResponse> result = calendarService.getUniversityEvents(principal);
+      List<UniversityEventResponse> result = agendaService.getUniversityEvents(principal);
 
       assertThat(result).hasSize(1);
       assertThat(result.get(0).isImported()).isTrue();
@@ -372,7 +372,7 @@ class CalendarServiceTest {
   }
 
   /**
-   * Verifies {@link CalendarService#importUniversityEvent} covering successful import, event not
+   * Verifies {@link AgendaService#importUniversityEvent} covering successful import, event not
    * found, and duplicate import.
    */
   @Nested
@@ -380,7 +380,7 @@ class CalendarServiceTest {
   class ImportUniversityEvent {
 
     /**
-     * Verifies that {@link CalendarService#importUniversityEvent} resolves the user and university
+     * Verifies that {@link AgendaService#importUniversityEvent} resolves the user and university
      * event, creates a {@link CalendarEventImport} record, and persists it via the repository.
      */
     @Test
@@ -394,14 +394,14 @@ class CalendarServiceTest {
       when(importRepository.existsByUserIdAndUniversityEventId(userId, eventId))
           .thenReturn(false);
 
-      calendarService.importUniversityEvent(principal, eventId);
+      agendaService.importUniversityEvent(principal, eventId);
 
       verify(importRepository).save(any());
     }
 
     /**
      * Verifies that when the university event is not found,
-     * {@link CalendarService#importUniversityEvent} throws {@link EventNotFoundException}.
+     * {@link AgendaService#importUniversityEvent} throws {@link EventNotFoundException}.
      */
     @Test
     @DisplayName("throws EventNotFoundException when university event not found")
@@ -410,13 +410,13 @@ class CalendarServiceTest {
       when(userRepository.findById(userId)).thenReturn(Optional.of(user));
       when(universityEventRepository.findById(eventId)).thenReturn(Optional.empty());
 
-      assertThatThrownBy(() -> calendarService.importUniversityEvent(principal, eventId))
+      assertThatThrownBy(() -> agendaService.importUniversityEvent(principal, eventId))
           .isInstanceOf(EventNotFoundException.class);
     }
 
     /**
      * Verifies that when the student has already imported the university event,
-     * {@link CalendarService#importUniversityEvent} throws {@link EventAlreadyImportedException}.
+     * {@link AgendaService#importUniversityEvent} throws {@link EventAlreadyImportedException}.
      */
     @Test
     @DisplayName("throws EventAlreadyImportedException when already imported")
@@ -429,7 +429,7 @@ class CalendarServiceTest {
       when(importRepository.existsByUserIdAndUniversityEventId(userId, eventId))
           .thenReturn(true);
 
-      assertThatThrownBy(() -> calendarService.importUniversityEvent(principal, eventId))
+      assertThatThrownBy(() -> agendaService.importUniversityEvent(principal, eventId))
           .isInstanceOf(EventAlreadyImportedException.class);
     }
   }

@@ -31,9 +31,9 @@ import org.springframework.transaction.annotation.Transactional;
  * imported by the student into their personal calendar via {@link CalendarEventImport}.
  */
 @Service
-public class CalendarService {
+public class AgendaService {
 
-  private static final Logger log = LoggerFactory.getLogger(CalendarService.class);
+  private static final Logger log = LoggerFactory.getLogger(AgendaService.class);
 
   private final CalendarEventRepository eventRepository;
   private final UniversityEventRepository universityEventRepository;
@@ -50,7 +50,7 @@ public class CalendarService {
    * @param importRepository           repository for import bridge records
    * @param userRepository             repository for OhMyU user entities
    */
-  public CalendarService(
+  public AgendaService(
       CalendarEventRepository eventRepository,
       UniversityEventRepository universityEventRepository,
       CalendarEventImportRepository importRepository,
