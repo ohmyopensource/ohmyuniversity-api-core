@@ -18,8 +18,7 @@ import org.springframework.stereotype.Component;
  * on their TTL, ensuring alignment with Cineca session constraints and improving security.
  *
  * <p>This design enforces stateless authentication at the application level, while still
- * supporting
- * short-lived external sessions.
+ * supporting short-lived external sessions.
  */
 @Component
 public class CinecaSessionStore {
@@ -217,9 +216,9 @@ public class CinecaSessionStore {
    * @param matricola    student registration number
    */
   public void storeMatricola(String omuUserId, String universityId, String matricola) {
+    if (matricola == null) return;
     String key = String.format(KEY_CINECA_MATRICOLA, omuUserId, universityId);
-    String safeMatricola = matricola != null ? matricola.replaceAll("[\r\n]", "_") : null;
-    redis.opsForValue().set(key, safeMatricola, CINECA_CAREER_TTL);
+    redis.opsForValue().set(key, matricola.replaceAll("[\r\n]", "_"), CINECA_CAREER_TTL);
   }
 
   /**
