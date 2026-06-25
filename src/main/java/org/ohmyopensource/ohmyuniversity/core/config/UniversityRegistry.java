@@ -15,6 +15,9 @@ import org.springframework.stereotype.Component;
  * <p>Each university is identified by a short code (e.g. "UNIMOL") and maps to:
  * - human-readable name
  * - Cineca ESSE3 base API URL
+ * - Moodle URL
+ * - Library portal URL
+ * - ESSE3 student portal URL
  *
  * <p>This registry acts as the single source of truth for resolving external university endpoints.
  */
@@ -22,16 +25,8 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "omu")
 public class UniversityRegistry {
 
-  /**
-   * Internal map of configured universities indexed by uppercase identifier.
-   */
   private Map<String, UniversityConfig> universities = Map.of();
 
-  /**
-   * Injects university configuration map from application properties.
-   *
-   * @param universities map of university configurations
-   */
   public void setUniversities(Map<String, UniversityConfig> universities) {
     this.universities = universities;
   }
@@ -40,10 +35,6 @@ public class UniversityRegistry {
 
   /**
    * Resolves a university configuration by its identifier.
-   *
-   * <p>Lookup is case-insensitive and returns an empty result if:
-   * - universityId is null
-   * - university is not registered in configuration
    *
    * @param universityId university short code (e.g. UNIMOL)
    * @return optional university configuration
@@ -58,15 +49,17 @@ public class UniversityRegistry {
   /**
    * Immutable configuration model for a single university.
    *
-   * @param name       human-readable university name
-   * @param baseUrl    Cineca ESSE3 REST API base URL
-   * @param moodleUrl  URL of the university Moodle instance (WebView)
-   * @param libraryUrl URL of the university library portal (WebView)
+   * @param name            human-readable university name
+   * @param baseUrl         Cineca ESSE3 REST API base URL
+   * @param moodleUrl       URL of the university Moodle instance
+   * @param libraryUrl      URL of the university library portal
+   * @param esse3PortalUrl  URL of the ESSE3 student portal
    */
   public record UniversityConfig(
       String name,
       String baseUrl,
       String moodleUrl,
-      String libraryUrl) {
+      String libraryUrl,
+      String esse3PortalUrl) {
   }
 }

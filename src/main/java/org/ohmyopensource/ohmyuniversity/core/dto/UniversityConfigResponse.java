@@ -30,6 +30,8 @@ public class UniversityConfigResponse {
    */
   private String libraryUrl;
 
+  private String esse3PortalUrl;
+
   public String getUniversityId() { return universityId; }
   public void setUniversityId(String universityId) { this.universityId = universityId; }
 
@@ -41,4 +43,7 @@ public class UniversityConfigResponse {
 
   public String getLibraryUrl() { return libraryUrl; }
   public void setLibraryUrl(String libraryUrl) { this.libraryUrl = libraryUrl; }
+
+  public String getEsse3PortalUrl() { return esse3PortalUrl; }
+  public void setEsse3PortalUrl(String esse3PortalUrl) { this.esse3PortalUrl = esse3PortalUrl; }
 }

@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Exposes external university service URLs to authenticated clients.
  *
- * <p>Returns the WebView URLs needed by the frontend to embed university
- * services (Moodle, library) without leaving the application.
+ * <p>Returns the URLs needed by the frontend to open university
+ * services (Moodle, library, ESSE3 portal) in an external browser.
  * URLs are resolved from {@link UniversityRegistry} based on the
  * authenticated student's active university.
  */
@@ -43,12 +43,9 @@ public class ExternalServicesController {
   /**
    * Returns external service URLs for the authenticated student's university.
    *
-   * <p>The client uses the returned URLs to open embedded WebViews for
-   * Moodle and the library portal, avoiding external browser redirects.
-   *
-   * @param principal authenticated OhMyU principal injected by Spring Security
-   * @return 200 OK with {@link UniversityConfigResponse} containing Moodle and library URLs,
-   *         404 Not Found if the university is not registered in configuration
+   * @param principal authenticated OhMyU principal
+   * @return 200 OK with {@link UniversityConfigResponse},
+   *         404 Not Found if the university is not registered
    */
   @GetMapping("/external-services")
   public ResponseEntity<UniversityConfigResponse> getExternalServices(
@@ -61,6 +58,7 @@ public class ExternalServicesController {
           response.setName(config.name());
           response.setMoodleUrl(config.moodleUrl());
           response.setLibraryUrl(config.libraryUrl());
+          response.setEsse3PortalUrl(config.esse3PortalUrl());
           return ResponseEntity.ok(response);
         })
         .orElseGet(() -> {
