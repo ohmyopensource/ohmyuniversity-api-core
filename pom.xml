@@ -45,6 +45,10 @@
 			**/service/email/MicrosoftEmailProvider.java,
       **/cineca/esse3/**,
 		</sonar.coverage.exclusions>
+    <sonar.cpd.exclusions>
+      **/dto/**,
+      **/domain/entity/**
+    </sonar.cpd.exclusions>
 	</properties>
 
 <!--
