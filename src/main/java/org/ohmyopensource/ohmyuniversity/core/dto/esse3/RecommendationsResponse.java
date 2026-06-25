@@ -1,4 +1,4 @@
-package org.ohmyopensource.ohmyuniversity.core.dto;
+package org.ohmyopensource.ohmyuniversity.core.dto.esse3;
 
 import java.util.List;
 
@@ -9,7 +9,7 @@ import java.util.List;
  * sorted from most to least convenient to attempt based on a scoring algorithm
  * that considers year of course and ECTS weight.
  */
-public class SuggerimentiResponse {
+public class RecommendationsResponse {
 
   /** Ordered list of suggested exams, from most to least convenient. */
   private List<EsameSuggerito> esami;

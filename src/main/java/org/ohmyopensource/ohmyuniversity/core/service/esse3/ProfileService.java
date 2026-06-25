@@ -10,9 +10,9 @@ import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaProfileClient.C
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityConnectionRepository;
-import org.ohmyopensource.ohmyuniversity.core.dto.BadgeResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.CarrieraInfoResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.ProfiloResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BadgeResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.CareerInfoResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.PersonaResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -54,7 +54,7 @@ public class ProfileService extends AbstractEsse3Service {
    * @param principal authenticated OhMyU principal
    * @return full or partial profile response
    */
-  public ProfiloResponse getPersona(OmuPrincipal principal) {
+  public PersonaResponse getPersona(OmuPrincipal principal) {
     String jwt = resolveCinecaJwt(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
 
@@ -63,7 +63,7 @@ public class ProfileService extends AbstractEsse3Service {
     if (persId == null) {
       log.warn("ProfileService: persId not in session, returning minimal profile for user={}",
           principal.omuUserId());
-      ProfiloResponse r = new ProfiloResponse();
+      PersonaResponse r = new PersonaResponse();
       r.setCodFis(principal.codiceFiscale());
       r.setNome(sessionStore.getUserNome(principal.omuUserId()).orElse(""));
       r.setCognome(sessionStore.getUserCognome(principal.omuUserId()).orElse(""));
@@ -87,7 +87,7 @@ public class ProfileService extends AbstractEsse3Service {
    * @param principal authenticated OhMyU principal
    * @return career info response
    */
-  public CarrieraInfoResponse getInfo(OmuPrincipal principal) {
+  public CareerInfoResponse getInfo(OmuPrincipal principal) {
     String jwt = resolveCinecaJwt(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
 
@@ -137,8 +137,8 @@ public class ProfileService extends AbstractEsse3Service {
 
   // ============ Mappers ============
 
-  private ProfiloResponse toProfiloResponse(CinecaPersona p) {
-    ProfiloResponse r = new ProfiloResponse();
+  private PersonaResponse toProfiloResponse(CinecaPersona p) {
+    PersonaResponse r = new PersonaResponse();
     r.setPersId(p.getPersId());
     r.setNome(p.getNome());
     r.setCognome(p.getCognome());
@@ -196,8 +196,8 @@ public class ProfileService extends AbstractEsse3Service {
     return r;
   }
 
-  private CarrieraInfoResponse toCarrieraInfoResponse(CinecaCarriera c) {
-    CarrieraInfoResponse r = new CarrieraInfoResponse();
+  private CareerInfoResponse toCarrieraInfoResponse(CinecaCarriera c) {
+    CareerInfoResponse r = new CareerInfoResponse();
     r.setStuId(c.getStuId());
     r.setMatId(c.getMatId());
     r.setMatricola(c.getMatricola());

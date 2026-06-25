@@ -1,4 +1,4 @@
-package org.ohmyopensource.ohmyuniversity.core.dto;
+package org.ohmyopensource.ohmyuniversity.core.dto.esse3;
 
 import java.util.List;
 
@@ -6,7 +6,7 @@ import java.util.List;
  * Response DTO for GET /api/v1/carriera/prenotazioni-libretto. Contains current exam bookings
  * without requiring Cineca password.
  */
-public class PrenotazioniLibrettoResponse {
+public class BookingsResponse {
 
   private List<IscrizioneAppello> prenotazioni;
 

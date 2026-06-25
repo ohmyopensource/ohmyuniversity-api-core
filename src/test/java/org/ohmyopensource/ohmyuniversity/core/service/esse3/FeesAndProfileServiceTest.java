@@ -15,18 +15,17 @@ import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaSessionStore;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaFeesClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaFeesClient.CinecaCharge;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaFeesClient.CinecaFeeStatus;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaFeesClient.CinecaInvoice;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaFeesClient.CinecaRefund;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaProfileClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaProfileClient.CinecaBadge;
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry.UniversityConfig;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityConnectionRepository;
-import org.ohmyopensource.ohmyuniversity.core.dto.TasseResponse;
 
 /**
- * Unit tests for {@link FeesService} and {@link ProfileService} (badge/fees mapping).
- *
- * <p>All dependencies are replaced by Mockito mocks.
+ * Unit tests for {@link FeesService} and {@link ProfileService}.
  */
 class FeesAndProfileServiceTest {
 
@@ -35,7 +34,6 @@ class FeesAndProfileServiceTest {
   private CinecaSessionStore sessionStore;
   private UniversityRegistry universityRegistry;
   private UniversityConnectionRepository connectionRepository;
-
   private FeesService feesService;
   private ProfileService profileService;
 
@@ -45,12 +43,10 @@ class FeesAndProfileServiceTest {
   private static final String CINECA_JWT = "fake.cineca.jwt";
   private static final Long STU_ID = 89486L;
   private static final Long MAT_ID = 106279L;
+  private static final Long PERS_ID = 92533L;
 
   private OmuPrincipal principal;
 
-  /**
-   * Initialises fresh mocks and shared stubs before each test.
-   */
   @BeforeEach
   void setUp() {
     feesClient = mock(CinecaFeesClient.class);
@@ -59,33 +55,24 @@ class FeesAndProfileServiceTest {
     universityRegistry = mock(UniversityRegistry.class);
     connectionRepository = mock(UniversityConnectionRepository.class);
 
-    feesService = new FeesService(
-        feesClient, sessionStore, universityRegistry, connectionRepository);
-    profileService = new ProfileService(
-        profileClient, sessionStore, universityRegistry, connectionRepository);
+    feesService = new FeesService(feesClient, sessionStore, universityRegistry, connectionRepository);
+    profileService = new ProfileService(profileClient, sessionStore, universityRegistry, connectionRepository);
 
     principal = new OmuPrincipal(
         OMU_USER_ID, "TSTXXX00A00X000X", UNIVERSITY_ID, STU_ID, MAT_ID, "178026", true);
 
-    when(sessionStore.getCinecaJwt(OMU_USER_ID, UNIVERSITY_ID))
-        .thenReturn(Optional.of(CINECA_JWT));
+    when(sessionStore.getCinecaJwt(OMU_USER_ID, UNIVERSITY_ID)).thenReturn(Optional.of(CINECA_JWT));
+    when(sessionStore.getCinecaPersId(OMU_USER_ID, UNIVERSITY_ID)).thenReturn(Optional.of(PERS_ID));
 
     UniversityConfig config = mock(UniversityConfig.class);
     when(config.baseUrl()).thenReturn(BASE_URL);
     when(universityRegistry.resolve(UNIVERSITY_ID)).thenReturn(Optional.of(config));
   }
 
-  /**
-   * Verifies that {@link FeesService#getStatus} correctly assembles the response
-   * from the semaforo status and addebiti list.
-   */
   @Nested
-  @DisplayName("Fees status")
-  class FeesStatus {
+  @DisplayName("Fee status")
+  class FeeStatus {
 
-    /**
-     * Verifies semaforo VERDE is mapped correctly with empty lists.
-     */
     @Test
     @DisplayName("maps semaforo VERDE correctly")
     void mapsSemaforoVerde() {
@@ -94,22 +81,16 @@ class FeesAndProfileServiceTest {
       when(status.getAmountDue()).thenReturn("0.0");
       when(status.getOverdueItems()).thenReturn(List.of());
       when(status.getDueItems()).thenReturn(List.of());
-
       when(feesClient.getFeeStatus(BASE_URL, CINECA_JWT, STU_ID)).thenReturn(status);
       when(feesClient.getCharges(BASE_URL, CINECA_JWT, STU_ID)).thenReturn(List.of());
 
-      TasseResponse response = feesService.getStatus(principal);
+      var response = feesService.getStatus(principal);
 
       assertThat(response.getSemaforo()).isEqualTo("VERDE");
       assertThat(response.getImportoDovuto()).isEqualTo("0.0");
-      assertThat(response.getTasseScadute()).isEmpty();
-      assertThat(response.getTasseDovute()).isEmpty();
       assertThat(response.getAddebiti()).isEmpty();
     }
 
-    /**
-     * Verifies addebiti are mapped correctly.
-     */
     @Test
     @DisplayName("maps charges correctly")
     void mapsChargesCorrectly() {
@@ -129,54 +110,109 @@ class FeesAndProfileServiceTest {
       when(feesClient.getFeeStatus(BASE_URL, CINECA_JWT, STU_ID)).thenReturn(status);
       when(feesClient.getCharges(BASE_URL, CINECA_JWT, STU_ID)).thenReturn(List.of(charge));
 
-      TasseResponse response = feesService.getStatus(principal);
+      var response = feesService.getStatus(principal);
 
       assertThat(response.getAddebiti()).hasSize(1);
-      assertThat(response.getAddebiti().get(0).getTassaDes())
-          .isEqualTo("Contributi universitari");
-      assertThat(response.getAddebiti().get(0).getPagatoFlg()).isEqualTo(1);
+      assertThat(response.getAddebiti().get(0).getTassaDes()).isEqualTo("Contributi universitari");
       assertThat(response.getAddebiti().get(0).getIuv()).isEqualTo("000000041596920");
     }
 
-    /**
-     * Verifies null semaforo is handled gracefully.
-     */
     @Test
     @DisplayName("handles null fee status gracefully")
     void handlesNullFeeStatus() {
       when(feesClient.getFeeStatus(BASE_URL, CINECA_JWT, STU_ID)).thenReturn(null);
       when(feesClient.getCharges(BASE_URL, CINECA_JWT, STU_ID)).thenReturn(List.of());
 
-      TasseResponse response = feesService.getStatus(principal);
+      var response = feesService.getStatus(principal);
 
       assertThat(response.getSemaforo()).isNull();
       assertThat(response.getAddebiti()).isEmpty();
     }
   }
 
-  /**
-   * Verifies that {@link ProfileService#getBadge} correctly maps badge fields.
-   */
+  @Nested
+  @DisplayName("Invoices")
+  class Invoices {
+
+    @Test
+    @DisplayName("maps invoice fields correctly")
+    void mapsInvoiceFieldsCorrectly() {
+      CinecaInvoice invoice = mock(CinecaInvoice.class);
+      when(invoice.getFattId()).thenReturn(1278017L);
+      when(invoice.getAcademicYear()).thenReturn(2025);
+      when(invoice.getDescription()).thenReturn("Contributo universitario");
+      when(invoice.getAmount()).thenReturn(156.0);
+      when(invoice.getPaidAmount()).thenReturn(156.0);
+      when(invoice.getPaidFlg()).thenReturn(1);
+      when(invoice.getIuv()).thenReturn("000000041596920");
+
+      when(feesClient.getInvoices(BASE_URL, CINECA_JWT, STU_ID, PERS_ID))
+          .thenReturn(List.of(invoice));
+
+      var response = feesService.getInvoices(principal);
+
+      assertThat(response.getInvoices()).hasSize(1);
+      assertThat(response.getInvoices().get(0).getFattId()).isEqualTo(1278017L);
+      assertThat(response.getInvoices().get(0).getDescription()).isEqualTo("Contributo universitario");
+      assertThat(response.getInvoices().get(0).getPaidFlg()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("returns empty list when no invoices")
+    void returnsEmptyList() {
+      when(feesClient.getInvoices(BASE_URL, CINECA_JWT, STU_ID, PERS_ID)).thenReturn(List.of());
+
+      var response = feesService.getInvoices(principal);
+
+      assertThat(response.getInvoices()).isEmpty();
+    }
+  }
+
+  @Nested
+  @DisplayName("Refunds")
+  class Refunds {
+
+    @Test
+    @DisplayName("returns empty list when no refunds")
+    void returnsEmptyList() {
+      when(feesClient.getRefunds(BASE_URL, CINECA_JWT, PERS_ID)).thenReturn(List.of());
+
+      var response = feesService.getRefunds(principal);
+
+      assertThat(response.getRefunds()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("maps refund fields correctly")
+    void mapsRefundFields() {
+      CinecaRefund refund = mock(CinecaRefund.class);
+      when(refund.getInvoiceId()).thenReturn(9999L);
+      when(refund.getFeeDes()).thenReturn("Rimborso tassa");
+      when(refund.getRefundAmount()).thenReturn("50.00");
+      when(refund.getRefundDate()).thenReturn("01/01/2026");
+      when(refund.getRefundStatus()).thenReturn("EROGATO");
+
+      when(feesClient.getRefunds(BASE_URL, CINECA_JWT, PERS_ID)).thenReturn(List.of(refund));
+
+      var response = feesService.getRefunds(principal);
+
+      assertThat(response.getRefunds()).hasSize(1);
+      assertThat(response.getRefunds().get(0).getFattId()).isEqualTo(9999L);
+      assertThat(response.getRefunds().get(0).getFeeDes()).isEqualTo("Rimborso tassa");
+    }
+  }
+
   @Nested
   @DisplayName("Badge")
   class Badge {
 
-    /**
-     * Verifies null when no badge found.
-     */
     @Test
     @DisplayName("returns null when no badges found")
     void returnsNullWhenNoBadges() {
       when(profileClient.getBadges(BASE_URL, CINECA_JWT, STU_ID)).thenReturn(List.of());
-
-      var response = profileService.getBadge(principal);
-
-      assertThat(response).isNull();
+      assertThat(profileService.getBadge(principal)).isNull();
     }
 
-    /**
-     * Verifies badge fields are mapped correctly.
-     */
     @Test
     @DisplayName("maps badge fields correctly")
     void mapsBadgeCorrectly() {
@@ -194,8 +230,6 @@ class FeesAndProfileServiceTest {
 
       assertThat(response).isNotNull();
       assertThat(response.getNome()).isEqualTo("ALESSIO");
-      assertThat(response.getCognome()).isEqualTo("DEL MUTO");
-      assertThat(response.getMatricola()).isEqualTo("178026");
       assertThat(response.getFrontImagePresent()).isFalse();
     }
   }

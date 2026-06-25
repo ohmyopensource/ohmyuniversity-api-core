@@ -1,44 +1,37 @@
-package org.ohmyopensource.ohmyuniversity.core.dto.calendar;
+package org.ohmyopensource.ohmyuniversity.core.dto.agenda;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.CalendarEventType;
 
 /**
- * Request DTO for {@code POST} and {@code PUT} {@code /api/v1/calendar/events}.
+ * Response DTO for personal calendar event endpoints.
  *
- * <p>{@code title} and {@code startDate} are required. All other fields are optional and default
- * to {@code null} unless specified. {@code type} defaults to {@link CalendarEventType#PERSONAL}
- * when omitted.
+ * <p>Returned by {@code GET}, {@code POST}, and {@code PUT} {@code /api/v1/calendar/events}.
+ * Date and time fields are serialised as ISO-8601 strings (UTC).
  */
-public class CalendarEventRequest {
+public class AgendaEventResponse {
 
-  @NotBlank
+  private String id;
   private String title;
-
   private String description;
-
-  /** Event start timestamp in ISO-8601 format (e.g. {@code 2026-07-15T09:00:00Z}). Required. */
-  @NotNull
   private String startDate;
-
   private String endDate;
-
-  /** Whether the event spans an entire day. Defaults to {@code false}. */
-  private boolean allDay = false;
-
-  /** Event classification. Defaults to {@link CalendarEventType#PERSONAL} when omitted. */
-  private CalendarEventType type = CalendarEventType.PERSONAL;
-
+  private boolean allDay;
+  private CalendarEventType type;
   private String color;
-
   private String url;
-
   private String notes;
-
   private String location;
+  private String createdAt;
+  private String updatedAt;
 
   // ============ Getters | Setters | Bool ============
+
+  public String getId() {
+    return id;
+  }
+  public void setId(String id) {
+    this.id = id;
+  }
 
   public String getTitle() {
     return title;
@@ -105,4 +98,18 @@ public class CalendarEventRequest {
 
   public String getLocation() { return location; }
   public void setLocation(String location) { this.location = location; }
+
+  public String getCreatedAt() {
+    return createdAt;
+  }
+  public void setCreatedAt(String createdAt) {
+    this.createdAt = createdAt;
+  }
+
+  public String getUpdatedAt() {
+    return updatedAt;
+  }
+  public void setUpdatedAt(String updatedAt) {
+    this.updatedAt = updatedAt;
+  }
 }

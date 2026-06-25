@@ -17,7 +17,7 @@ import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaUnavaila
 import org.ohmyopensource.ohmyuniversity.core.config.JwtAuthenticationFilter;
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.controller.v1.esse3.FeesController;
-import org.ohmyopensource.ohmyuniversity.core.dto.TasseResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.FeeStatusResponse;
 import org.ohmyopensource.ohmyuniversity.core.service.esse3.FeesService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -85,7 +85,7 @@ class FeesControllerTest {
     @Test
     @DisplayName("returns 200 with semaforo VERDE")
     void returns200() throws Exception {
-      TasseResponse response = new TasseResponse();
+      FeeStatusResponse response = new FeeStatusResponse();
       response.setSemaforo("VERDE");
       response.setImportoDovuto("0.0");
       response.setTasseScadute(List.of());

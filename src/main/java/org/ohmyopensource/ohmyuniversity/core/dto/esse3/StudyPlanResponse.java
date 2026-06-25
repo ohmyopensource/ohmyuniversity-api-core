@@ -1,4 +1,4 @@
-package org.ohmyopensource.ohmyuniversity.core.dto;
+package org.ohmyopensource.ohmyuniversity.core.dto.esse3;
 
 import java.util.List;
 
@@ -10,7 +10,7 @@ import java.util.List;
  * <p>It contains the full list of academic activities (courses/exams) associated with a specific
  * degree path, including CFU, status, and whether the activity is mandatory or already completed.
  */
-public class PianoStudioResponse {
+public class StudyPlanResponse {
 
   private List<RigaPiano> righe;
 

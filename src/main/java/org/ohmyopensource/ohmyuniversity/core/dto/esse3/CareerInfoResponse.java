@@ -1,10 +1,10 @@
-package org.ohmyopensource.ohmyuniversity.core.dto;
+package org.ohmyopensource.ohmyuniversity.core.dto.esse3;
 
 /**
  * Response DTO for GET /api/v1/carriera/info.
  * Contains full career information from carriere-service-v1.
  */
-public class CarrieraInfoResponse {
+public class CareerInfoResponse {
   private Long stuId;
   private Long matId;
   private String matricola;

@@ -27,8 +27,8 @@ import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry.UniversityConfig;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityConnectionRepository;
-import org.ohmyopensource.ohmyuniversity.core.dto.LibrettoResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.MediaResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.TranscriptResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.GradesResponse;
 
 /**
  * Unit tests for {@link CareerService}.
@@ -127,7 +127,7 @@ class CareerServiceTest {
       CinecaTranscriptRow row = rowWith("S", 29.0, 0, "26/02/2024 00:00:00");
       when(careerClient.getTranscript(BASE_URL, CINECA_JWT, MAT_ID)).thenReturn(List.of(row));
 
-      LibrettoResponse response = service.getTranscript(principal);
+      TranscriptResponse response = service.getTranscript(principal);
 
       assertThat(response.getRighe()).hasSize(1);
       assertThat(response.getRighe().get(0).getVoto()).isEqualTo(29);
@@ -142,7 +142,7 @@ class CareerServiceTest {
       CinecaTranscriptRow row = rowWith("S", 30.0, 1, "23/01/2026 00:00:00");
       when(careerClient.getTranscript(BASE_URL, CINECA_JWT, MAT_ID)).thenReturn(List.of(row));
 
-      LibrettoResponse response = service.getTranscript(principal);
+      TranscriptResponse response = service.getTranscript(principal);
 
       assertThat(response.getRighe().get(0).getLode()).isTrue();
     }
@@ -156,7 +156,7 @@ class CareerServiceTest {
       CinecaTranscriptRow row = rowWith("S", 28.0, 0, "16/02/2026 00:00:00");
       when(careerClient.getTranscript(BASE_URL, CINECA_JWT, MAT_ID)).thenReturn(List.of(row));
 
-      LibrettoResponse response = service.getTranscript(principal);
+      TranscriptResponse response = service.getTranscript(principal);
 
       assertThat(response.getRighe().get(0).getLode()).isFalse();
     }
@@ -170,7 +170,7 @@ class CareerServiceTest {
       CinecaTranscriptRow row = rowWith("S", 27.0, 0, "22/07/2025 00:00:00");
       when(careerClient.getTranscript(BASE_URL, CINECA_JWT, MAT_ID)).thenReturn(List.of(row));
 
-      LibrettoResponse response = service.getTranscript(principal);
+      TranscriptResponse response = service.getTranscript(principal);
 
       assertThat(response.getRighe().get(0).getSuperata()).isTrue();
     }
@@ -184,7 +184,7 @@ class CareerServiceTest {
       CinecaTranscriptRow row = rowWith("F", null, 0, "");
       when(careerClient.getTranscript(BASE_URL, CINECA_JWT, MAT_ID)).thenReturn(List.of(row));
 
-      LibrettoResponse response = service.getTranscript(principal);
+      TranscriptResponse response = service.getTranscript(principal);
 
       assertThat(response.getRighe().get(0).getSuperata()).isFalse();
     }
@@ -198,7 +198,7 @@ class CareerServiceTest {
       CinecaTranscriptRow row = rowWith("S", null, 0, "20/06/2024 00:00:00");
       when(careerClient.getTranscript(BASE_URL, CINECA_JWT, MAT_ID)).thenReturn(List.of(row));
 
-      LibrettoResponse response = service.getTranscript(principal);
+      TranscriptResponse response = service.getTranscript(principal);
 
       assertThat(response.getRighe().get(0).getVoto()).isNull();
     }
@@ -211,7 +211,7 @@ class CareerServiceTest {
     void returnsEmptyList() {
       when(careerClient.getTranscript(BASE_URL, CINECA_JWT, MAT_ID)).thenReturn(List.of());
 
-      LibrettoResponse response = service.getTranscript(principal);
+      TranscriptResponse response = service.getTranscript(principal);
 
       assertThat(response.getRighe()).isEmpty();
     }
@@ -238,7 +238,7 @@ class CareerServiceTest {
       when(careerClient.getTranscript(BASE_URL, CINECA_JWT, MAT_ID)).thenReturn(rows);
       when(careerClient.getGrades(BASE_URL, CINECA_JWT, MAT_ID)).thenReturn(List.of());
 
-      MediaResponse response = service.getGrades(principal);
+      GradesResponse response = service.getGrades(principal);
 
       assertThat(response.getEsamiSuperati()).isEqualTo(2);
       assertThat(response.getEsamiTotali()).isEqualTo(3);
@@ -258,7 +258,7 @@ class CareerServiceTest {
       when(careerClient.getTranscript(BASE_URL, CINECA_JWT, MAT_ID)).thenReturn(rows);
       when(careerClient.getGrades(BASE_URL, CINECA_JWT, MAT_ID)).thenReturn(List.of());
 
-      MediaResponse response = service.getGrades(principal);
+      GradesResponse response = service.getGrades(principal);
 
       assertThat(response.getCfu()).isEqualTo(15.0);
       assertThat(response.getCfuTotali()).isEqualTo(24.0);
@@ -277,7 +277,7 @@ class CareerServiceTest {
       when(careerClient.getTranscript(BASE_URL, CINECA_JWT, MAT_ID)).thenReturn(rows);
       when(careerClient.getGrades(BASE_URL, CINECA_JWT, MAT_ID)).thenReturn(List.of());
 
-      MediaResponse response = service.getGrades(principal);
+      GradesResponse response = service.getGrades(principal);
 
       assertThat(response.getPercentualeCfu()).isEqualTo(75.0);
     }
@@ -297,7 +297,7 @@ class CareerServiceTest {
           .thenReturn(List.of(gradeA30, gradeP30, gradeA110, gradeP110));
       when(careerClient.getTranscript(BASE_URL, CINECA_JWT, MAT_ID)).thenReturn(List.of());
 
-      MediaResponse response = service.getGrades(principal);
+      GradesResponse response = service.getGrades(principal);
 
       assertThat(response.getMediaAritmetica()).isEqualTo(26.17);
       assertThat(response.getMediaPesata()).isEqualTo(25.84);
@@ -313,7 +313,7 @@ class CareerServiceTest {
       when(careerClient.getTranscript(BASE_URL, CINECA_JWT, MAT_ID)).thenReturn(List.of());
       when(careerClient.getGrades(BASE_URL, CINECA_JWT, MAT_ID)).thenReturn(List.of());
 
-      MediaResponse response = service.getGrades(principal);
+      GradesResponse response = service.getGrades(principal);
 
       assertThat(response.getPercentualeCfu()).isNull();
     }

@@ -1,12 +1,12 @@
 package org.ohmyopensource.ohmyuniversity.core.controller.v1.esse3;
 
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
-import org.ohmyopensource.ohmyuniversity.core.dto.AppelliLibrettoResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.AppelloResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneRequest;
-import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioniLibrettoResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.QuestionariResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookableSessionsResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SessionsResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.LegacyBookingRequest;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.LegacyBookingsResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookingsResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveysResponse;
 import org.ohmyopensource.ohmyuniversity.core.service.esse3.ExamsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,7 +65,7 @@ public class ExamsController extends AbstractEsse3Controller {
    *         {@code 503} if Cineca is unavailable
    */
   @GetMapping("/sessions")
-  public ResponseEntity<AppelloResponse> getSessions(
+  public ResponseEntity<SessionsResponse> getSessions(
       @AuthenticationPrincipal OmuPrincipal principal,
       @RequestParam Long cdsId,
       @RequestParam Long adId) {
@@ -84,7 +84,7 @@ public class ExamsController extends AbstractEsse3Controller {
    *         {@code 503} if Cineca is unavailable
    */
   @GetMapping("/bookable")
-  public ResponseEntity<AppelliLibrettoResponse> getBookableSessions(
+  public ResponseEntity<BookableSessionsResponse> getBookableSessions(
       @AuthenticationPrincipal OmuPrincipal principal) {
     return execute(principal, () -> examsService.getBookableSessions(principal));
   }
@@ -100,7 +100,7 @@ public class ExamsController extends AbstractEsse3Controller {
    *         {@code 503} if Cineca is unavailable
    */
   @GetMapping("/bookings")
-  public ResponseEntity<PrenotazioniLibrettoResponse> getBookings(
+  public ResponseEntity<BookingsResponse> getBookings(
       @AuthenticationPrincipal OmuPrincipal principal) {
     return execute(principal, () -> examsService.getBookings(principal));
   }
@@ -119,9 +119,9 @@ public class ExamsController extends AbstractEsse3Controller {
    *         {@code 401} if Cineca auth fails, {@code 503} if Cineca is unavailable
    */
   @PostMapping("/bookings/legacy")
-  public ResponseEntity<PrenotazioneResponse> getLegacyBookings(
+  public ResponseEntity<LegacyBookingsResponse> getLegacyBookings(
       @AuthenticationPrincipal OmuPrincipal principal,
-      @RequestBody PrenotazioneRequest request) {
+      @RequestBody LegacyBookingRequest request) {
     if (request == null || request.getPassword() == null || request.getPassword().isBlank()) {
       log.warn("ExamsController: missing password for legacy bookings user={}",
           principal.omuUserId());
@@ -139,7 +139,7 @@ public class ExamsController extends AbstractEsse3Controller {
    *         {@code 503} if Cineca is unavailable
    */
   @GetMapping("/surveys")
-  public ResponseEntity<QuestionariResponse> getSurveys(
+  public ResponseEntity<SurveysResponse> getSurveys(
       @AuthenticationPrincipal OmuPrincipal principal) {
     return execute(principal, () -> examsService.getSurveys(principal));
   }

@@ -4,9 +4,9 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
-import org.ohmyopensource.ohmyuniversity.core.dto.calendar.CalendarEventRequest;
-import org.ohmyopensource.ohmyuniversity.core.dto.calendar.CalendarEventResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.calendar.UniversityEventResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.agenda.AgendaEventRequest;
+import org.ohmyopensource.ohmyuniversity.core.dto.agenda.AgendaEventResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.agenda.UniversityEventResponse;
 import org.ohmyopensource.ohmyuniversity.core.service.AgendaService;
 import org.ohmyopensource.ohmyuniversity.core.service.AgendaService.EventAlreadyImportedException;
 import org.ohmyopensource.ohmyuniversity.core.service.AgendaService.EventNotFoundException;
@@ -74,7 +74,7 @@ public class AgendaController {
    * @return 200 OK with list of events ordered by start date ascending
    */
   @GetMapping("/events")
-  public ResponseEntity<List<CalendarEventResponse>> getEvents(
+  public ResponseEntity<List<AgendaEventResponse>> getEvents(
       @AuthenticationPrincipal OmuPrincipal principal,
       @RequestParam(required = false) String from,
       @RequestParam(required = false) String to) {
@@ -89,10 +89,10 @@ public class AgendaController {
    * @return 201 Created with the created event
    */
   @PostMapping("/events")
-  public ResponseEntity<CalendarEventResponse> createEvent(
+  public ResponseEntity<AgendaEventResponse> createEvent(
       @AuthenticationPrincipal OmuPrincipal principal,
-      @Valid @RequestBody CalendarEventRequest request) {
-    CalendarEventResponse response = agendaService.createEvent(principal, request);
+      @Valid @RequestBody AgendaEventRequest request) {
+    AgendaEventResponse response = agendaService.createEvent(principal, request);
     return ResponseEntity.status(201).body(response);
   }
 
@@ -105,10 +105,10 @@ public class AgendaController {
    * @return 200 OK with the updated event, 404 if not found
    */
   @PutMapping("/events/{id}")
-  public ResponseEntity<CalendarEventResponse> updateEvent(
+  public ResponseEntity<AgendaEventResponse> updateEvent(
       @AuthenticationPrincipal OmuPrincipal principal,
       @PathVariable UUID id,
-      @Valid @RequestBody CalendarEventRequest request) {
+      @Valid @RequestBody AgendaEventRequest request) {
     try {
       return ResponseEntity.ok(agendaService.updateEvent(principal, id, request));
     } catch (EventNotFoundException e) {

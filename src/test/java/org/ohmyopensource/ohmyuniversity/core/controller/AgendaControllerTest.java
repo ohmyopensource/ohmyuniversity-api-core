@@ -1,7 +1,6 @@
 package org.ohmyopensource.ohmyuniversity.core.controller;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
@@ -22,7 +21,7 @@ import org.ohmyopensource.ohmyuniversity.core.config.JwtAuthenticationFilter;
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.controller.v1.AgendaController;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.CalendarEventType;
-import org.ohmyopensource.ohmyuniversity.core.dto.agenda.CalendarEventResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.agenda.AgendaEventResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.agenda.UniversityEventResponse;
 import org.ohmyopensource.ohmyuniversity.core.service.AgendaService;
 import org.ohmyopensource.ohmyuniversity.core.service.AgendaService.EventAlreadyImportedException;
@@ -92,8 +91,8 @@ class AgendaControllerTest {
             List.of(new SimpleGrantedAuthority("ROLE_STUDENTE"))));
   }
 
-  private CalendarEventResponse sampleEventResponse() {
-    CalendarEventResponse r = new CalendarEventResponse();
+  private AgendaEventResponse sampleEventResponse() {
+    AgendaEventResponse r = new AgendaEventResponse();
     r.setId(UUID.randomUUID().toString());
     r.setTitle("Esame Sistemi");
     r.setStartDate("2026-07-15T09:00:00Z");
@@ -110,7 +109,7 @@ class AgendaControllerTest {
   class GetEvents {
 
     /**
-     * Verifies that a successful call produces a {@code 200 OK} response.
+     * Verifies that a successful call produces a {@code 200 OK} response with events.
      */
     @Test
     @DisplayName("returns 200 with events list")
@@ -144,7 +143,7 @@ class AgendaControllerTest {
               .contentType(MediaType.APPLICATION_JSON)
               .content("{\"title\":\"Esame Sistemi\",\"startDate\":\"2026-07-15T09:00:00Z\","
                   + "\"type\":\"EXAM\",\"allDay\":false}"))
-          .andExpect(status().isOk());
+          .andExpect(status().isCreated());
     }
   }
 
@@ -230,7 +229,7 @@ class AgendaControllerTest {
   class GetUniversityEvents {
 
     /**
-     * Verifies that a successful call produces a {@code 200 OK} response.
+     * Verifies that a successful call produces a {@code 200 OK} response with events.
      */
     @Test
     @DisplayName("returns 200 with university events")
@@ -247,22 +246,25 @@ class AgendaControllerTest {
 
   /**
    * Verifies the HTTP contract of {@code POST /api/v1/agenda/university-events/{id}/import}.
+   *
+   * <p>{@link AgendaService#importUniversityEvent} returns {@code void}, so {@code doNothing}
+   * and {@code doThrow} are used instead of {@code when(...).thenReturn(...)}.
    */
   @Nested
   @DisplayName("POST /api/v1/agenda/university-events/{id}/import")
   class ImportUniversityEvent {
 
     /**
-     * Verifies that a successful import produces a {@code 200 OK} response.
+     * Verifies that a successful import produces a {@code 204 No Content} response.
      */
     @Test
-    @DisplayName("returns 200 on success")
-    void returns200() throws Exception {
-      when(agendaService.importUniversityEvent(any(), any())).thenReturn(sampleEventResponse());
+    @DisplayName("returns 204 on success")
+    void returns204() throws Exception {
+      doNothing().when(agendaService).importUniversityEvent(any(), any());
 
       mockMvc.perform(post("/api/v1/agenda/university-events/" + UUID.randomUUID() + "/import")
               .with(auth()))
-          .andExpect(status().isOk());
+          .andExpect(status().isNoContent());
     }
 
     /**
@@ -271,8 +273,8 @@ class AgendaControllerTest {
     @Test
     @DisplayName("returns 409 when already imported")
     void returns409() throws Exception {
-      when(agendaService.importUniversityEvent(any(), any()))
-          .thenThrow(new EventAlreadyImportedException("already imported"));
+      doThrow(new EventAlreadyImportedException("already imported"))
+          .when(agendaService).importUniversityEvent(any(), any());
 
       mockMvc.perform(post("/api/v1/agenda/university-events/" + UUID.randomUUID() + "/import")
               .with(auth()))

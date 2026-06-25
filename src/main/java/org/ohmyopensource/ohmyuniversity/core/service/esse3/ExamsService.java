@@ -15,17 +15,17 @@ import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.Cin
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityConnectionRepository;
-import org.ohmyopensource.ohmyuniversity.core.dto.AppelliLibrettoResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.AppelliLibrettoResponse.AppelloLibretto;
-import org.ohmyopensource.ohmyuniversity.core.dto.AppelloResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.AppelloResponse.Appello;
-import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse.EsitoPrenotazione;
-import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioneResponse.Prenotazione;
-import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioniLibrettoResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.PrenotazioniLibrettoResponse.IscrizioneAppello;
-import org.ohmyopensource.ohmyuniversity.core.dto.QuestionariResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.QuestionariResponse.QuestionarioEsame;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookableSessionsResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookableSessionsResponse.AppelloLibretto;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SessionsResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SessionsResponse.Appello;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.LegacyBookingsResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.LegacyBookingsResponse.EsitoPrenotazione;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.LegacyBookingsResponse.Prenotazione;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookingsResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookingsResponse.IscrizioneAppello;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveysResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveysResponse.QuestionarioEsame;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -75,7 +75,7 @@ public class ExamsService extends AbstractEsse3Service {
    * @param adId      teaching activity identifier
    * @return available sessions response
    */
-  public AppelloResponse getSessions(OmuPrincipal principal, Long cdsId, Long adId) {
+  public SessionsResponse getSessions(OmuPrincipal principal, Long cdsId, Long adId) {
     String jwt = resolveCinecaJwt(principal);
     String authToken = resolveCinecaAuthToken(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
@@ -86,7 +86,7 @@ public class ExamsService extends AbstractEsse3Service {
     log.debug("ExamsService: fetched {} sessions for cdsId={} adId={}", sessions.size(), cdsId,
         adId);
 
-    AppelloResponse response = new AppelloResponse();
+    SessionsResponse response = new SessionsResponse();
     response.setAppelli(sessions.stream().map(this::toAppello).toList());
     return response;
   }
@@ -100,7 +100,7 @@ public class ExamsService extends AbstractEsse3Service {
    * @param principal authenticated OhMyU principal
    * @return bookable sessions response
    */
-  public AppelliLibrettoResponse getBookableSessions(OmuPrincipal principal) {
+  public BookableSessionsResponse getBookableSessions(OmuPrincipal principal) {
     String jwt = resolveCinecaJwt(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
 
@@ -110,7 +110,7 @@ public class ExamsService extends AbstractEsse3Service {
     log.debug("ExamsService: fetched {} bookable sessions for matId={}", sessions.size(),
         principal.matId());
 
-    AppelliLibrettoResponse response = new AppelliLibrettoResponse();
+    BookableSessionsResponse response = new BookableSessionsResponse();
     response.setAppelli(sessions.stream().map(this::toAppelloLibretto).toList());
     return response;
   }
@@ -123,7 +123,7 @@ public class ExamsService extends AbstractEsse3Service {
    * @param principal authenticated OhMyU principal
    * @return active bookings response
    */
-  public PrenotazioniLibrettoResponse getBookings(OmuPrincipal principal) {
+  public BookingsResponse getBookings(OmuPrincipal principal) {
     String jwt = resolveCinecaJwt(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
 
@@ -147,7 +147,7 @@ public class ExamsService extends AbstractEsse3Service {
         .map(this::toIscrizioneAppello)
         .toList();
 
-    PrenotazioniLibrettoResponse response = new PrenotazioniLibrettoResponse();
+    BookingsResponse response = new BookingsResponse();
     response.setPrenotazioni(active);
     return response;
   }
@@ -161,7 +161,7 @@ public class ExamsService extends AbstractEsse3Service {
    * @param password  Cineca password
    * @return full booking history response
    */
-  public PrenotazioneResponse getLegacyBookings(OmuPrincipal principal, String password) {
+  public LegacyBookingsResponse getLegacyBookings(OmuPrincipal principal, String password) {
     String authToken = resolveCinecaAuthToken(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
     String username = resolveUsername(principal);
@@ -172,7 +172,7 @@ public class ExamsService extends AbstractEsse3Service {
     log.debug("ExamsService: fetched {} legacy bookings for matId={}", bookings.size(),
         principal.matId());
 
-    PrenotazioneResponse response = new PrenotazioneResponse();
+    LegacyBookingsResponse response = new LegacyBookingsResponse();
     response.setPrenotazioni(bookings.stream().map(this::toPrenotazione).toList());
     return response;
   }
@@ -183,7 +183,7 @@ public class ExamsService extends AbstractEsse3Service {
    * @param principal authenticated OhMyU principal
    * @return surveys split into pending and completed
    */
-  public QuestionariResponse getSurveys(OmuPrincipal principal) {
+  public SurveysResponse getSurveys(OmuPrincipal principal) {
     String jwt = resolveCinecaJwt(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
 
@@ -196,7 +196,7 @@ public class ExamsService extends AbstractEsse3Service {
     log.debug("ExamsService: surveys pending={} completed={} for matId={}",
         pending.size(), completed.size(), principal.matId());
 
-    QuestionariResponse response = new QuestionariResponse();
+    SurveysResponse response = new SurveysResponse();
     response.setDaCompilare(pending.stream().map(this::toQuestionarioEsame).toList());
     response.setCompilati(completed.stream().map(this::toQuestionarioEsame).toList());
     return response;

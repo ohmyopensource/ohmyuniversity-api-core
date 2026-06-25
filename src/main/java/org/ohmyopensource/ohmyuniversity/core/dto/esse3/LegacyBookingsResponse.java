@@ -1,4 +1,4 @@
-package org.ohmyopensource.ohmyuniversity.core.dto;
+package org.ohmyopensource.ohmyuniversity.core.dto.esse3;
 
 import java.util.List;
 
@@ -14,7 +14,7 @@ import java.util.List;
  * <p>Each entry represents a single exam booking linked to the student's academic career and
  * transcript.
  */
-public class PrenotazioneResponse {
+public class LegacyBookingsResponse {
 
   private List<Prenotazione> prenotazioni;
 

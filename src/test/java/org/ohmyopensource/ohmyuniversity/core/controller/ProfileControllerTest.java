@@ -16,7 +16,7 @@ import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaAuthExce
 import org.ohmyopensource.ohmyuniversity.core.config.JwtAuthenticationFilter;
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.controller.v1.esse3.ProfileController;
-import org.ohmyopensource.ohmyuniversity.core.dto.BadgeResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BadgeResponse;
 import org.ohmyopensource.ohmyuniversity.core.service.esse3.ProfileService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;

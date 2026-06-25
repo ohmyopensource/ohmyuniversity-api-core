@@ -13,9 +13,9 @@ import org.ohmyopensource.ohmyuniversity.core.domain.repository.CalendarEventImp
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.CalendarEventRepository;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.OmuUserRepository;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityEventRepository;
-import org.ohmyopensource.ohmyuniversity.core.dto.calendar.CalendarEventRequest;
-import org.ohmyopensource.ohmyuniversity.core.dto.calendar.CalendarEventResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.calendar.UniversityEventResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.agenda.AgendaEventRequest;
+import org.ohmyopensource.ohmyuniversity.core.dto.agenda.AgendaEventResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.agenda.UniversityEventResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -74,10 +74,10 @@ public class AgendaService {
    * @param principal authenticated OhMyU principal
    * @param from      optional range start as an ISO-8601 string, inclusive
    * @param to        optional range end as an ISO-8601 string, inclusive
-   * @return list of {@link CalendarEventResponse} ordered by start date ascending
+   * @return list of {@link AgendaEventResponse} ordered by start date ascending
    */
   @Transactional(readOnly = true)
-  public List<CalendarEventResponse> getEvents(
+  public List<AgendaEventResponse> getEvents(
       OmuPrincipal principal, String from, String to) {
 
     UUID userId = UUID.fromString(principal.omuUserId());
@@ -100,11 +100,11 @@ public class AgendaService {
    *
    * @param principal authenticated OhMyU principal
    * @param request   event data; {@code title} and {@code startDate} are required
-   * @return the created event as a {@link CalendarEventResponse}
+   * @return the created event as a {@link AgendaEventResponse}
    */
   @Transactional
-  public CalendarEventResponse createEvent(
-      OmuPrincipal principal, CalendarEventRequest request) {
+  public AgendaEventResponse createEvent(
+      OmuPrincipal principal, AgendaEventRequest request) {
 
     OmuUser user = resolveUser(principal);
 
@@ -124,12 +124,12 @@ public class AgendaService {
    * @param principal authenticated OhMyU principal
    * @param eventId   identifier of the event to update
    * @param request   updated event data
-   * @return the updated event as a {@link CalendarEventResponse}
+   * @return the updated event as a {@link AgendaEventResponse}
    * @throws EventNotFoundException if the event does not exist or belongs to another user
    */
   @Transactional
-  public CalendarEventResponse updateEvent(
-      OmuPrincipal principal, UUID eventId, CalendarEventRequest request) {
+  public AgendaEventResponse updateEvent(
+      OmuPrincipal principal, UUID eventId, AgendaEventRequest request) {
 
     UUID userId = UUID.fromString(principal.omuUserId());
     CalendarEvent event = eventRepository.findByIdAndUserId(eventId, userId)
@@ -234,7 +234,7 @@ public class AgendaService {
   }
 
   /**
-   * Maps fields from a {@link CalendarEventRequest} onto an existing {@link CalendarEvent} entity.
+   * Maps fields from a {@link AgendaEventRequest} onto an existing {@link CalendarEvent} entity.
    *
    * <p>When {@code request.getType()} is {@code null}, the type defaults to
    * {@link CalendarEventType#PERSONAL}.
@@ -242,7 +242,7 @@ public class AgendaService {
    * @param request the incoming request DTO
    * @param event   the entity to populate
    */
-  private void mapRequestToEntity(CalendarEventRequest request, CalendarEvent event) {
+  private void mapRequestToEntity(AgendaEventRequest request, CalendarEvent event) {
     event.setTitle(request.getTitle());
     event.setDescription(request.getDescription());
     event.setStartDate(Instant.parse(request.getStartDate()));
@@ -256,13 +256,13 @@ public class AgendaService {
   }
 
   /**
-   * Maps a {@link CalendarEvent} entity to a {@link CalendarEventResponse} DTO.
+   * Maps a {@link CalendarEvent} entity to a {@link AgendaEventResponse} DTO.
    *
    * @param e the source entity
    * @return the populated response DTO
    */
-  private CalendarEventResponse toResponse(CalendarEvent e) {
-    CalendarEventResponse r = new CalendarEventResponse();
+  private AgendaEventResponse toResponse(CalendarEvent e) {
+    AgendaEventResponse r = new AgendaEventResponse();
     r.setId(e.getId().toString());
     r.setTitle(e.getTitle());
     r.setDescription(e.getDescription());

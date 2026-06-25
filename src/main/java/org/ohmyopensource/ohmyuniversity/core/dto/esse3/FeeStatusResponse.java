@@ -1,4 +1,4 @@
-package org.ohmyopensource.ohmyuniversity.core.dto;
+package org.ohmyopensource.ohmyuniversity.core.dto.esse3;
 
 import java.util.List;
 
@@ -12,7 +12,7 @@ import java.util.List;
  * - tasseDovute: pending (not yet overdue) fee items
  * - addebiti: complete list of billing entries for the student
  */
-public class TasseResponse {
+public class FeeStatusResponse {
 
   /**
    * Fee status indicator returned by Cineca (e.g., VERDE, GIALLO, ROSSO).

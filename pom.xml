@@ -43,10 +43,7 @@
 			**/domain/entity/**,
 			**/domain/repository/**,
 			**/service/email/MicrosoftEmailProvider.java,
-			**/cineca/esse3/CinecaProfileClient.java,
-			**/cineca/esse3/CinecaCareerClient.java,
-			**/cineca/esse3/CinecaExamsClient.java,
-			**/cineca/esse3/CinecaFeesClient.java
+      **/cineca/esse3/**,
 		</sonar.coverage.exclusions>
 	</properties>
 
@@ -331,22 +328,19 @@
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<configuration>
-					<excludes>
-						<!-- DTO, entities, repositories -->
-						<exclude>org/ohmyopensource/ohmyuniversity/core/dto/**</exclude>
-						<exclude>org/ohmyopensource/ohmyuniversity/core/domain/entity/**</exclude>
-						<exclude>org/ohmyopensource/ohmyuniversity/core/domain/repository/**</exclude>
-						<!-- Cineca inner class DTOs -->
-						<exclude>org/ohmyopensource/ohmyuniversity/core/cineca/CinecaLoginResponse$*</exclude>
-						<exclude>org/ohmyopensource/ohmyuniversity/core/cineca/esse3/CinecaProfileClient$*</exclude>
-						<exclude>org/ohmyopensource/ohmyuniversity/core/cineca/esse3/CinecaCareerClient$*</exclude>
-						<exclude>org/ohmyopensource/ohmyuniversity/core/cineca/esse3/CinecaExamsClient$*</exclude>
-						<exclude>org/ohmyopensource/ohmyuniversity/core/cineca/esse3/CinecaFeesClient$*</exclude>
-						<!-- Boilerplate infrastructure -->
-						<exclude>org/ohmyopensource/ohmyuniversity/core/OhmyuniversityCoreApplication</exclude>
-						<exclude>org/ohmyopensource/ohmyuniversity/core/config/DotenvLoader</exclude>
-						<exclude>org/ohmyopensource/ohmyuniversity/core/config/OmuPrincipal</exclude>
-					</excludes>
+          <excludes>
+            <!-- DTO, entities, repositories -->
+            <exclude>org/ohmyopensource/ohmyuniversity/core/dto/**</exclude>
+            <exclude>org/ohmyopensource/ohmyuniversity/core/domain/entity/**</exclude>
+            <exclude>org/ohmyopensource/ohmyuniversity/core/domain/repository/**</exclude>
+            <!-- Cineca HTTP clients -->
+            <exclude>org/ohmyopensource/ohmyuniversity/core/cineca/esse3/**</exclude>
+            <exclude>org/ohmyopensource/ohmyuniversity/core/cineca/CinecaLoginResponse$*</exclude>
+            <!-- Boilerplate infrastructure -->
+            <exclude>org/ohmyopensource/ohmyuniversity/core/OhmyuniversityCoreApplication</exclude>
+            <exclude>org/ohmyopensource/ohmyuniversity/core/config/DotenvLoader</exclude>
+            <exclude>org/ohmyopensource/ohmyuniversity/core/config/OmuPrincipal</exclude>
+          </excludes>
 				</configuration>
 				<executions>
 					<execution>
@@ -375,7 +369,7 @@
 										<limit>
 											<counter>LINE</counter>
 											<value>COVEREDRATIO</value>
-											<minimum>0.60</minimum>
+											<minimum>0.65</minimum>
 										</limit>
 									</limits>
 								</rule>

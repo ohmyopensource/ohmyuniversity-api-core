@@ -21,14 +21,14 @@ import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.Cin
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityConnectionRepository;
-import org.ohmyopensource.ohmyuniversity.core.dto.LibrettoResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.LibrettoResponse.RigaLibretto;
-import org.ohmyopensource.ohmyuniversity.core.dto.MediaResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.PianoStudioResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.StoricoEsamiResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.StoricoEsamiResponse.EsameConStorico;
-import org.ohmyopensource.ohmyuniversity.core.dto.StoricoEsamiResponse.Tentativo;
-import org.ohmyopensource.ohmyuniversity.core.dto.SuggerimentiResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.TranscriptResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.TranscriptResponse.RigaLibretto;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.GradesResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.StudyPlanResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.ExamHistoryResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.ExamHistoryResponse.EsameConStorico;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.ExamHistoryResponse.Tentativo;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.RecommendationsResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -81,7 +81,7 @@ public class CareerService extends AbstractEsse3Service {
    * @param principal authenticated OhMyU principal
    * @return transcript response with all exam rows
    */
-  public LibrettoResponse getTranscript(OmuPrincipal principal) {
+  public TranscriptResponse getTranscript(OmuPrincipal principal) {
     String jwt = resolveCinecaJwt(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
 
@@ -89,7 +89,7 @@ public class CareerService extends AbstractEsse3Service {
     log.debug("CareerService: fetched {} transcript rows for matId={}", rows.size(),
         principal.matId());
 
-    LibrettoResponse response = new LibrettoResponse();
+    TranscriptResponse response = new TranscriptResponse();
     response.setRighe(rows.stream().map(this::toRigaLibretto).toList());
     return response;
   }
@@ -103,7 +103,7 @@ public class CareerService extends AbstractEsse3Service {
    * @param principal authenticated OhMyU principal
    * @return aggregated grade and CFU statistics
    */
-  public MediaResponse getGrades(OmuPrincipal principal) {
+  public GradesResponse getGrades(OmuPrincipal principal) {
     String jwt = resolveCinecaJwt(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
 
@@ -113,7 +113,7 @@ public class CareerService extends AbstractEsse3Service {
     log.debug("CareerService: fetched {} grade entries for matId={}", medie.size(),
         principal.matId());
 
-    MediaResponse response = new MediaResponse();
+    GradesResponse response = new GradesResponse();
     for (var m : medie) {
       String tipo = m.getTipoMediaCod();
       Integer base = m.getBase();
@@ -151,7 +151,7 @@ public class CareerService extends AbstractEsse3Service {
    * @param principal authenticated OhMyU principal
    * @return study plan response; empty if no plan exists
    */
-  public PianoStudioResponse getStudyPlan(OmuPrincipal principal) {
+  public StudyPlanResponse getStudyPlan(OmuPrincipal principal) {
     String jwt = resolveCinecaJwt(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
 
@@ -160,7 +160,7 @@ public class CareerService extends AbstractEsse3Service {
 
     if (headers.isEmpty()) {
       log.warn("CareerService: no study plan found for stuId={}", principal.stuId());
-      PianoStudioResponse empty = new PianoStudioResponse();
+      StudyPlanResponse empty = new StudyPlanResponse();
       empty.setRighe(List.of());
       return empty;
     }
@@ -172,7 +172,7 @@ public class CareerService extends AbstractEsse3Service {
     log.debug("CareerService: fetched study plan pianoId={} for stuId={}", pianoId,
         principal.stuId());
 
-    PianoStudioResponse response = new PianoStudioResponse();
+    StudyPlanResponse response = new StudyPlanResponse();
     response.setRighe(detail == null ? List.of()
         : detail.getActivities().stream().map(this::toRigaPiano).toList());
     return response;
@@ -187,7 +187,7 @@ public class CareerService extends AbstractEsse3Service {
    * @param principal authenticated OhMyU principal
    * @return exam history response grouped by adsceId
    */
-  public StoricoEsamiResponse getExamHistory(OmuPrincipal principal) {
+  public ExamHistoryResponse getExamHistory(OmuPrincipal principal) {
     String jwt = resolveCinecaJwt(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
 
@@ -240,7 +240,7 @@ public class CareerService extends AbstractEsse3Service {
       esame.getTentativi().add(t);
     }
 
-    StoricoEsamiResponse response = new StoricoEsamiResponse();
+    ExamHistoryResponse response = new ExamHistoryResponse();
     response.setEsami(new ArrayList<>(map.values()));
     return response;
   }
@@ -254,7 +254,7 @@ public class CareerService extends AbstractEsse3Service {
    * @param principal authenticated OhMyU principal
    * @return ordered recommendations; empty if no valid study plan exists
    */
-  public SuggerimentiResponse getRecommendations(OmuPrincipal principal) {
+  public RecommendationsResponse getRecommendations(OmuPrincipal principal) {
     String jwt = resolveCinecaJwt(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
 
@@ -267,7 +267,7 @@ public class CareerService extends AbstractEsse3Service {
     List<CinecaStudyPlanHeader> headers =
         careerClient.getStudyPlanHeaders(baseUrl, jwt, principal.stuId());
     if (headers.isEmpty()) {
-      SuggerimentiResponse empty = new SuggerimentiResponse();
+      RecommendationsResponse empty = new RecommendationsResponse();
       empty.setEsami(List.of());
       return empty;
     }
@@ -276,11 +276,11 @@ public class CareerService extends AbstractEsse3Service {
         careerClient.getStudyPlanDetail(baseUrl, jwt, principal.stuId(),
             headers.get(0).getPianoId());
 
-    List<SuggerimentiResponse.EsameSuggerito> suggestions = detail == null ? List.of()
+    List<RecommendationsResponse.EsameSuggerito> suggestions = detail == null ? List.of()
         : detail.getActivities().stream()
             .filter(a -> a.getAdCod() != null && !passed.contains(a.getAdCod()))
             .map(a -> {
-              SuggerimentiResponse.EsameSuggerito s = new SuggerimentiResponse.EsameSuggerito();
+              RecommendationsResponse.EsameSuggerito s = new RecommendationsResponse.EsameSuggerito();
               s.setAdCod(a.getAdCod());
               s.setAdDes(a.getAdDes());
               s.setCfu(a.getCfu());
@@ -290,13 +290,13 @@ public class CareerService extends AbstractEsse3Service {
               s.setScore((anno * 100) + cfu);
               return s;
             })
-            .sorted(java.util.Comparator.comparingInt(SuggerimentiResponse.EsameSuggerito::getScore))
+            .sorted(java.util.Comparator.comparingInt(RecommendationsResponse.EsameSuggerito::getScore))
             .toList();
 
     log.debug("CareerService: {} recommendations for stuId={}", suggestions.size(),
         principal.stuId());
 
-    SuggerimentiResponse response = new SuggerimentiResponse();
+    RecommendationsResponse response = new RecommendationsResponse();
     response.setEsami(suggestions);
     return response;
   }
@@ -326,8 +326,8 @@ public class CareerService extends AbstractEsse3Service {
     return riga;
   }
 
-  private PianoStudioResponse.RigaPiano toRigaPiano(CinecaStudyPlanActivity a) {
-    PianoStudioResponse.RigaPiano riga = new PianoStudioResponse.RigaPiano();
+  private StudyPlanResponse.RigaPiano toRigaPiano(CinecaStudyPlanActivity a) {
+    StudyPlanResponse.RigaPiano riga = new StudyPlanResponse.RigaPiano();
     riga.setAdsceId(a.getAdsceId());
     riga.setAdCod(a.getAdCod());
     riga.setAdDes(a.getAdDes());

@@ -1,10 +1,10 @@
-package org.ohmyopensource.ohmyuniversity.core.dto;
+package org.ohmyopensource.ohmyuniversity.core.dto.esse3;
 
 /**
  * Response DTO for GET /api/v1/carriera/profilo.
  * Contains full personal data for the authenticated student.
  */
-public class ProfiloResponse {
+public class PersonaResponse {
 
   // Dati personali
   private Long persId;

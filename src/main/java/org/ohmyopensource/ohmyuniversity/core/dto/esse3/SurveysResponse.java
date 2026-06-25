@@ -1,4 +1,4 @@
-package org.ohmyopensource.ohmyuniversity.core.dto;
+package org.ohmyopensource.ohmyuniversity.core.dto.esse3;
 
 import java.util.List;
 
@@ -6,7 +6,7 @@ import java.util.List;
  * Response DTO for GET /api/v1/carriera/questionari. Contains questionnaire status for all libretto
  * activities.
  */
-public class QuestionariResponse {
+public class SurveysResponse {
 
   private List<QuestionarioEsame> daCompilare;
   private List<QuestionarioEsame> compilati;

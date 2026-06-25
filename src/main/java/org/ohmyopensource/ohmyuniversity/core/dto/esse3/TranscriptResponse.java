@@ -1,4 +1,4 @@
-package org.ohmyopensource.ohmyuniversity.core.dto;
+package org.ohmyopensource.ohmyuniversity.core.dto.esse3;
 
 import java.util.List;
 
@@ -14,7 +14,7 @@ import java.util.List;
  * <p>The purpose of this DTO is to decouple the internal API contract from external Cineca data
  * structures, ensuring long-term stability.
  */
-public class LibrettoResponse {
+public class TranscriptResponse {
 
   private List<RigaLibretto> righe;
 

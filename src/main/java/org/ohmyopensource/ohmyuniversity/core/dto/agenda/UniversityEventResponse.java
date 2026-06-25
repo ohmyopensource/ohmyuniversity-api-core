@@ -1,28 +1,42 @@
-package org.ohmyopensource.ohmyuniversity.core.dto.calendar;
+package org.ohmyopensource.ohmyuniversity.core.dto.agenda;
 
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.CalendarEventType;
 
 /**
- * Response DTO for personal calendar event endpoints.
+ * Response DTO for university-published event endpoints.
  *
- * <p>Returned by {@code GET}, {@code POST}, and {@code PUT} {@code /api/v1/calendar/events}.
- * Date and time fields are serialised as ISO-8601 strings (UTC).
+ * <p>Returned by {@code GET /api/v1/calendar/university-events}. The {@code imported} flag
+ * indicates whether the authenticated student has already added this event to their personal
+ * calendar. Date and time fields are serialised as ISO-8601 strings (UTC).
  */
-public class CalendarEventResponse {
+public class UniversityEventResponse {
 
   private String id;
+
+  /** Identifier of the university that published this event (e.g. {@code UNIMOL}). */
+  private String universityId;
   private String title;
   private String description;
+
+  /** Event start timestamp as an ISO-8601 string (UTC). */
   private String startDate;
+
+  /** Optional event end timestamp as an ISO-8601 string (UTC). */
   private String endDate;
   private boolean allDay;
   private CalendarEventType type;
   private String color;
   private String url;
-  private String notes;
-  private String location;
-  private String createdAt;
-  private String updatedAt;
+  private String sourceUrl;
+
+  /** Timestamp when the event was published into the system, as an ISO-8601 string (UTC). */
+  private String publishedAt;
+
+  /**
+   * Whether the authenticated student has already imported this event into their personal
+   * calendar.
+   */
+  private boolean imported;
 
   // ============ Getters | Setters | Bool ============
 
@@ -31,6 +45,13 @@ public class CalendarEventResponse {
   }
   public void setId(String id) {
     this.id = id;
+  }
+
+  public String getUniversityId() {
+    return universityId;
+  }
+  public void setUniversityId(String universityId) {
+    this.universityId = universityId;
   }
 
   public String getTitle() {
@@ -89,27 +110,24 @@ public class CalendarEventResponse {
     this.url = url;
   }
 
-  public String getNotes() {
-    return notes;
+  public String getSourceUrl() {
+    return sourceUrl;
   }
-  public void setNotes(String notes) {
-    this.notes = notes;
-  }
-
-  public String getLocation() { return location; }
-  public void setLocation(String location) { this.location = location; }
-
-  public String getCreatedAt() {
-    return createdAt;
-  }
-  public void setCreatedAt(String createdAt) {
-    this.createdAt = createdAt;
+  public void setSourceUrl(String sourceUrl) {
+    this.sourceUrl = sourceUrl;
   }
 
-  public String getUpdatedAt() {
-    return updatedAt;
+  public String getPublishedAt() {
+    return publishedAt;
   }
-  public void setUpdatedAt(String updatedAt) {
-    this.updatedAt = updatedAt;
+  public void setPublishedAt(String publishedAt) {
+    this.publishedAt = publishedAt;
+  }
+
+  public boolean isImported() {
+    return imported;
+  }
+  public void setImported(boolean imported) {
+    this.imported = imported;
   }
 }

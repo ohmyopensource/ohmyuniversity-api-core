@@ -1,4 +1,4 @@
-package org.ohmyopensource.ohmyuniversity.core.dto;
+package org.ohmyopensource.ohmyuniversity.core.dto.esse3;
 
 import java.util.List;
 
@@ -8,7 +8,7 @@ import java.util.List;
  * <p>Contains exam sessions retrieved from libretto-service-v2,
  * accessible to STUDENTE role without checkAbildocStu restrictions.
  */
-public class AppelliLibrettoResponse {
+public class BookableSessionsResponse {
 
   private List<AppelloLibretto> appelli;
 

@@ -3,9 +3,9 @@ package org.ohmyopensource.ohmyuniversity.core.controller.v1.esse3;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaAuthException;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaUnavailableException;
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
-import org.ohmyopensource.ohmyuniversity.core.dto.BadgeResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.CarrieraInfoResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.ProfiloResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BadgeResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.CareerInfoResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.PersonaResponse;
 import org.ohmyopensource.ohmyuniversity.core.service.esse3.ProfileService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +61,7 @@ public class ProfileController extends AbstractEsse3Controller {
    *         {@code 503} if Cineca is unavailable
    */
   @GetMapping("/persona")
-  public ResponseEntity<ProfiloResponse> getPersona(
+  public ResponseEntity<PersonaResponse> getPersona(
       @AuthenticationPrincipal OmuPrincipal principal) {
     return execute(principal, () -> profileService.getPersona(principal));
   }
@@ -74,7 +74,7 @@ public class ProfileController extends AbstractEsse3Controller {
    *         {@code 503} if Cineca is unavailable
    */
   @GetMapping("/info")
-  public ResponseEntity<CarrieraInfoResponse> getInfo(
+  public ResponseEntity<CareerInfoResponse> getInfo(
       @AuthenticationPrincipal OmuPrincipal principal) {
     return execute(principal, () -> profileService.getInfo(principal));
   }

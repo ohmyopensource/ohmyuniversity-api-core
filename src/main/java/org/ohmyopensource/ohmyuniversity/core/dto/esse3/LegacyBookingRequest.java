@@ -1,4 +1,4 @@
-package org.ohmyopensource.ohmyuniversity.core.dto;
+package org.ohmyopensource.ohmyuniversity.core.dto.esse3;
 
 /**
  * Request DTO for POST /api/carriera/prenotazioni.
@@ -12,7 +12,7 @@ package org.ohmyopensource.ohmyuniversity.core.dto;
  * <p>Note: it is intentionally placed in the request body to reduce the risk of exposure in server
  * access logs (e.g. query parameters or headers).
  */
-public class PrenotazioneRequest {
+public class LegacyBookingRequest {
 
   private String password;
 

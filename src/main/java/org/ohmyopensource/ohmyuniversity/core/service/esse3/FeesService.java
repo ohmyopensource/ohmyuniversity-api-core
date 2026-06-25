@@ -6,37 +6,23 @@ import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaFeesClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaFeesClient.CinecaCharge;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaFeesClient.CinecaFeeItem;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaFeesClient.CinecaFeeStatus;
-import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaFeesClient.CinecaInvoice;
-import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaFeesClient.CinecaPayment;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaFeesClient.CinecaRefund;
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityConnectionRepository;
-import org.ohmyopensource.ohmyuniversity.core.dto.TasseResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.TasseResponse.Addebito;
-import org.ohmyopensource.ohmyuniversity.core.dto.TasseResponse.VoceTassa;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.FeeStatusResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.FeeStatusResponse.Addebito;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.FeeStatusResponse.VoceTassa;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.InvoiceResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.InvoiceResponse.Invoice;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.RefundResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.RefundResponse.Refund;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
  * Service responsible for fee-related operations against Cineca ESSE3 tasse-service-v1.
- *
- * <p>Covers:
- * <ul>
- *   <li>fee status (semaforo) — overall payment standing indicator</li>
- *   <li>charges (addebiti) — detailed billing entries</li>
- *   <li>invoices (fatture) — issued invoices</li>
- *   <li>refunds (rimborsi) — refund records</li>
- *   <li>payments (pagamenti) — PagoPA transaction history</li>
- * </ul>
- *
- * <p>All data is fetched in real-time from Cineca; nothing is persisted locally.
- *
- * <p>Note: {@code getStatus} aggregates semaforo + charges in a single response
- * to preserve backward compatibility with the existing {@link TasseResponse} DTO.
- * Individual endpoints (invoices, refunds, payments) return their own dedicated responses
- * once the corresponding DTOs are introduced.
  */
 @Service
 public class FeesService extends AbstractEsse3Service {
@@ -44,8 +30,6 @@ public class FeesService extends AbstractEsse3Service {
   private static final Logger log = LoggerFactory.getLogger(FeesService.class);
 
   private final CinecaFeesClient feesClient;
-
-  // ============ Constructor ============
 
   public FeesService(
       CinecaFeesClient feesClient,
@@ -56,18 +40,13 @@ public class FeesService extends AbstractEsse3Service {
     this.feesClient = feesClient;
   }
 
-  // ============ Public Methods ============
-
   /**
    * Retrieves the aggregated fee status for the authenticated student.
-   *
-   * <p>Combines the semaforo indicator with the full list of charges
-   * into a single {@link TasseResponse}, preserving backward compatibility.
    *
    * @param principal authenticated OhMyU principal
    * @return aggregated fee status and charges
    */
-  public TasseResponse getStatus(OmuPrincipal principal) {
+  public FeeStatusResponse getStatus(OmuPrincipal principal) {
     String jwt = resolveCinecaJwt(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
 
@@ -77,65 +56,55 @@ public class FeesService extends AbstractEsse3Service {
     log.debug("FeesService: fee status={} charges={} for stuId={}",
         status != null ? status.getStatus() : "null", charges.size(), principal.stuId());
 
-    TasseResponse response = new TasseResponse();
+    FeeStatusResponse response = new FeeStatusResponse();
     if (status != null) {
       response.setSemaforo(status.getStatus());
       response.setImportoDovuto(status.getAmountDue());
-      response.setTasseScadute(status.getOverdueItems().stream()
-          .map(this::toVoceTassa).toList());
-      response.setTasseDovute(status.getDueItems().stream()
-          .map(this::toVoceTassa).toList());
+      response.setTasseScadute(status.getOverdueItems().stream().map(this::toVoceTassa).toList());
+      response.setTasseDovute(status.getDueItems().stream().map(this::toVoceTassa).toList());
     }
     response.setAddebiti(charges.stream().map(this::toAddebito).toList());
     return response;
   }
 
   /**
-   * Retrieves the list of issued invoices for the authenticated student.
+   * Retrieves issued invoices for the authenticated student.
+   *
+   * <p>Requires both stuId (from JWT) and persId (from Redis session).
    *
    * @param principal authenticated OhMyU principal
-   * @return list of Cineca invoices (raw — dedicated DTO to be introduced)
+   * @return invoice response
    */
-  public List<CinecaInvoice> getInvoices(OmuPrincipal principal) {
+  public InvoiceResponse getInvoices(OmuPrincipal principal) {
     String jwt = resolveCinecaJwt(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
+    Long persId = resolvePersId(principal);
 
-    List<CinecaInvoice> invoices = feesClient.getInvoices(baseUrl, jwt, principal.stuId());
+    var invoices = feesClient.getInvoices(baseUrl, jwt, principal.stuId(), persId);
     log.debug("FeesService: fetched {} invoices for stuId={}", invoices.size(), principal.stuId());
-    return invoices;
+
+    InvoiceResponse response = new InvoiceResponse();
+    response.setInvoices(invoices.stream().map(this::toInvoice).toList());
+    return response;
   }
 
   /**
-   * Retrieves the list of refunds for the authenticated student.
-   *
-   * <p>Uses persId — resolved from Redis session.
+   * Retrieves refunds for the authenticated student.
    *
    * @param principal authenticated OhMyU principal
-   * @return list of Cineca refunds (raw — dedicated DTO to be introduced)
+   * @return refund response
    */
-  public List<CinecaRefund> getRefunds(OmuPrincipal principal) {
+  public RefundResponse getRefunds(OmuPrincipal principal) {
     String jwt = resolveCinecaJwt(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
     Long persId = resolvePersId(principal);
 
     List<CinecaRefund> refunds = feesClient.getRefunds(baseUrl, jwt, persId);
     log.debug("FeesService: fetched {} refunds for persId={}", refunds.size(), persId);
-    return refunds;
-  }
 
-  /**
-   * Retrieves PagoPA payment transactions for the authenticated student.
-   *
-   * @param principal authenticated OhMyU principal
-   * @return list of Cineca payments (raw — dedicated DTO to be introduced)
-   */
-  public List<CinecaPayment> getPayments(OmuPrincipal principal) {
-    String jwt = resolveCinecaJwt(principal);
-    String baseUrl = resolveBaseUrl(principal.universityId());
-
-    List<CinecaPayment> payments = feesClient.getPayments(baseUrl, jwt, principal.stuId());
-    log.debug("FeesService: fetched {} payments for stuId={}", payments.size(), principal.stuId());
-    return payments;
+    RefundResponse response = new RefundResponse();
+    response.setRefunds(refunds.stream().map(this::toRefund).toList());
+    return response;
   }
 
   // ============ Mappers ============
@@ -178,5 +147,35 @@ public class FeesService extends AbstractEsse3Service {
     a.setIuv(c.getIuv());
     a.setCodiceAvviso(c.getNoticeCode());
     return a;
+  }
+
+  private Invoice toInvoice(CinecaFeesClient.CinecaInvoice c) {
+    Invoice i = new Invoice();
+    i.setFattId(c.getFattId());
+    i.setAcademicYear(c.getAcademicYear());
+    i.setDescription(c.getDescription());
+    i.setAmount(c.getAmount());
+    i.setPaidAmount(c.getPaidAmount());
+    i.setIssueDate(c.getIssueDate());
+    i.setDeadline(c.getDeadline());
+    i.setPaymentDate(c.getPaymentDate());
+    i.setPagopaPaymentDate(c.getPagopaPaymentDate());
+    i.setPaidFlg(c.getPaidFlg());
+    i.setCancelledFlg(c.getCancelledFlg());
+    i.setIuv(c.getIuv());
+    i.setNoticeCode(c.getNoticeCode());
+    i.setCollectedFrom(c.getCollectedFrom());
+    i.setPagopaAvviso(c.getPagopaAvviso());
+    return i;
+  }
+
+  private Refund toRefund(CinecaRefund c) {
+    Refund r = new Refund();
+    r.setFattId(c.getInvoiceId());
+    r.setFeeDes(c.getFeeDes());
+    r.setRefundAmount(c.getRefundAmount());
+    r.setRefundDate(c.getRefundDate());
+    r.setRefundStatus(c.getRefundStatus());
+    return r;
   }
 }

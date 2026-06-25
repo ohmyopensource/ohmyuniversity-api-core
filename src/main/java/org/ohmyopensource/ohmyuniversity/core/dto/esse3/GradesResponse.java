@@ -1,4 +1,4 @@
-package org.ohmyopensource.ohmyuniversity.core.dto;
+package org.ohmyopensource.ohmyuniversity.core.dto.esse3;
 
 /**
  * Response DTO for GET /api/carriera/medie.
@@ -11,7 +11,7 @@ package org.ohmyopensource.ohmyuniversity.core.dto;
  *
  * <p>All values are derived at runtime from live Cineca data and are not persisted.
  */
-public class MediaResponse {
+public class GradesResponse {
 
   private Double mediaAritmetica;
   private Double mediaPesata;

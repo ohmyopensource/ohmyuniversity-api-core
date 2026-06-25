@@ -1,4 +1,4 @@
-package org.ohmyopensource.ohmyuniversity.core.dto;
+package org.ohmyopensource.ohmyuniversity.core.dto.esse3;
 
 import java.util.List;
 
@@ -6,7 +6,7 @@ import java.util.List;
  * Response DTO for GET /api/v1/carriera/storico-esami. Returns complete exam attempt history
  * grouped by course activity.
  */
-public class StoricoEsamiResponse {
+public class ExamHistoryResponse {
 
   private List<EsameConStorico> esami;
 

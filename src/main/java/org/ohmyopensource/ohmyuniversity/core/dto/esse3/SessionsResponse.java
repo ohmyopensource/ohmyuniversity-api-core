@@ -1,4 +1,4 @@
-package org.ohmyopensource.ohmyuniversity.core.dto;
+package org.ohmyopensource.ohmyuniversity.core.dto.esse3;
 
 import java.util.List;
 
@@ -11,7 +11,7 @@ import java.util.List;
  * <p>It is designed as an API contract object and is independent of persistence and external
  * service models to ensure stability of the internal API layer.
  */
-public class AppelloResponse {
+public class SessionsResponse {
 
   private List<Appello> appelli;
 

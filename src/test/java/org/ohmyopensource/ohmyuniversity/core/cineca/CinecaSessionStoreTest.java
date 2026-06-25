@@ -67,7 +67,7 @@ class CinecaSessionStoreTest {
       verify(valueOps).set(
           "cineca:jwt:" + USER_ID + ":" + UNI_ID,
           "jwt-token",
-          Duration.ofMinutes(14));
+          Duration.ofMinutes(90));
     }
 
     /**
@@ -129,7 +129,7 @@ class CinecaSessionStoreTest {
       verify(valueOps).set(
           "cineca:auth:" + USER_ID + ":" + UNI_ID,
           "auth-token",
-          Duration.ofMinutes(14));
+          Duration.ofMinutes(90));
     }
 
     /**
@@ -179,7 +179,7 @@ class CinecaSessionStoreTest {
       verify(valueOps).set(
           "cineca:pers:" + USER_ID + ":" + UNI_ID,
           "99999",
-          Duration.ofMinutes(14));
+          Duration.ofMinutes(90));
     }
 
     /**

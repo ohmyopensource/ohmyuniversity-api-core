@@ -17,10 +17,10 @@ import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaUnavaila
 import org.ohmyopensource.ohmyuniversity.core.config.JwtAuthenticationFilter;
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.controller.v1.esse3.CareerController;
-import org.ohmyopensource.ohmyuniversity.core.dto.LibrettoResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.LibrettoResponse.RigaLibretto;
-import org.ohmyopensource.ohmyuniversity.core.dto.MediaResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.PianoStudioResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.TranscriptResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.TranscriptResponse.RigaLibretto;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.GradesResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.StudyPlanResponse;
 import org.ohmyopensource.ohmyuniversity.core.service.esse3.CareerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -94,7 +94,7 @@ class CareerControllerTest {
       riga.setVoto(29);
       riga.setSuperata(true);
 
-      LibrettoResponse response = new LibrettoResponse();
+      TranscriptResponse response = new TranscriptResponse();
       response.setRighe(List.of(riga));
 
       when(careerService.getTranscript(any())).thenReturn(response);
@@ -147,7 +147,7 @@ class CareerControllerTest {
     @Test
     @DisplayName("returns 200 with averages")
     void returns200() throws Exception {
-      MediaResponse response = new MediaResponse();
+      GradesResponse response = new GradesResponse();
       response.setMediaAritmetica(26.17);
       response.setMediaPesata(25.84);
       response.setBaseMax110(95.94);
@@ -196,13 +196,13 @@ class CareerControllerTest {
     @Test
     @DisplayName("returns 200 with righe piano")
     void returns200() throws Exception {
-      PianoStudioResponse.RigaPiano riga = new PianoStudioResponse.RigaPiano();
+      StudyPlanResponse.RigaPiano riga = new StudyPlanResponse.RigaPiano();
       riga.setAdCod("411114");
       riga.setAdDes("Architettura degli elaboratori");
       riga.setCfu(6.0);
       riga.setAnnoCorso(1);
 
-      PianoStudioResponse response = new PianoStudioResponse();
+      StudyPlanResponse response = new StudyPlanResponse();
       response.setRighe(List.of(riga));
 
       when(careerService.getStudyPlan(any())).thenReturn(response);

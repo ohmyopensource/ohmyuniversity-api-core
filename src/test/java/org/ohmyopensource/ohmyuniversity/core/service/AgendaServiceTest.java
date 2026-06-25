@@ -28,9 +28,9 @@ import org.ohmyopensource.ohmyuniversity.core.domain.repository.CalendarEventImp
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.CalendarEventRepository;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.OmuUserRepository;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityEventRepository;
-import org.ohmyopensource.ohmyuniversity.core.dto.calendar.CalendarEventRequest;
-import org.ohmyopensource.ohmyuniversity.core.dto.calendar.CalendarEventResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.calendar.UniversityEventResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.agenda.AgendaEventRequest;
+import org.ohmyopensource.ohmyuniversity.core.dto.agenda.AgendaEventResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.agenda.UniversityEventResponse;
 import org.ohmyopensource.ohmyuniversity.core.service.AgendaService.EventAlreadyImportedException;
 import org.ohmyopensource.ohmyuniversity.core.service.AgendaService.EventNotFoundException;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -94,8 +94,8 @@ class AgendaServiceTest {
     return e;
   }
 
-  private CalendarEventRequest sampleRequest() {
-    CalendarEventRequest r = new CalendarEventRequest();
+  private AgendaEventRequest sampleRequest() {
+    AgendaEventRequest r = new AgendaEventRequest();
     r.setTitle("Esame Sistemi");
     r.setStartDate("2026-07-15T09:00:00Z");
     r.setType(CalendarEventType.EXAM);
@@ -124,7 +124,7 @@ class AgendaServiceTest {
     /**
      * Verifies that when no date filters are supplied,
      * {@link CalendarEventRepository #findByUserIdOrderByStartDateAsc} is called and the result is
-     * mapped to {@link CalendarEventResponse} correctly.
+     * mapped to {@link AgendaEventResponse} correctly.
      */
     @Test
     @DisplayName("returns events ordered by start date when no filters")
@@ -133,7 +133,7 @@ class AgendaServiceTest {
       when(eventRepository.findByUserIdOrderByStartDateAsc(userId))
           .thenReturn(List.of(event));
 
-      List<CalendarEventResponse> result = agendaService.getEvents(principal, null, null);
+      List<AgendaEventResponse> result = agendaService.getEvents(principal, null, null);
 
       assertThat(result).hasSize(1);
       assertThat(result.get(0).getTitle()).isEqualTo("Esame Sistemi");
@@ -143,7 +143,7 @@ class AgendaServiceTest {
     /**
      * Verifies that when both {@code from} and {@code to} filters are supplied,
      * {@link CalendarEventRepository#findByUserIdAndDateRange} is called with the parsed instants
-     * and the result is mapped to {@link CalendarEventResponse} correctly.
+     * and the result is mapped to {@link AgendaEventResponse} correctly.
      */
     @Test
     @DisplayName("returns events filtered by date range")
@@ -152,7 +152,7 @@ class AgendaServiceTest {
       when(eventRepository.findByUserIdAndDateRange(any(), any(), any()))
           .thenReturn(List.of(event));
 
-      List<CalendarEventResponse> result = agendaService.getEvents(
+      List<AgendaEventResponse> result = agendaService.getEvents(
           principal, "2026-07-01T00:00:00Z", "2026-07-31T23:59:59Z");
 
       assertThat(result).hasSize(1);
@@ -168,7 +168,7 @@ class AgendaServiceTest {
     void returnsEmptyList() {
       when(eventRepository.findByUserIdOrderByStartDateAsc(userId)).thenReturn(List.of());
 
-      List<CalendarEventResponse> result = agendaService.getEvents(principal, null, null);
+      List<AgendaEventResponse> result = agendaService.getEvents(principal, null, null);
 
       assertThat(result).isEmpty();
     }
@@ -185,7 +185,7 @@ class AgendaServiceTest {
     /**
      * Verifies that {@link AgendaService#createEvent} resolves the user, maps the request to a
      * {@link CalendarEvent} entity, persists it via the repository, and returns a correctly
-     * populated {@link CalendarEventResponse}.
+     * populated {@link AgendaEventResponse}.
      */
     @Test
     @DisplayName("creates and returns event")
@@ -194,7 +194,7 @@ class AgendaServiceTest {
       CalendarEvent saved = sampleEvent();
       when(eventRepository.save(any())).thenReturn(saved);
 
-      CalendarEventResponse result = agendaService.createEvent(principal, sampleRequest());
+      AgendaEventResponse result = agendaService.createEvent(principal, sampleRequest());
 
       assertThat(result.getTitle()).isEqualTo("Esame Sistemi");
       assertThat(result.getType()).isEqualTo(CalendarEventType.EXAM);
@@ -213,11 +213,11 @@ class AgendaServiceTest {
       saved.setType(CalendarEventType.PERSONAL);
       when(eventRepository.save(any())).thenReturn(saved);
 
-      CalendarEventRequest request = new CalendarEventRequest();
+      AgendaEventRequest request = new AgendaEventRequest();
       request.setTitle("Evento generico");
       request.setStartDate("2026-07-15T09:00:00Z");
 
-      CalendarEventResponse result = agendaService.createEvent(principal, request);
+      AgendaEventResponse result = agendaService.createEvent(principal, request);
 
       assertThat(result.getType()).isEqualTo(CalendarEventType.PERSONAL);
     }
@@ -246,7 +246,7 @@ class AgendaServiceTest {
     /**
      * Verifies that {@link AgendaService#updateEvent} loads the event by id and user id, applies
      * the request fields, persists the updated entity, and returns a correctly populated
-     * {@link CalendarEventResponse}.
+     * {@link AgendaEventResponse}.
      */
     @Test
     @DisplayName("updates and returns event")
@@ -257,10 +257,10 @@ class AgendaServiceTest {
           .thenReturn(Optional.of(existing));
       when(eventRepository.save(any())).thenReturn(existing);
 
-      CalendarEventRequest request = sampleRequest();
+      AgendaEventRequest request = sampleRequest();
       request.setTitle("Esame Aggiornato");
 
-      CalendarEventResponse result = agendaService.updateEvent(principal, eventId, request);
+      AgendaEventResponse result = agendaService.updateEvent(principal, eventId, request);
 
       assertThat(result.getTitle()).isEqualTo("Esame Aggiornato");
       verify(eventRepository).save(existing);

@@ -24,5 +24,5 @@ public record OmuPrincipal(
     Long stuId,
     Long matId,
     String matricola,
-    boolean hasCarriera) {
+    Boolean hasCarriera) {
 }

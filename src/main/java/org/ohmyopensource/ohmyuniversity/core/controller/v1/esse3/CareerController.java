@@ -1,11 +1,11 @@
 package org.ohmyopensource.ohmyuniversity.core.controller.v1.esse3;
 
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
-import org.ohmyopensource.ohmyuniversity.core.dto.LibrettoResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.MediaResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.PianoStudioResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.StoricoEsamiResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.SuggerimentiResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.TranscriptResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.GradesResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.StudyPlanResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.ExamHistoryResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.RecommendationsResponse;
 import org.ohmyopensource.ohmyuniversity.core.service.esse3.CareerService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -55,7 +55,7 @@ public class CareerController extends AbstractEsse3Controller {
    *         {@code 503} if Cineca is unavailable
    */
   @GetMapping("/transcript")
-  public ResponseEntity<LibrettoResponse> getTranscript(
+  public ResponseEntity<TranscriptResponse> getTranscript(
       @AuthenticationPrincipal OmuPrincipal principal) {
     return execute(principal, () -> careerService.getTranscript(principal));
   }
@@ -68,7 +68,7 @@ public class CareerController extends AbstractEsse3Controller {
    *         {@code 503} if Cineca is unavailable
    */
   @GetMapping("/grades")
-  public ResponseEntity<MediaResponse> getGrades(
+  public ResponseEntity<GradesResponse> getGrades(
       @AuthenticationPrincipal OmuPrincipal principal) {
     return execute(principal, () -> careerService.getGrades(principal));
   }
@@ -81,7 +81,7 @@ public class CareerController extends AbstractEsse3Controller {
    *         {@code 503} if Cineca is unavailable
    */
   @GetMapping("/study-plan")
-  public ResponseEntity<PianoStudioResponse> getStudyPlan(
+  public ResponseEntity<StudyPlanResponse> getStudyPlan(
       @AuthenticationPrincipal OmuPrincipal principal) {
     return execute(principal, () -> careerService.getStudyPlan(principal));
   }
@@ -94,7 +94,7 @@ public class CareerController extends AbstractEsse3Controller {
    *         {@code 503} if Cineca is unavailable
    */
   @GetMapping("/exam-history")
-  public ResponseEntity<StoricoEsamiResponse> getExamHistory(
+  public ResponseEntity<ExamHistoryResponse> getExamHistory(
       @AuthenticationPrincipal OmuPrincipal principal) {
     return execute(principal, () -> careerService.getExamHistory(principal));
   }
@@ -109,7 +109,7 @@ public class CareerController extends AbstractEsse3Controller {
    *         {@code 503} if Cineca is unavailable
    */
   @GetMapping("/recommendations")
-  public ResponseEntity<SuggerimentiResponse> getRecommendations(
+  public ResponseEntity<RecommendationsResponse> getRecommendations(
       @AuthenticationPrincipal OmuPrincipal principal) {
     return execute(principal, () -> careerService.getRecommendations(principal));
   }
