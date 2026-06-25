@@ -218,7 +218,8 @@ public class CinecaSessionStore {
    */
   public void storeMatricola(String omuUserId, String universityId, String matricola) {
     String key = String.format(KEY_CINECA_MATRICOLA, omuUserId, universityId);
-    redis.opsForValue().set(key, matricola, CINECA_CAREER_TTL);
+    String safeMatricola = matricola != null ? matricola.replaceAll("[\r\n]", "_") : null;
+    redis.opsForValue().set(key, safeMatricola, CINECA_CAREER_TTL);
   }
 
   /**

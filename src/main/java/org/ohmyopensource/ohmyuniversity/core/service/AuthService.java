@@ -316,7 +316,9 @@ public class AuthService {
         .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
     log.info("AuthService: switched carriera for user={} stuId={} matId={}",
-        omuUserId, stuId, matId);
+        omuUserId.replaceAll("[\r\n]", "_"),
+        stuId,
+        matId);
 
     return jwtService.issue(omuUserId, omuUser.getCodiceFiscale(),
         universityId, stuId, matId, matricola);
