@@ -25,6 +25,7 @@ import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaSessionStore;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.OmuUser;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.UniversityConnection;
+import org.ohmyopensource.ohmyuniversity.core.domain.repository.CachedProfiloCarrieraRepository;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.OmuUserRepository;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityConnectionRepository;
 import org.ohmyopensource.ohmyuniversity.core.dto.LoginRequest;
@@ -69,6 +70,7 @@ class AuthServiceTest {
   private OmuUserRepository userRepository;
   private UniversityConnectionRepository connectionRepository;
   private UniversityRegistry universityRegistry;
+  private CachedProfiloCarrieraRepository cachedProfiloRepository;
   private AuthService authService;
 
   /**
@@ -83,12 +85,18 @@ class AuthServiceTest {
     userRepository = mock(OmuUserRepository.class);
     connectionRepository = mock(UniversityConnectionRepository.class);
     universityRegistry = mock(UniversityRegistry.class);
+    cachedProfiloRepository = mock(CachedProfiloCarrieraRepository.class);
     CinecaSyncService cinecaSyncService = mock(CinecaSyncService.class);
+
+    when(cachedProfiloRepository.findByUserIdAndStuId(any(), any()))
+        .thenReturn(Optional.empty());
+    when(cachedProfiloRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+    when(cachedProfiloRepository.findByUserId(any())).thenReturn(List.of());
 
     authService = new AuthService(
         cinecaClient, sessionStore, jwtService,
         userRepository, connectionRepository, universityRegistry,
-        cinecaSyncService);
+        cachedProfiloRepository, cinecaSyncService);
   }
 
   /**
@@ -96,10 +104,7 @@ class AuthServiceTest {
    */
   private UniversityRegistry.UniversityConfig uniConfig() {
     return new UniversityRegistry.UniversityConfig(
-        UNI_NAME,
-        BASE_URL,
-        null,
-        null);
+        UNI_NAME, BASE_URL, null, null, null);
   }
 
   /**

@@ -150,4 +150,29 @@ public class AuthController {
       return ResponseEntity.status(400).build();
     }
   }
+
+  /**
+   * Switches the active university context for the authenticated user.
+   * Returns 409 if no active Cineca session exists for the target university
+   * (client must prompt for login credentials).
+   *
+   * @param targetUniversityId university to switch to
+   * @param refreshToken       current refresh token
+   * @param principal          authenticated user
+   * @return new access token or 409 if re-login required
+   */
+  @PostMapping("/switch-university")
+  public ResponseEntity<Map<String, String>> switchUniversity(
+      @RequestParam String targetUniversityId,
+      @RequestParam String refreshToken,
+      @AuthenticationPrincipal OmuPrincipal principal) {
+    try {
+      String newToken = authService.switchUniversity(
+          principal.omuUserId(), targetUniversityId, refreshToken);
+      return ResponseEntity.ok(Map.of("accessToken", newToken));
+    } catch (IllegalArgumentException e) {
+      log.warn("AuthController: switch university failed — {}", e.getMessage());
+      return ResponseEntity.status(409).build();
+    }
+  }
 }

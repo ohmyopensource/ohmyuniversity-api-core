@@ -1,0 +1,721 @@
+# ============================================================
+# OhMyUniversity! - University Registry
+# Per-university configuration for ESSE3/Cineca integration.
+#
+# Fields:
+#   name            — human-readable university name
+#   base-url        — Cineca ESSE3 REST API base URL
+#   moodle-url      — university Moodle instance (may need verification)
+#   library-url     — university library portal (may need verification)
+#   esse3-portal-url — ESSE3 student web portal
+#
+# NOTE: URLs marked with # TODO need manual verification.
+# Universities not on Cineca ESSE3 may have incorrect base-url.
+# ============================================================
+
+omu:
+  universities:
+
+    # ── Politecnici e Scuole Superiori ──────────────────────
+    POLIBA:
+      name: Politecnico di Bari
+      base-url: https://poliba.esse3.cineca.it/e3rest/api
+      moodle-url: https://elearning.poliba.it # TODO verify
+      library-url: https://www.poliba.it/biblioteca # TODO verify
+      esse3-portal-url: https://poliba.esse3.cineca.it/Start.do
+
+    POLIMI:
+      name: Politecnico di Milano
+      base-url: https://polimi.esse3.cineca.it/e3rest/api
+      moodle-url: https://beep.metid.polimi.it # TODO verify
+      library-url: https://www.biblio.polimi.it # TODO verify
+      esse3-portal-url: https://polimi.esse3.cineca.it/Start.do
+
+    POLITO:
+      name: Politecnico di Torino
+      base-url: https://polito.esse3.cineca.it/e3rest/api
+      moodle-url: https://didattica.polito.it # TODO verify
+      library-url: https://www.biblio.polito.it # TODO verify
+      esse3-portal-url: https://polito.esse3.cineca.it/Start.do
+
+    CASD:
+      name: Centro Alti Studi per la Difesa
+      base-url: https://casd.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.casd.difesa.it # TODO verify
+      library-url: https://www.casd.difesa.it/biblioteca # TODO verify
+      esse3-portal-url: https://casd.esse3.cineca.it/Start.do
+
+    IUSSPAVIA:
+      name: Istituto Universitario di Studi Superiori di Pavia
+      base-url: https://iusspavia.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.iusspavia.it # TODO verify
+      library-url: https://www.iusspavia.it/biblioteca # TODO verify
+      esse3-portal-url: https://iusspavia.esse3.cineca.it/Start.do
+
+    IMTLUCCA:
+      name: Scuola IMT Alti Studi di Lucca
+      base-url: https://imtlucca.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.imtlucca.it # TODO verify
+      library-url: https://www.imtlucca.it/biblioteca # TODO verify
+      esse3-portal-url: https://imtlucca.esse3.cineca.it/Start.do
+
+    SISSA:
+      name: Scuola Internazionale Superiore di Studi Avanzati di Trieste
+      base-url: https://sissa.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.sissa.it # TODO verify
+      library-url: https://www.sissa.it/biblioteca # TODO verify
+      esse3-portal-url: https://sissa.esse3.cineca.it/Start.do
+
+    SNS:
+      name: Scuola Normale Superiore di Pisa
+      base-url: https://sns.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.sns.it # TODO verify
+      library-url: https://www.sns.it/biblioteca # TODO verify
+      esse3-portal-url: https://sns.esse3.cineca.it/Start.do
+
+    SSM:
+      name: Scuola Superiore Meridionale di Napoli
+      base-url: https://ssm.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.ssm.unina.it # TODO verify
+      library-url: https://www.ssm.unina.it/biblioteca # TODO verify
+      esse3-portal-url: https://ssm.esse3.cineca.it/Start.do
+
+    SSSUP:
+      name: Scuola Superiore Sant'Anna di Pisa
+      base-url: https://sssup.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.santannapisa.it # TODO verify
+      library-url: https://www.santannapisa.it/biblioteca # TODO verify
+      esse3-portal-url: https://sssup.esse3.cineca.it/Start.do
+
+    # ── Università Statali ───────────────────────────────────
+    UNIVE:
+      name: Università Ca' Foscari Venezia
+      base-url: https://unive.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unive.it # TODO verify
+      library-url: https://www.unive.it/biblioteca # TODO verify
+      esse3-portal-url: https://unive.esse3.cineca.it/Start.do
+
+    UNIURB:
+      name: Università degli Studi "Carlo Bo" di Urbino
+      base-url: https://uniurb.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.uniurb.it # TODO verify
+      library-url: https://www.uniurb.it/biblioteca # TODO verify
+      esse3-portal-url: https://uniurb.esse3.cineca.it/Start.do
+
+    UNIVPM:
+      name: Università Politecnica delle Marche
+      base-url: https://univpm.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.univpm.it # TODO verify
+      library-url: https://www.univpm.it/biblioteca # TODO verify
+      esse3-portal-url: https://univpm.esse3.cineca.it/Start.do
+
+    UNIBA:
+      name: Università degli Studi di Bari
+      base-url: https://uniba.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.uniba.it # TODO verify
+      library-url: https://www.uniba.it/biblioteca # TODO verify
+      esse3-portal-url: https://uniba.esse3.cineca.it/Start.do
+
+    UNIBG:
+      name: Università degli Studi di Bergamo
+      base-url: https://unibg.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unibg.it # TODO verify
+      library-url: https://www.unibg.it/biblioteca # TODO verify
+      esse3-portal-url: https://unibg.esse3.cineca.it/Start.do
+
+    UNIBO:
+      name: Università degli Studi di Bologna
+      base-url: https://unibo.esse3.cineca.it/e3rest/api
+      moodle-url: https://virtuale.unibo.it # TODO verify
+      library-url: https://sba.unibo.it # TODO verify
+      esse3-portal-url: https://unibo.esse3.cineca.it/Start.do
+
+    UNIBS:
+      name: Università degli Studi di Brescia
+      base-url: https://unibs.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unibs.it # TODO verify
+      library-url: https://www.unibs.it/biblioteca # TODO verify
+      esse3-portal-url: https://unibs.esse3.cineca.it/Start.do
+
+    UNICA:
+      name: Università degli Studi di Cagliari
+      base-url: https://unica.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unica.it # TODO verify
+      library-url: https://www.unica.it/biblioteca # TODO verify
+      esse3-portal-url: https://unica.esse3.cineca.it/Start.do
+
+    UNICAM:
+      name: Università degli Studi di Camerino
+      base-url: https://unicam.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unicam.it # TODO verify
+      library-url: https://www.unicam.it/biblioteca # TODO verify
+      esse3-portal-url: https://unicam.esse3.cineca.it/Start.do
+
+    UNICAS:
+      name: Università degli Studi di Cassino e del Lazio Meridionale
+      base-url: https://unicas.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unicas.it # TODO verify
+      library-url: https://www.unicas.it/biblioteca # TODO verify
+      esse3-portal-url: https://unicas.esse3.cineca.it/Start.do
+
+    UNICT:
+      name: Università degli Studi di Catania
+      base-url: https://unict.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unict.it # TODO verify
+      library-url: https://www.unict.it/biblioteca # TODO verify
+      esse3-portal-url: https://unict.esse3.cineca.it/Start.do
+
+    UNICZ:
+      name: Università degli Studi di Catanzaro - Magna Graecia
+      base-url: https://unicz.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unicz.it # TODO verify
+      library-url: https://www.unicz.it/biblioteca # TODO verify
+      esse3-portal-url: https://unicz.esse3.cineca.it/Start.do
+
+    UNIFE:
+      name: Università degli Studi di Ferrara
+      base-url: https://unife.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unife.it # TODO verify
+      library-url: https://www.unife.it/biblioteca # TODO verify
+      esse3-portal-url: https://unife.esse3.cineca.it/Start.do
+
+    UNIFI:
+      name: Università degli Studi di Firenze
+      base-url: https://unifi.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unifi.it # TODO verify
+      library-url: https://www.sba.unifi.it # TODO verify
+      esse3-portal-url: https://unifi.esse3.cineca.it/Start.do
+
+    UNIFG:
+      name: Università degli Studi di Foggia
+      base-url: https://unifg.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unifg.it # TODO verify
+      library-url: https://www.unifg.it/biblioteca # TODO verify
+      esse3-portal-url: https://unifg.esse3.cineca.it/Start.do
+
+    UNIGE:
+      name: Università degli Studi di Genova
+      base-url: https://unige.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unige.it # TODO verify
+      library-url: https://www.unige.it/biblioteca # TODO verify
+      esse3-portal-url: https://unige.esse3.cineca.it/Start.do
+
+    UNIVAQ:
+      name: Università degli Studi dell'Aquila
+      base-url: https://univaq.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.univaq.it # TODO verify
+      library-url: https://www.univaq.it/biblioteca # TODO verify
+      esse3-portal-url: https://univaq.esse3.cineca.it/Start.do
+
+    UNIMC:
+      name: Università degli Studi di Macerata
+      base-url: https://unimc.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unimc.it # TODO verify
+      library-url: https://www.unimc.it/biblioteca # TODO verify
+      esse3-portal-url: https://unimc.esse3.cineca.it/Start.do
+
+    UNIME:
+      name: Università degli Studi di Messina
+      base-url: https://unime.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unime.it # TODO verify
+      library-url: https://www.unime.it/biblioteca # TODO verify
+      esse3-portal-url: https://unime.esse3.cineca.it/Start.do
+
+    UNIMI:
+      name: Università degli Studi di Milano
+      base-url: https://unimi.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unimi.it # TODO verify
+      library-url: https://www.sba.unimi.it # TODO verify
+      esse3-portal-url: https://unimi.esse3.cineca.it/Start.do
+
+    UNIMIB:
+      name: Università degli Studi di Milano-Bicocca
+      base-url: https://unimib.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unimib.it # TODO verify
+      library-url: https://www.unimib.it/biblioteca # TODO verify
+      esse3-portal-url: https://unimib.esse3.cineca.it/Start.do
+
+    UNIMORE:
+      name: Università degli Studi di Modena e Reggio Emilia
+      base-url: https://unimore.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unimore.it # TODO verify
+      library-url: https://www.unimore.it/biblioteca # TODO verify
+      esse3-portal-url: https://unimore.esse3.cineca.it/Start.do
+
+    UNIPARTHENOPE:
+      name: Università degli Studi di Napoli Parthenope
+      base-url: https://uniparthenope.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.uniparthenope.it # TODO verify
+      library-url: https://www.uniparthenope.it/biblioteca # TODO verify
+      esse3-portal-url: https://uniparthenope.esse3.cineca.it/Start.do
+
+    UNINA:
+      name: Università degli Studi di Napoli Federico II
+      base-url: https://unina.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unina.it # TODO verify
+      library-url: https://www.sba.unina.it # TODO verify
+      esse3-portal-url: https://unina.esse3.cineca.it/Start.do
+
+    UNIPD:
+      name: Università degli Studi di Padova
+      base-url: https://unipd.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unipd.it # TODO verify
+      library-url: https://www.unipd.it/biblioteca # TODO verify
+      esse3-portal-url: https://unipd.esse3.cineca.it/Start.do
+
+    UNIPA:
+      name: Università degli Studi di Palermo
+      base-url: https://unipa.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unipa.it # TODO verify
+      library-url: https://www.unipa.it/biblioteca # TODO verify
+      esse3-portal-url: https://unipa.esse3.cineca.it/Start.do
+
+    UNIPR:
+      name: Università degli Studi di Parma
+      base-url: https://unipr.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unipr.it # TODO verify
+      library-url: https://www.unipr.it/biblioteca # TODO verify
+      esse3-portal-url: https://unipr.esse3.cineca.it/Start.do
+
+    UNIPV:
+      name: Università degli Studi di Pavia
+      base-url: https://unipv.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unipv.it # TODO verify
+      library-url: https://www.unipv.it/biblioteca # TODO verify
+      esse3-portal-url: https://unipv.esse3.cineca.it/Start.do
+
+    UNIPG:
+      name: Università degli Studi di Perugia
+      base-url: https://unipg.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unipg.it # TODO verify
+      library-url: https://www.unipg.it/biblioteca # TODO verify
+      esse3-portal-url: https://unipg.esse3.cineca.it/Start.do
+
+    IUSM:
+      name: Università degli Studi di Roma "Foro Italico"
+      base-url: https://iusm.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.uniroma4.it # TODO verify
+      library-url: https://www.uniroma4.it/biblioteca # TODO verify
+      esse3-portal-url: https://iusm.esse3.cineca.it/Start.do
+
+    UNIROMA1:
+      name: Università degli Studi di Roma "La Sapienza"
+      base-url: https://uniroma1.esse3.cineca.it/e3rest/api
+      moodle-url: https://elearning.uniroma1.it # TODO verify
+      library-url: https://www.sba.uniroma1.it # TODO verify
+      esse3-portal-url: https://uniroma1.esse3.cineca.it/Start.do
+
+    UNIROMA2:
+      name: Università degli Studi di Roma "Tor Vergata"
+      base-url: https://uniroma2.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.uniroma2.it # TODO verify
+      library-url: https://www.uniroma2.it/biblioteca # TODO verify
+      esse3-portal-url: https://uniroma2.esse3.cineca.it/Start.do
+
+    UNISA:
+      name: Università degli Studi di Salerno
+      base-url: https://unisa.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unisa.it # TODO verify
+      library-url: https://www.unisa.it/biblioteca # TODO verify
+      esse3-portal-url: https://unisa.esse3.cineca.it/Start.do
+
+    UNISS:
+      name: Università degli Studi di Sassari
+      base-url: https://uniss.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.uniss.it # TODO verify
+      library-url: https://www.uniss.it/biblioteca # TODO verify
+      esse3-portal-url: https://uniss.esse3.cineca.it/Start.do
+
+    UNITE:
+      name: Università degli Studi di Teramo
+      base-url: https://unite.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unite.it # TODO verify
+      library-url: https://www.unite.it/biblioteca # TODO verify
+      esse3-portal-url: https://unite.esse3.cineca.it/Start.do
+
+    UNITO:
+      name: Università degli Studi di Torino
+      base-url: https://unito.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unito.it # TODO verify
+      library-url: https://www.sba.unito.it # TODO verify
+      esse3-portal-url: https://unito.esse3.cineca.it/Start.do
+
+    UNITN:
+      name: Università degli Studi di Trento
+      base-url: https://unitn.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unitn.it # TODO verify
+      library-url: https://www.unitn.it/biblioteca # TODO verify
+      esse3-portal-url: https://unitn.esse3.cineca.it/Start.do
+
+    UNITS:
+      name: Università degli Studi di Trieste
+      base-url: https://units.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.units.it # TODO verify
+      library-url: https://www.units.it/biblioteca # TODO verify
+      esse3-portal-url: https://units.esse3.cineca.it/Start.do
+
+    UNIUD:
+      name: Università degli Studi di Udine
+      base-url: https://uniud.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.uniud.it # TODO verify
+      library-url: https://www.uniud.it/biblioteca # TODO verify
+      esse3-portal-url: https://uniud.esse3.cineca.it/Start.do
+
+    UNIVR:
+      name: Università degli Studi di Verona
+      base-url: https://univr.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.univr.it # TODO verify
+      library-url: https://www.univr.it/biblioteca # TODO verify
+      esse3-portal-url: https://univr.esse3.cineca.it/Start.do
+
+    UNINSUBRIA:
+      name: Università degli Studi dell'Insubria
+      base-url: https://uninsubria.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.uninsubria.it # TODO verify
+      library-url: https://www.uninsubria.it/biblioteca # TODO verify
+      esse3-portal-url: https://uninsubria.esse3.cineca.it/Start.do
+
+    UNIMOL:
+      name: Università degli Studi del Molise
+      base-url: https://unimol.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unimol.it
+      library-url: https://biblioteche.unimol.it
+      esse3-portal-url: https://unimol.esse3.cineca.it/Start.do
+
+    UNIPMN:
+      name: Università degli Studi del Piemonte Orientale "Amedeo Avogadro"
+      base-url: https://unipmn.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.uniupo.it # TODO verify
+      library-url: https://www.uniupo.it/biblioteca # TODO verify
+      esse3-portal-url: https://unipmn.esse3.cineca.it/Start.do
+
+    UNISANNIO:
+      name: Università degli Studi del Sannio
+      base-url: https://unisannio.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unisannio.it # TODO verify
+      library-url: https://www.unisannio.it/biblioteca # TODO verify
+      esse3-portal-url: https://unisannio.esse3.cineca.it/Start.do
+
+    UNICAMPANIA:
+      name: Università degli Studi della Campania "Luigi Vanvitelli"
+      base-url: https://unicampania.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unicampania.it # TODO verify
+      library-url: https://www.unicampania.it/biblioteca # TODO verify
+      esse3-portal-url: https://unicampania.esse3.cineca.it/Start.do
+
+    UNIBAS:
+      name: Università degli Studi della Basilicata
+      base-url: https://unibas.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unibas.it # TODO verify
+      library-url: https://www.unibas.it/biblioteca # TODO verify
+      esse3-portal-url: https://unibas.esse3.cineca.it/Start.do
+
+    UNITUS:
+      name: Università degli Studi della Tuscia
+      base-url: https://unitus.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unitus.it # TODO verify
+      library-url: https://www.unitus.it/biblioteca # TODO verify
+      esse3-portal-url: https://unitus.esse3.cineca.it/Start.do
+
+    UNICH:
+      name: Università degli Studi "Gabriele D'Annunzio" di Chieti e Pescara
+      base-url: https://unich.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unich.it # TODO verify
+      library-url: https://www.unich.it/biblioteca # TODO verify
+      esse3-portal-url: https://unich.esse3.cineca.it/Start.do
+
+    UNIOR:
+      name: Università degli Studi "L'Orientale" di Napoli
+      base-url: https://unior.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unior.it # TODO verify
+      library-url: https://www.unior.it/biblioteca # TODO verify
+      esse3-portal-url: https://unior.esse3.cineca.it/Start.do
+
+    UNIRC:
+      name: Università degli Studi Mediterranea di Reggio Calabria
+      base-url: https://unirc.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unirc.it # TODO verify
+      library-url: https://www.unirc.it/biblioteca # TODO verify
+      esse3-portal-url: https://unirc.esse3.cineca.it/Start.do
+
+    UNIROMA3:
+      name: Università degli Studi Roma Tre
+      base-url: https://uniroma3.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.uniroma3.it # TODO verify
+      library-url: https://www.uniroma3.it/biblioteca # TODO verify
+      esse3-portal-url: https://uniroma3.esse3.cineca.it/Start.do
+
+    UNISALENTO:
+      name: Università del Salento
+      base-url: https://unisalento.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unisalento.it # TODO verify
+      library-url: https://www.unisalento.it/biblioteca # TODO verify
+      esse3-portal-url: https://unisalento.esse3.cineca.it/Start.do
+
+    UNICAL:
+      name: Università della Calabria
+      base-url: https://unical.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unical.it # TODO verify
+      library-url: https://www.unical.it/biblioteca # TODO verify
+      esse3-portal-url: https://unical.esse3.cineca.it/Start.do
+
+    UNIPI:
+      name: Università di Pisa
+      base-url: https://unipi.esse3.cineca.it/e3rest/api
+      moodle-url: https://elearning.unipi.it # TODO verify
+      library-url: https://www.sba.unipi.it # TODO verify
+      esse3-portal-url: https://unipi.esse3.cineca.it/Start.do
+
+    UNISI:
+      name: Università degli Studi di Siena
+      base-url: https://unisi.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unisi.it # TODO verify
+      library-url: https://www.sba.unisi.it # TODO verify
+      esse3-portal-url: https://unisi.esse3.cineca.it/Start.do
+
+    IUAV:
+      name: Università Iuav di Venezia
+      base-url: https://iuav.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.iuav.it # TODO verify
+      library-url: https://www.iuav.it/biblioteca # TODO verify
+      esse3-portal-url: https://iuav.esse3.cineca.it/Start.do
+
+    UNISTRAPG:
+      name: Università per Stranieri di Perugia
+      base-url: https://unistrapg.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unistrapg.it # TODO verify
+      library-url: https://www.unistrapg.it/biblioteca # TODO verify
+      esse3-portal-url: https://unistrapg.esse3.cineca.it/Start.do
+
+    UNISTRASI:
+      name: Università per Stranieri di Siena
+      base-url: https://unistrasi.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unistrasi.it # TODO verify
+      library-url: https://www.unistrasi.it/biblioteca # TODO verify
+      esse3-portal-url: https://unistrasi.esse3.cineca.it/Start.do
+
+    # ── Università Private ───────────────────────────────────
+    GSSI:
+      name: Gran Sasso Science Institute
+      base-url: https://gssi.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.gssi.it # TODO verify
+      library-url: https://www.gssi.it/biblioteca # TODO verify
+      esse3-portal-url: https://gssi.esse3.cineca.it/Start.do
+
+    HUMANITAS:
+      name: Humanitas University
+      base-url: https://humanitas.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.humanitas-u.it # TODO verify
+      library-url: https://www.humanitas-u.it/biblioteca # TODO verify
+      esse3-portal-url: https://humanitas.esse3.cineca.it/Start.do
+
+    UNIBZ:
+      name: Libera Università di Bolzano
+      base-url: https://unibz.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unibz.it # TODO verify
+      library-url: https://www.unibz.it/biblioteca # TODO verify
+      esse3-portal-url: https://unibz.esse3.cineca.it/Start.do
+
+    IULM:
+      name: Libera Università di Lingue e Comunicazione (IULM) di Milano
+      base-url: https://iulm.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.iulm.it # TODO verify
+      library-url: https://www.iulm.it/biblioteca # TODO verify
+      esse3-portal-url: https://iulm.esse3.cineca.it/Start.do
+
+    LUMSA:
+      name: Libera Università Maria SS. Assunta (LUMSA) di Roma
+      base-url: https://lumsa.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.lumsa.it # TODO verify
+      library-url: https://www.lumsa.it/biblioteca # TODO verify
+      esse3-portal-url: https://lumsa.esse3.cineca.it/Start.do
+
+    LUM:
+      name: Libera Università Mediterranea "Giuseppe Degennaro"
+      base-url: https://lum.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.lum.it # TODO verify
+      library-url: https://www.lum.it/biblioteca # TODO verify
+      esse3-portal-url: https://lum.esse3.cineca.it/Start.do
+
+    UNIKORE:
+      name: Libera Università della Sicilia Centrale "Kore" di Enna
+      base-url: https://unikore.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unikore.it # TODO verify
+      library-url: https://www.unikore.it/biblioteca # TODO verify
+      esse3-portal-url: https://unikore.esse3.cineca.it/Start.do
+
+    UNISR:
+      name: Vita-Salute San Raffaele di Milano
+      base-url: https://unisr.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unisr.it # TODO verify
+      library-url: https://www.unisr.it/biblioteca # TODO verify
+      esse3-portal-url: https://unisr.esse3.cineca.it/Start.do
+
+    UNILINK:
+      name: Link Campus University di Roma
+      base-url: https://unilink.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unilink.it # TODO verify
+      library-url: https://www.unilink.it/biblioteca # TODO verify
+      esse3-portal-url: https://unilink.esse3.cineca.it/Start.do
+
+    LUISS:
+      name: LUISS Guido Carli di Roma
+      base-url: https://luiss.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.luiss.it # TODO verify
+      library-url: https://www.luiss.it/biblioteca # TODO verify
+      esse3-portal-url: https://luiss.esse3.cineca.it/Start.do
+
+    UNICAMILLUS:
+      name: Saint Camillus International University of Health
+      base-url: https://unicamillus.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unicamillus.org # TODO verify
+      library-url: https://www.unicamillus.org/biblioteca # TODO verify
+      esse3-portal-url: https://unicamillus.esse3.cineca.it/Start.do
+
+    LIUC:
+      name: Università "Carlo Cattaneo" (LIUC)
+      base-url: https://liuc.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.liuc.it # TODO verify
+      library-url: https://www.liuc.it/biblioteca # TODO verify
+      esse3-portal-url: https://liuc.esse3.cineca.it/Start.do
+
+    UNICAMPUS:
+      name: Università Campus Bio-Medico di Roma
+      base-url: https://unicampus.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unicampus.it # TODO verify
+      library-url: https://www.unicampus.it/biblioteca # TODO verify
+      esse3-portal-url: https://unicampus.esse3.cineca.it/Start.do
+
+    UNICATT:
+      name: Università Cattolica del Sacro Cuore
+      base-url: https://unicatt.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unicatt.it # TODO verify
+      library-url: https://www.unicatt.it/biblioteca # TODO verify
+      esse3-portal-url: https://unicatt.esse3.cineca.it/Start.do
+
+    UNIBOCCONI:
+      name: Università Commerciale Luigi Bocconi di Milano
+      base-url: https://unibocconi.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unibocconi.it # TODO verify
+      library-url: https://www.unibocconi.it/biblioteca # TODO verify
+      esse3-portal-url: https://unibocconi.esse3.cineca.it/Start.do
+
+    UNISOB:
+      name: Università degli Studi Suor Orsola Benincasa di Napoli
+      base-url: https://unisob.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unisob.na.it # TODO verify
+      library-url: https://www.unisob.na.it/biblioteca # TODO verify
+      esse3-portal-url: https://unisob.esse3.cineca.it/Start.do
+
+    UNIVDA:
+      name: Università della Valle d'Aosta
+      base-url: https://univda.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.univda.it # TODO verify
+      library-url: https://www.univda.it/biblioteca # TODO verify
+      esse3-portal-url: https://univda.esse3.cineca.it/Start.do
+
+    UNINT:
+      name: Università degli Studi Internazionali di Roma
+      base-url: https://unint.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unint.eu # TODO verify
+      library-url: https://www.unint.eu/biblioteca # TODO verify
+      esse3-portal-url: https://unint.esse3.cineca.it/Start.do
+
+    UNISG:
+      name: Università di Scienze Gastronomiche
+      base-url: https://unisg.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unisg.it # TODO verify
+      library-url: https://www.unisg.it/biblioteca # TODO verify
+      esse3-portal-url: https://unisg.esse3.cineca.it/Start.do
+
+    UNIER:
+      name: Università Europea di Roma
+      base-url: https://unier.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unier.it # TODO verify
+      library-url: https://www.unier.it/biblioteca # TODO verify
+      esse3-portal-url: https://unier.esse3.cineca.it/Start.do
+
+    UNIDANTE:
+      name: Università per Stranieri "Dante Alighieri" di Reggio Calabria
+      base-url: https://unidante.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unistrada.it # TODO verify
+      library-url: https://www.unistrada.it/biblioteca # TODO verify
+      esse3-portal-url: https://unidante.esse3.cineca.it/Start.do
+
+    # ── Università Telematiche ───────────────────────────────
+    UNIECAMPUS:
+      name: Università Telematica "e-Campus" di Novedrate
+      base-url: https://uniecampus.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.uniecampus.it # TODO verify
+      library-url: https://www.uniecampus.it/biblioteca # TODO verify
+      esse3-portal-url: https://uniecampus.esse3.cineca.it/Start.do
+
+    UNIFORTUNATO:
+      name: Università Telematica "Giustino Fortunato" di Benevento
+      base-url: https://unifortunato.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unifortunato.eu # TODO verify
+      library-url: https://www.unifortunato.eu/biblioteca # TODO verify
+      esse3-portal-url: https://unifortunato.esse3.cineca.it/Start.do
+
+    IUL:
+      name: Università Telematica "Italian University Line" di Firenze
+      base-url: https://iul.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.iuline.it # TODO verify
+      library-url: https://www.iuline.it/biblioteca # TODO verify
+      esse3-portal-url: https://iul.esse3.cineca.it/Start.do
+
+    UNIPEGASO:
+      name: Università Telematica "Pegaso" di Napoli
+      base-url: https://unipegaso.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unipegaso.it # TODO verify
+      library-url: https://www.unipegaso.it/biblioteca # TODO verify
+      esse3-portal-url: https://unipegaso.esse3.cineca.it/Start.do
+
+    UNISANRAFFAELE:
+      name: Università Telematica "San Raffaele" di Roma
+      base-url: https://unisanraffaele.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unisanraffaele.gnomon.it # TODO verify
+      library-url: https://www.unisanraffaele.gnomon.it/biblioteca # TODO verify
+      esse3-portal-url: https://unisanraffaele.esse3.cineca.it/Start.do
+
+    UNIMARCONI:
+      name: Università Telematica Guglielmo Marconi di Roma
+      base-url: https://unimarconi.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unimarconi.it # TODO verify
+      library-url: https://www.unimarconi.it/biblioteca # TODO verify
+      esse3-portal-url: https://unimarconi.esse3.cineca.it/Start.do
+
+    UNINETTUNO:
+      name: Università Telematica Internazionale UNINETTUNO di Roma
+      base-url: https://uninettuno.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.uninettunouniversity.net # TODO verify
+      library-url: https://www.uninettunouniversity.net/biblioteca # TODO verify
+      esse3-portal-url: https://uninettuno.esse3.cineca.it/Start.do
+
+    UNICUSANO:
+      name: Università Telematica Niccolò Cusano di Roma
+      base-url: https://unicusano.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unicusano.it # TODO verify
+      library-url: https://www.unicusano.it/biblioteca # TODO verify
+      esse3-portal-url: https://unicusano.esse3.cineca.it/Start.do
+
+    UNIDAV:
+      name: Università Telematica Non Statale "Leonardo da Vinci"
+      base-url: https://unidav.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unidav.it # TODO verify
+      library-url: https://www.unidav.it/biblioteca # TODO verify
+      esse3-portal-url: https://unidav.esse3.cineca.it/Start.do
+
+    UNITELMA:
+      name: Università Telematica Unitelma Sapienza di Roma
+      base-url: https://unitelma.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unitelma.it # TODO verify
+      library-url: https://www.unitelma.it/biblioteca # TODO verify
+      esse3-portal-url: https://unitelma.esse3.cineca.it/Start.do
+
+    UNIMERCATORUM:
+      name: Universitas Telematica Mercatorum di Roma
+      base-url: https://unimercatorum.esse3.cineca.it/e3rest/api
+      moodle-url: https://moodle.unimercatorum.it # TODO verify
+      library-url: https://www.unimercatorum.it/biblioteca # TODO verify
+      esse3-portal-url: https://unimercatorum.esse3.cineca.it/Start.do

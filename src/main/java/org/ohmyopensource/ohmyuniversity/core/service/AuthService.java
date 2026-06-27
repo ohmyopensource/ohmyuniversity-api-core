@@ -8,8 +8,10 @@ import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaLoginResponse;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaLoginResponse.TrattoCarriera;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaSessionStore;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry;
+import org.ohmyopensource.ohmyuniversity.core.domain.entity.CachedProfiloCarriera;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.OmuUser;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.UniversityConnection;
+import org.ohmyopensource.ohmyuniversity.core.domain.repository.CachedProfiloCarrieraRepository;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.OmuUserRepository;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityConnectionRepository;
 import org.ohmyopensource.ohmyuniversity.core.dto.LoginRequest;
@@ -41,6 +43,7 @@ public class AuthService {
   private final OmuUserRepository userRepository;
   private final UniversityConnectionRepository connectionRepository;
   private final UniversityRegistry universityRegistry;
+  private final CachedProfiloCarrieraRepository cachedProfiloRepository;
   private final CinecaSyncService cinecaSyncService;
 
   // ============ Constructor ============
@@ -63,6 +66,7 @@ public class AuthService {
       OmuUserRepository userRepository,
       UniversityConnectionRepository connectionRepository,
       UniversityRegistry universityRegistry,
+      CachedProfiloCarrieraRepository cachedProfiloRepository,
       CinecaSyncService cinecaSyncService) {
     this.cinecaClient = cinecaClient;
     this.sessionStore = sessionStore;
@@ -70,6 +74,7 @@ public class AuthService {
     this.userRepository = userRepository;
     this.connectionRepository = connectionRepository;
     this.universityRegistry = universityRegistry;
+    this.cachedProfiloRepository = cachedProfiloRepository;
     this.cinecaSyncService = cinecaSyncService;
   }
 
@@ -162,8 +167,37 @@ public class AuthService {
     }
 
     List<TrattoCarriera> tratti = cinecaUser.getTrattiCarriera();
-    List<ProfiloCarriera> profili = tratti == null ? List.of() : tratti.stream()
+    List<ProfiloCarriera> profiliCorrenti = tratti == null ? List.of() : tratti.stream()
         .map(t -> toProfiloCarriera(t, request.getUniversityId(), uniConfig.name()))
+        .toList();
+
+    for (ProfiloCarriera p : profiliCorrenti) {
+      CachedProfiloCarriera cached = cachedProfiloRepository
+          .findByUserIdAndStuId(omuUser.getId(), p.getStuId())
+          .orElseGet(CachedProfiloCarriera::new);
+      cached.setUser(omuUser);
+      cached.setUniversityId(p.getUniversityId());
+      cached.setUniversityName(p.getUniversityName());
+      cached.setStuId(p.getStuId());
+      cached.setMatId(p.getMatId());
+      cached.setMatricola(p.getMatricola());
+      cached.setCorsoNome(p.getCorsoNome());
+      cached.setCorsoCodice(p.getCorsoCodice());
+      cached.setCdsId(p.getCdsId());
+      cached.setTipoCorsoCod(p.getTipoCorsoCod());
+      cached.setStatusStudente(p.getStatusStudente());
+      cached.setStatusDescr(p.getStatusDescrizione());
+      cached.setAnnoCorso(p.getAnnoCorso());
+      cached.setDurataAnni(p.getDurataAnni());
+      cached.setAnnoAccademico(p.getAnnoAccademico());
+      cached.setAttivo(p.isAttivo());
+      cachedProfiloRepository.save(cached);
+    }
+
+    List<ProfiloCarriera> profili = cachedProfiloRepository
+        .findByUserId(omuUser.getId())
+        .stream()
+        .map(this::fromCached)
         .toList();
 
     TrattoCarriera defaultTratte = null;
@@ -361,6 +395,59 @@ public class AuthService {
       p.setCdsId(t.getCdsId());
     }
 
+    return p;
+  }
+
+  /**
+   * Switches the active university context for the authenticated user.
+   * Requires an active Cineca session (JWT in Redis) for the target university.
+   *
+   * @param omuUserId         internal user ID
+   * @param targetUniversityId university to switch to
+   * @param refreshToken      current refresh token (reused)
+   * @return new OhMyU access token for the target university
+   * @throws IllegalArgumentException if no active session exists for the target university
+   */
+  public String switchUniversity(String omuUserId, String targetUniversityId, String refreshToken) {
+    Optional<String> cinecaJwt = sessionStore.getCinecaJwt(omuUserId, targetUniversityId);
+    if (cinecaJwt.isEmpty()) {
+      throw new IllegalArgumentException("No active session for university: " + targetUniversityId);
+    }
+
+    OmuUser omuUser = userRepository.findById(java.util.UUID.fromString(omuUserId))
+        .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+    Long stuId = sessionStore.getStuId(omuUserId, targetUniversityId).orElse(null);
+    Long matId = sessionStore.getMatId(omuUserId, targetUniversityId).orElse(null);
+    String matricola = sessionStore.getMatricola(omuUserId, targetUniversityId).orElse(null);
+
+    sessionStore.storeRefreshToken(refreshToken, omuUserId);
+
+    log.info("AuthService: switched university for user={} to university={}",
+        omuUserId.replaceAll("[\r\n]", "_"),
+        targetUniversityId.replaceAll("[\r\n]", "_"));
+
+    return jwtService.issue(omuUserId, omuUser.getCodiceFiscale(),
+        targetUniversityId, stuId, matId, matricola);
+  }
+
+  private ProfiloCarriera fromCached(CachedProfiloCarriera c) {
+    ProfiloCarriera p = new ProfiloCarriera();
+    p.setUniversityId(c.getUniversityId());
+    p.setUniversityName(c.getUniversityName());
+    p.setStuId(c.getStuId());
+    p.setMatId(c.getMatId());
+    p.setMatricola(c.getMatricola());
+    p.setCorsoNome(c.getCorsoNome());
+    p.setCorsoCodice(c.getCorsoCodice());
+    p.setCdsId(c.getCdsId());
+    p.setTipoCorsoCod(c.getTipoCorsoCod());
+    p.setStatusStudente(c.getStatusStudente());
+    p.setStatusDescrizione(c.getStatusDescr());
+    p.setAnnoCorso(c.getAnnoCorso());
+    p.setDurataAnni(c.getDurataAnni());
+    p.setAnnoAccademico(c.getAnnoAccademico());
+    p.setAttivo(c.isAttivo());
     return p;
   }
 }

@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: classpath:universities.yaml
   profiles:
     default: dev
   application:
@@ -38,12 +40,3 @@ omu:
   jwt:
     secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS:3600000}       # 60 minutes default
-
-  # List of Registered universities
-  universities:
-    UNIMOL:
-      name: Università degli Studi del Molise
-      base-url: https://unimol.esse3.cineca.it/e3rest/api
-      esse3-portal-url: https://unimol.esse3.cineca.it/Start.do
-      moodle-url: https://learn.unimol.it
-      library-url: https://opac.regione.molise.it/SebinaOpac/.do?sysb=universita

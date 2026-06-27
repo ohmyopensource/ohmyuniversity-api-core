@@ -25,10 +25,10 @@ public class CinecaSessionStore {
 
   private static final Logger log = LoggerFactory.getLogger(CinecaSessionStore.class);
 
-  private static final Duration CINECA_JWT_TTL = Duration.ofMinutes(90);
-  private static final Duration CINECA_AUTH_TTL = Duration.ofMinutes(90);
-  private static final Duration CINECA_PERS_TTL = Duration.ofMinutes(90);
-  private static final Duration CINECA_CAREER_TTL = Duration.ofMinutes(90);
+  private static final Duration CINECA_JWT_TTL = Duration.ofDays(30);
+  private static final Duration CINECA_AUTH_TTL = Duration.ofDays(30);
+  private static final Duration CINECA_PERS_TTL = Duration.ofDays(30);
+  private static final Duration CINECA_CAREER_TTL = Duration.ofDays(30);
   private static final Duration OMU_REFRESH_TTL = Duration.ofDays(7);
   private static final Duration USER_INFO_TTL = Duration.ofDays(7);
 
