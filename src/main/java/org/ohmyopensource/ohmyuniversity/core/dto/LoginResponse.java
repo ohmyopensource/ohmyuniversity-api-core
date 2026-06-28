@@ -88,6 +88,7 @@ public class LoginResponse {
     private Integer durataAnni;
     private Integer annoAccademico;
     private boolean attivo;
+    private boolean laureato;
 
     // ============ Getters | Setters | Bool ============
 
@@ -210,5 +211,8 @@ public class LoginResponse {
     public void setAttivo(boolean attivo) {
       this.attivo = attivo;
     }
+
+    public boolean isLaureato() { return laureato; }
+    public void setLaureato(boolean laureato) { this.laureato = laureato; }
   }
 }

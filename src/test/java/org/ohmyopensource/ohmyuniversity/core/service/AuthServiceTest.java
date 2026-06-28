@@ -22,6 +22,7 @@ import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaAuthExce
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaUnavailableException;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaLoginResponse;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaSessionStore;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaProfileClient;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.OmuUser;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.UniversityConnection;
@@ -86,6 +87,8 @@ class AuthServiceTest {
     connectionRepository = mock(UniversityConnectionRepository.class);
     universityRegistry = mock(UniversityRegistry.class);
     cachedProfiloRepository = mock(CachedProfiloCarrieraRepository.class);
+    CinecaProfileClient cinecaProfileClient = mock(CinecaProfileClient.class);
+    when(cinecaProfileClient.getAllCarriere(any(), any())).thenReturn(List.of());
     CinecaSyncService cinecaSyncService = mock(CinecaSyncService.class);
 
     when(cachedProfiloRepository.findByUserIdAndStuId(any(), any()))
@@ -96,7 +99,7 @@ class AuthServiceTest {
     authService = new AuthService(
         cinecaClient, sessionStore, jwtService,
         userRepository, connectionRepository, universityRegistry,
-        cachedProfiloRepository, cinecaSyncService);
+        cachedProfiloRepository, cinecaSyncService, cinecaProfileClient);
   }
 
   /**

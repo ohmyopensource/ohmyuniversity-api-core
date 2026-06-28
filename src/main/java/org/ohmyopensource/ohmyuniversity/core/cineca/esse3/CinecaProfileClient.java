@@ -116,6 +116,34 @@ public class CinecaProfileClient extends AbstractCinecaClient {
   }
 
   /**
+   * Retrieves all career entries from {@code carriere-service-v1} without filtering.
+   *
+   * <p>Used at login time to enrich career profiles with fields not available
+   * in the login response (e.g. {@code attlauFlg}).
+   *
+   * @param baseUrl Cineca ESSE3 base URL
+   * @param jwt     Cineca JWT token
+   * @return list of all career entries; empty if none available
+   */
+  public List<CinecaCarriera> getAllCarriere(String baseUrl, String jwt) {
+    log.debug("CinecaProfileClient: GET all carriere");
+    List<CinecaCarriera> result = webClient.get()
+        .uri(baseUrl + "/carriere-service-v1/carriere"
+            + "?optionalFields=tipoCorsoCod,tipoCorsoDes,attlauFlg")
+        .header(authHeader(), bearer(jwt))
+        .retrieve()
+        .onStatus(HttpStatusCode::is4xxClientError, r ->
+            Mono.error(new CinecaClient.CinecaAuthException("Unauthorized for carriere")))
+        .onStatus(HttpStatusCode::is5xxServerError, r ->
+            Mono.error(new CinecaClient.CinecaUnavailableException(
+                "Cineca error on carriere")))
+        .bodyToFlux(CinecaCarriera.class)
+        .collectList()
+        .block();
+    return result != null ? result : List.of();
+  }
+
+  /**
    * Retrieves the university badge for a student from {@code badge-service-v1}.
    *
    * @param baseUrl Cineca ESSE3 base URL

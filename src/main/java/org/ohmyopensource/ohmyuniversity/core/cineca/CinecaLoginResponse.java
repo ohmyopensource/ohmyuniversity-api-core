@@ -141,6 +141,9 @@ public class CinecaLoginResponse {
     @JsonProperty("staMatDes")
     private String staMatDes;
 
+    @JsonProperty("attlauFlg")
+    private Integer attlauFlg;
+
     @JsonProperty("dettaglioTratto")
     private DettaglioTratto dettaglioTratto;
 
@@ -181,6 +184,8 @@ public class CinecaLoginResponse {
     public String getStaMatDes() {
       return staMatDes;
     }
+
+    public Integer getAttlauFlg() { return attlauFlg; }
 
     public DettaglioTratto getDettaglioTratto() {
       return dettaglioTratto;

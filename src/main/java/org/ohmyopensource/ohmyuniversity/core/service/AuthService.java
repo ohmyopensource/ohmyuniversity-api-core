@@ -2,11 +2,13 @@ package org.ohmyopensource.ohmyuniversity.core.service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaLoginResponse;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaLoginResponse.TrattoCarriera;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaSessionStore;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaProfileClient;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.CachedProfiloCarriera;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.OmuUser;
@@ -45,6 +47,7 @@ public class AuthService {
   private final UniversityRegistry universityRegistry;
   private final CachedProfiloCarrieraRepository cachedProfiloRepository;
   private final CinecaSyncService cinecaSyncService;
+  private final CinecaProfileClient cinecaProfileClient;
 
   // ============ Constructor ============
 
@@ -67,7 +70,8 @@ public class AuthService {
       UniversityConnectionRepository connectionRepository,
       UniversityRegistry universityRegistry,
       CachedProfiloCarrieraRepository cachedProfiloRepository,
-      CinecaSyncService cinecaSyncService) {
+      CinecaSyncService cinecaSyncService,
+      CinecaProfileClient cinecaProfileClient) {
     this.cinecaClient = cinecaClient;
     this.sessionStore = sessionStore;
     this.jwtService = jwtService;
@@ -76,6 +80,7 @@ public class AuthService {
     this.universityRegistry = universityRegistry;
     this.cachedProfiloRepository = cachedProfiloRepository;
     this.cinecaSyncService = cinecaSyncService;
+    this.cinecaProfileClient = cinecaProfileClient;
   }
 
   // ============ Class Methods ============
@@ -167,8 +172,28 @@ public class AuthService {
     }
 
     List<TrattoCarriera> tratti = cinecaUser.getTrattiCarriera();
+    Map<Long, Integer> attlauFlgByMatId = new java.util.HashMap<>();
+    if (cinecaResponse.getJwt() != null) {
+      try {
+        List<CinecaProfileClient.CinecaCarriera> carriere = cinecaProfileClient.getAllCarriere(
+            uniConfig.baseUrl(), cinecaResponse.getJwt());
+        for (CinecaProfileClient.CinecaCarriera c : carriere) {
+          if (c.getMatId() != null && c.getAttlauFlg() != null) {
+            attlauFlgByMatId.put(c.getMatId(), c.getAttlauFlg());
+          }
+        }
+      } catch (Exception e) {
+        log.warn("AuthService: could not fetch attlauFlg from carriere-service for user={}", omuUserId);
+      }
+    }
+
     List<ProfiloCarriera> profiliCorrenti = tratti == null ? List.of() : tratti.stream()
-        .map(t -> toProfiloCarriera(t, request.getUniversityId(), uniConfig.name()))
+        .map(t -> {
+          ProfiloCarriera p = toProfiloCarriera(t, request.getUniversityId(), uniConfig.name());
+          Integer attlauFlg = attlauFlgByMatId.get(t.getMatId());
+          p.setLaureato(attlauFlg != null && attlauFlg == 1);
+          return p;
+        })
         .toList();
 
     for (ProfiloCarriera p : profiliCorrenti) {
@@ -191,6 +216,19 @@ public class AuthService {
       cached.setDurataAnni(p.getDurataAnni());
       cached.setAnnoAccademico(p.getAnnoAccademico());
       cached.setAttivo(p.isAttivo());
+      cached.setLaureato(p.isLaureato());
+
+      if (!p.isLaureato() && cinecaResponse.getJwt() != null) {
+        try {
+          CinecaProfileClient.CinecaCarriera carriera = cinecaProfileClient.getCarriera(
+              uniConfig.baseUrl(), cinecaResponse.getJwt(), p.getMatId());
+          if (carriera != null && carriera.getAttlauFlg() != null) {
+            cached.setLaureato(carriera.getAttlauFlg() == 1);
+          }
+        } catch (Exception e) {
+          log.warn("AuthService: could not fetch attlauFlg for matId={}", p.getMatId());
+        }
+      }
       cachedProfiloRepository.save(cached);
     }
 
@@ -385,6 +423,7 @@ public class AuthService {
     p.setStatusStudente(t.getStaStuCod());
     p.setStatusDescrizione(t.getStaStuDes());
     p.setAttivo("A".equals(t.getStaStuCod()));
+    p.setLaureato(t.getAttlauFlg() != null && t.getAttlauFlg() == 1);
 
     if (t.getDettaglioTratto() != null) {
       p.setCorsoCodice(t.getDettaglioTratto().getCdsCod());
@@ -448,6 +487,7 @@ public class AuthService {
     p.setDurataAnni(c.getDurataAnni());
     p.setAnnoAccademico(c.getAnnoAccademico());
     p.setAttivo(c.isAttivo());
+    p.setLaureato(c.isLaureato());
     return p;
   }
 }

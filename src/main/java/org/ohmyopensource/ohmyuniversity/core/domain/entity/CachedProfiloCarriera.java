@@ -88,6 +88,9 @@ public class CachedProfiloCarriera {
   @Column(name = "attivo", nullable = false)
   private boolean attivo;
 
+  @Column(name = "laureato", nullable = false)
+  private boolean laureato;
+
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
@@ -150,6 +153,9 @@ public class CachedProfiloCarriera {
 
   public boolean isAttivo() { return attivo; }
   public void setAttivo(boolean attivo) { this.attivo = attivo; }
+
+  public boolean isLaureato() { return laureato; }
+  public void setLaureato(boolean laureato) { this.laureato = laureato; }
 
   public Instant getUpdatedAt() { return updatedAt; }
 }
