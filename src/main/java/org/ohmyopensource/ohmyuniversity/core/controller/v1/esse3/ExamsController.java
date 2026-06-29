@@ -1,6 +1,7 @@
 package org.ohmyopensource.ohmyuniversity.core.controller.v1.esse3;
 
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookExamRequest;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookableSessionsResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SessionsResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.LegacyBookingRequest;
@@ -32,6 +33,8 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>{@code GET  /v1/exams/bookings} — active upcoming bookings</li>
  *   <li>{@code POST /v1/exams/bookings/legacy} — full booking history (Basic Auth)</li>
  *   <li>{@code GET  /v1/exams/surveys} — teaching evaluation surveys</li>
+ *   <li>{@code POST /v1/exams/bookings} — book an exam session (Basic Auth)</li>
+ *   <li>{@code POST /v1/exams/bookings/cancel} — cancel a booking (Basic Auth)</li>
  * </ul>
  */
 @RestController
@@ -142,5 +145,62 @@ public class ExamsController extends AbstractEsse3Controller {
   public ResponseEntity<SurveysResponse> getSurveys(
       @AuthenticationPrincipal OmuPrincipal principal) {
     return execute(principal, () -> examsService.getSurveys(principal));
+  }
+
+  /**
+   * Books an exam session via calesa-service-v1.
+   *
+   * @param principal authenticated OhMyU principal
+   * @param cdsId     course of study identifier
+   * @param adId      teaching activity identifier
+   * @param appId     exam session identifier
+   * @param adsceId   libretto row identifier
+   * @param request   request body containing the Cineca password
+   * @return {@code 204 No Content} on success, {@code 422} with the Cineca
+   *         message if rejected (e.g. survey not filled), {@code 400} if the
+   *         password is missing, {@code 401} if not authorized, {@code 503}
+   *         if Cineca is unavailable
+   */
+  @PostMapping("/bookings")
+  public ResponseEntity<String> bookExam(
+      @AuthenticationPrincipal OmuPrincipal principal,
+      @RequestParam Long cdsId,
+      @RequestParam Long adId,
+      @RequestParam Long appId,
+      @RequestParam Long adsceId,
+      @RequestBody BookExamRequest request) {
+    if (request == null || request.getPassword() == null || request.getPassword().isBlank()) {
+      log.warn("ExamsController: missing password for booking user={}", principal.omuUserId());
+      return ResponseEntity.badRequest().build();
+    }
+    return executeBooking(principal, () ->
+        examsService.bookExam(principal, cdsId, adId, appId, adsceId, request.getPassword()));
+  }
+
+  /**
+   * Cancels an exam booking via calesa-service-v1.
+   *
+   * @param principal authenticated OhMyU principal
+   * @param cdsId     course of study identifier
+   * @param adId      teaching activity identifier
+   * @param appId     exam session identifier
+   * @param request   request body containing the Cineca password
+   * @return {@code 204 No Content} on success, {@code 422} with the Cineca
+   *         message if rejected, {@code 400} if the password is missing,
+   *         {@code 401} if not authorized, {@code 503} if Cineca is unavailable
+   */
+  @PostMapping("/bookings/cancel")
+  public ResponseEntity<String> cancelBooking(
+      @AuthenticationPrincipal OmuPrincipal principal,
+      @RequestParam Long cdsId,
+      @RequestParam Long adId,
+      @RequestParam Long appId,
+      @RequestBody BookExamRequest request) {
+    if (request == null || request.getPassword() == null || request.getPassword().isBlank()) {
+      log.warn("ExamsController: missing password for cancellation user={}", principal.omuUserId());
+      return ResponseEntity.badRequest().build();
+    }
+    return executeBooking(principal, () ->
+        examsService.cancelBooking(principal, cdsId, adId, appId, request.getPassword()));
   }
 }

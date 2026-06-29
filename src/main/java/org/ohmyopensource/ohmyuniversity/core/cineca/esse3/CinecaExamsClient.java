@@ -248,6 +248,94 @@ public class CinecaExamsClient extends AbstractCinecaClient {
   }
 
   /**
+   * Books an exam session via {@code calesa-service-v1}.
+   *
+   * <p>Accessible to STUDENTE role via {@code checkAbildocStu}. This endpoint
+   * requires HTTP Basic Authentication — the Bearer JWT is rejected with a 500.
+   * The Cineca password is provided at request time and is never persisted.
+   *
+   * @param baseUrl  Cineca ESSE3 base URL
+   * @param username Cineca username
+   * @param password Cineca password (never persisted)
+   * @param cdsId    course of study identifier
+   * @param adId     teaching activity identifier
+   * @param appId    exam session identifier
+   * @param adsceId  libretto row identifier (activity context)
+   * @throws CinecaClient.CinecaBookingException     if Cineca rejects the booking (e.g. survey not filled)
+   * @throws CinecaClient.CinecaUnavailableException if Cineca is unreachable
+   */
+  public void bookExam(
+      String baseUrl, String username, String password,
+      Long cdsId, Long adId, Long appId, Long adsceId) {
+    log.debug("CinecaExamsClient: POST book exam cdsId={} adId={} appId={} adsceId={}",
+        cdsId, adId, appId, adsceId);
+    webClient.post()
+        .uri(uriBuilder -> uriBuilder
+            .scheme("https")
+            .host(extractHost(baseUrl))
+            .pathSegment("e3rest", "api", "calesa-service-v1", "appelli",
+                cdsId.toString(), adId.toString(), appId.toString(), "iscritti")
+            .build())
+        .header(authHeader(), basicAuth(username, password))
+        .bodyValue(Map.of("adsceId", adsceId))
+        .retrieve()
+        .onStatus(HttpStatusCode::is4xxClientError, r ->
+            r.bodyToMono(String.class).flatMap(body -> {
+              log.error("CinecaExamsClient: bookExam 4xx body: {}", body);
+              return Mono.error(new CinecaClient.CinecaBookingException(body));
+            }))
+        .onStatus(HttpStatusCode::is5xxServerError, r ->
+            Mono.error(new CinecaClient.CinecaUnavailableException(
+                "Cineca error on bookExam")))
+        .bodyToMono(Void.class)
+        .block();
+  }
+
+  /**
+   * Cancels an exam booking via {@code calesa-service-v1}.
+   *
+   * <p>Accessible to STUDENTE role via {@code applista-student-permission}.
+   * Requires HTTP Basic Authentication; the Cineca password is provided at
+   * request time and is never persisted.
+   *
+   * @param baseUrl  Cineca ESSE3 base URL
+   * @param username Cineca username
+   * @param password Cineca password (never persisted)
+   * @param cdsId    course of study identifier
+   * @param adId     teaching activity identifier
+   * @param appId    exam session identifier
+   * @param stuId    student career identifier
+   * @throws CinecaClient.CinecaBookingException     if Cineca rejects the cancellation
+   * @throws CinecaClient.CinecaUnavailableException if Cineca is unreachable
+   */
+  public void cancelBooking(
+      String baseUrl, String username, String password,
+      Long cdsId, Long adId, Long appId, Long stuId) {
+    log.debug("CinecaExamsClient: DELETE cancel booking cdsId={} adId={} appId={} stuId={}",
+        cdsId, adId, appId, stuId);
+    webClient.delete()
+        .uri(uriBuilder -> uriBuilder
+            .scheme("https")
+            .host(extractHost(baseUrl))
+            .pathSegment("e3rest", "api", "calesa-service-v1", "appelli",
+                cdsId.toString(), adId.toString(), appId.toString(),
+                "iscritti", stuId.toString())
+            .build())
+        .header(authHeader(), basicAuth(username, password))
+        .retrieve()
+        .onStatus(HttpStatusCode::is4xxClientError, r ->
+            r.bodyToMono(String.class).flatMap(body -> {
+              log.error("CinecaExamsClient: cancelBooking 4xx body: {}", body);
+              return Mono.error(new CinecaClient.CinecaBookingException(body));
+            }))
+        .onStatus(HttpStatusCode::is5xxServerError, r ->
+            Mono.error(new CinecaClient.CinecaUnavailableException(
+                "Cineca error on cancelBooking")))
+        .bodyToMono(Void.class)
+        .block();
+  }
+
+  /**
    * Shared value wrapper for Cineca enum-like fields.
    */
   @JsonIgnoreProperties(ignoreUnknown = true)

@@ -125,10 +125,10 @@ omu:
 
     UNIBO:
       name: Università degli Studi di Bologna
-      base-url: https://unibo.esse3.cineca.it/e3rest/api
-      moodle-url: https://virtuale.unibo.it # TODO verify
-      library-url: https://sba.unibo.it # TODO verify
-      esse3-portal-url: https://unibo.esse3.cineca.it/Start.do
+      base-url: # TODO: not publicly reachable, verify from university VPN
+      moodle-url: https://virtuale.unibo.it
+      library-url: https://sba.unibo.it
+      esse3-portal-url: https://studenti.unibo.it
 
     UNIBS:
       name: Università degli Studi di Brescia

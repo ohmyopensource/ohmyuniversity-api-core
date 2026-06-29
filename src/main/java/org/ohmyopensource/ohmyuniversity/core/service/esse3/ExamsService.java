@@ -202,6 +202,45 @@ public class ExamsService extends AbstractEsse3Service {
     return response;
   }
 
+  /**
+   * Books an exam session via calesa-service-v1.
+   *
+   * @param principal authenticated OhMyU principal
+   * @param cdsId     course of study identifier
+   * @param adId      teaching activity identifier
+   * @param appId     exam session identifier
+   * @param adsceId   libretto row identifier
+   */
+  public void bookExam(OmuPrincipal principal, Long cdsId, Long adId, Long appId,
+      Long adsceId, String password) {
+    String baseUrl = resolveBaseUrl(principal.universityId());
+    String username = resolveUsername(principal);
+
+    examsClient.bookExam(baseUrl, username, password, cdsId, adId, appId, adsceId);
+
+    log.info("ExamsService: booked exam cdsId={} adId={} appId={} stuId={}",
+        cdsId, adId, appId, principal.stuId());
+  }
+
+  /**
+   * Cancels an exam booking via calesa-service-v1.
+   *
+   * @param principal authenticated OhMyU principal
+   * @param cdsId     course of study identifier
+   * @param adId      teaching activity identifier
+   * @param appId     exam session identifier
+   */
+  public void cancelBooking(OmuPrincipal principal, Long cdsId, Long adId, Long appId,
+      String password) {
+    String baseUrl = resolveBaseUrl(principal.universityId());
+    String username = resolveUsername(principal);
+
+    examsClient.cancelBooking(baseUrl, username, password, cdsId, adId, appId, principal.stuId());
+
+    log.info("ExamsService: cancelled booking cdsId={} adId={} appId={} stuId={}",
+        cdsId, adId, appId, principal.stuId());
+  }
+
   // ============ Mappers ============
 
   private Appello toAppello(CinecaExamSession s) {
