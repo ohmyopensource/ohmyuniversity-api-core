@@ -2,7 +2,11 @@ package org.ohmyopensource.ohmyuniversity.core.service.esse3;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaSessionStore;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaBookableSession;
@@ -11,19 +15,35 @@ import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.Cin
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaExamSession;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaLegacyBooking;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaLegacyBookingResult;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaSummaryParagraph;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaSurveyAnswer;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaSurveyPage;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaSurveyParagraph;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaSurveyQuestion;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaSurveyRow;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaSurveySummary;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaSurveyUnit;
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityConnectionRepository;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookableSessionsResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookableSessionsResponse.AppelloLibretto;
-import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SessionsResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SessionsResponse.Appello;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookingsResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookingsResponse.IscrizioneAppello;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.LegacyBookingsResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.LegacyBookingsResponse.EsitoPrenotazione;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.LegacyBookingsResponse.Prenotazione;
-import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookingsResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookingsResponse.IscrizioneAppello;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SessionsResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SessionsResponse.Appello;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveyAnswerRequest;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveyStartResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveyStartResponse.SurveyAnswer;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveyStartResponse.SurveyPage;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveyStartResponse.SurveyParagraph;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveyStartResponse.SurveyQuestion;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveySummaryResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveySummaryResponse.SummaryItem;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveySummaryResponse.SummaryPage;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveysResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveysResponse.QuestionarioEsame;
 import org.slf4j.Logger;
@@ -134,9 +154,13 @@ public class ExamsService extends AbstractEsse3Service {
     List<IscrizioneAppello> active = all.stream()
         .filter(b -> {
           CinecaBookingResult r = b.getResult();
-          if (r != null && (r.isPassed() || r.isWithdrawn())) return false;
+          if (r != null && (r.isPassed() || r.isWithdrawn())) {
+            return false;
+          }
           String dt = b.getExamDateTime();
-          if (dt == null || dt.isBlank()) return false;
+          if (dt == null || dt.isBlank()) {
+            return false;
+          }
           try {
             LocalDate date = LocalDate.parse(dt.split(" ")[0], CINECA_DATE_FMT);
             return !date.isBefore(LocalDate.now());
@@ -199,6 +223,191 @@ public class ExamsService extends AbstractEsse3Service {
     SurveysResponse response = new SurveysResponse();
     response.setDaCompilare(pending.stream().map(this::toQuestionarioEsame).toList());
     response.setCompilati(completed.stream().map(this::toQuestionarioEsame).toList());
+    return response;
+  }
+
+  /**
+   * Starts a questionnaire compilation session for a booklet activity.
+   *
+   * <p>Two-step flow against questionari-service-v1:
+   * <ol>
+   *   <li>fetch questionnaire metadata (questionarioId, questConfigId, tags)
+   *       via {@code unitadidattiche}</li>
+   *   <li>start the compilation and return the first page</li>
+   * </ol>
+   *
+   * @param principal authenticated OhMyU principal
+   * @param adsceId   booklet activity identifier
+   * @return the started session with its first page
+   */
+  public SurveyStartResponse startSurvey(OmuPrincipal principal, Long adsceId) {
+    String jwt = resolveCinecaJwt(principal);
+    String baseUrl = resolveBaseUrl(principal.universityId());
+
+    CinecaSurveyUnit unit = examsClient.getSurveyUnit(baseUrl, jwt, adsceId);
+    if (unit == null || unit.getQuestionarioId() == null || unit.getQuestConfigId() == null) {
+      throw new CinecaClient.CinecaBookingException(
+          "{\"retErrMsg\":\"Questionario non disponibile per questa attività\"}");
+    }
+
+    String tags = unit.resolveTags();
+
+    CinecaSurveyPage page = examsClient.startSurvey(
+        baseUrl, jwt, principal.stuId(), adsceId,
+        unit.getQuestionarioId(), unit.getQuestConfigId(), tags);
+
+    log.info("ExamsService: started survey adsceId={} questCompId={} for stuId={}",
+        adsceId, page != null ? page.getQuestCompId() : null, principal.stuId());
+
+    SurveyStartResponse response = new SurveyStartResponse();
+    response.setQuestCompId(page.getQuestCompId());
+    response.setUserCompId(page.getUserCompId());
+    response.setQuestionarioId(unit.getQuestionarioId());
+    response.setQuestConfigId(unit.getQuestConfigId());
+    response.setAnonimoFlg(unit.getAnonimoFlg());
+    response.setQuestionarioDes(unit.getQuestionarioDes());
+    response.setPage(toSurveyPage(page));
+    return response;
+  }
+
+  /**
+   * Saves the answers for a questionnaire page.
+   *
+   * @param principal      authenticated OhMyU principal
+   * @param questionarioId questionnaire identifier
+   * @param questCompId    compilation session identifier
+   * @param pageId         page identifier
+   * @param answers        answers to save
+   */
+  public void saveSurveyPage(OmuPrincipal principal, Long questionarioId,
+      Long questCompId, Long pageId, List<SurveyAnswerRequest> answers) {
+    String jwt = resolveCinecaJwt(principal);
+    String baseUrl = resolveBaseUrl(principal.universityId());
+
+    examsClient.saveSurveyPage(baseUrl, jwt, principal.stuId(),
+        questionarioId, questCompId, pageId, answers);
+
+    log.info("ExamsService: saved survey page questCompId={} pageId={} for stuId={}",
+        questCompId, pageId, principal.stuId());
+  }
+
+  /**
+   * Fetches an adjacent questionnaire page (next or prev).
+   *
+   * @param principal      authenticated OhMyU principal
+   * @param adsceId        booklet activity identifier
+   * @param questionarioId questionnaire identifier
+   * @param questCompId    compilation session identifier
+   * @param pageId         current page identifier
+   * @param userCompId     user session identifier
+   * @param direction      {@code "next"} or {@code "prev"}
+   * @return the adjacent page, or {@code null} if there is none
+   */
+  public SurveyPage navigateSurvey(OmuPrincipal principal, Long adsceId,
+      Long questionarioId, Long questCompId, Long pageId, Long userCompId, String direction) {
+    String jwt = resolveCinecaJwt(principal);
+    String baseUrl = resolveBaseUrl(principal.universityId());
+
+    String dir = "prev".equalsIgnoreCase(direction) ? "prev" : "next";
+
+    CinecaSurveyPage page = examsClient.getAdjacentSurveyPage(
+        baseUrl, jwt, principal.stuId(), adsceId, questionarioId,
+        questCompId, pageId, userCompId, dir);
+
+    log.debug("ExamsService: navigated {} to page questCompId={} for stuId={}",
+        dir, questCompId, principal.stuId());
+
+    return page == null ? null : toSurveyPage(page);
+  }
+
+  /**
+   * Loads a specific questionnaire page by id (for editing from the summary).
+   */
+  public SurveyPage getSurveyPage(OmuPrincipal principal, Long adsceId, Long questionarioId,
+      Long questCompId, Long pageId, Long userCompId) {
+    String jwt = resolveCinecaJwt(principal);
+    String baseUrl = resolveBaseUrl(principal.universityId());
+
+    CinecaSurveyPage page = examsClient.getSurveyPage(baseUrl, jwt, principal.stuId(),
+        adsceId, questionarioId, questCompId, pageId, userCompId);
+
+    log.debug("ExamsService: loaded survey page {} questCompId={} for stuId={}",
+        pageId, questCompId, principal.stuId());
+
+    return page == null ? null : toSurveyPage(page);
+  }
+
+  /**
+   * Confirms and submits a completed questionnaire. Irreversible.
+   *
+   * @param principal      authenticated OhMyU principal
+   * @param adsceId        booklet activity identifier
+   * @param questionarioId questionnaire identifier
+   * @param questCompId    compilation session identifier
+   * @param questConfigId  questionnaire configuration identifier
+   * @param userCompId     user session identifier
+   */
+  public void confirmSurvey(OmuPrincipal principal, Long adsceId, Long questionarioId,
+      Long questCompId, Long questConfigId, Long userCompId) {
+    String jwt = resolveCinecaJwt(principal);
+    String baseUrl = resolveBaseUrl(principal.universityId());
+
+    examsClient.confirmSurvey(baseUrl, jwt, principal.stuId(), adsceId,
+        questionarioId, questCompId, questConfigId, userCompId);
+
+    log.info("ExamsService: confirmed survey questCompId={} for stuId={}",
+        questCompId, principal.stuId());
+  }
+
+  /**
+   * Retrieves the compilation summary, flattening question/answer pairs per page.
+   */
+  public SurveySummaryResponse getSurveySummary(OmuPrincipal principal, Long adsceId,
+      Long questionarioId, Long questCompId, Long questConfigId, Long userCompId) {
+    String jwt = resolveCinecaJwt(principal);
+    String baseUrl = resolveBaseUrl(principal.universityId());
+
+    CinecaSurveySummary summary = examsClient.getSurveySummary(baseUrl, jwt, principal.stuId(),
+        adsceId, questionarioId, questCompId, questConfigId, userCompId);
+
+    log.debug("ExamsService: fetched survey summary questCompId={} for stuId={}",
+        questCompId, principal.stuId());
+
+    SurveySummaryResponse response = new SurveySummaryResponse();
+    if (summary == null) {
+      response.setPagine(List.of());
+      return response;
+    }
+    response.setQuestionarioDes(summary.getQuestionarioDes());
+    response.setPagine(
+        summary.getPagine() == null ? List.of()
+            : summary.getPagine().stream().map(p -> {
+              SummaryPage sp = new SummaryPage();
+              sp.setPaginaId(p.getPaginaId());
+              List<SummaryItem> items = new ArrayList<>();
+              for (CinecaSummaryParagraph par :
+                  (p.getParagrafiRiepilogo() == null ? List.<CinecaSummaryParagraph>of()
+                      : p.getParagrafiRiepilogo())) {
+                Map<Long, String> qDes = new HashMap<>();
+                if (par.getDomandeRiepilogo() != null) {
+                  par.getDomandeRiepilogo().forEach(q -> qDes.put(q.getDomandaId(), q.getDes()));
+                }
+                if (par.getRisposteRiepilogo() != null) {
+                  par.getRisposteRiepilogo().forEach(a -> {
+                    SummaryItem it = new SummaryItem();
+                    it.setParagrafoDes(par.getDes());
+                    it.setDomandaDes(qDes.get(a.getDomandaId()));
+                    it.setRispostaDes(a.getDes());
+                    it.setTestoLibero(
+                        a.getTestoLibero() != null && !a.getTestoLibero().isBlank()
+                            ? a.getTestoLibero() : null);
+                    items.add(it);
+                  });
+                }
+              }
+              sp.setItems(items);
+              return sp;
+            }).toList());
     return response;
   }
 
@@ -345,5 +554,49 @@ public class ExamsService extends AbstractEsse3Service {
     q.setCfu(r.getCredits());
     q.setStatoLink(r.getSurveyStatus());
     return q;
+  }
+
+  private SurveyPage toSurveyPage(CinecaSurveyPage p) {
+    SurveyPage page = new SurveyPage();
+    page.setPaginaId(p.getPaginaId());
+    page.setPrevPageId(p.getPrevPageId());
+    page.setNextPageId(p.getNextPageId());
+    page.setDes(p.getDes());
+    page.setParagrafi(
+        p.getParagrafi() == null ? List.of()
+            : p.getParagrafi().stream().map(this::toSurveyParagraph).toList());
+    return page;
+  }
+
+  private SurveyParagraph toSurveyParagraph(CinecaSurveyParagraph p) {
+    SurveyParagraph par = new SurveyParagraph();
+    par.setParagrafoId(p.getParagrafoId());
+    par.setDes(p.getDes());
+    par.setNote(p.getNote());
+    par.setDomande(
+        p.getDomande() == null ? List.of()
+            : p.getDomande().stream().map(this::toSurveyQuestion).toList());
+    return par;
+  }
+
+  private SurveyQuestion toSurveyQuestion(CinecaSurveyQuestion q) {
+    SurveyQuestion question = new SurveyQuestion();
+    question.setDomandaId(q.getDomandaId());
+    question.setDes(q.getDes());
+    question.setMandatory(q.getMandatoryFlg() != null && q.getMandatoryFlg() == 1);
+    question.setMaxChoices(q.getMaxChoices());
+    question.setFormatCod(q.getFormatCod());
+    question.setRisposte(
+        q.getRispDisponibili() == null ? List.of()
+            : q.getRispDisponibili().stream().map(this::toSurveyAnswer).toList());
+    return question;
+  }
+
+  private SurveyAnswer toSurveyAnswer(CinecaSurveyAnswer a) {
+    SurveyAnswer ans = new SurveyAnswer();
+    ans.setRispostaId(a.getRispostaId());
+    ans.setDes(a.getDes());
+    ans.setFormatCod(a.getAnswerFormatCod());
+    return ans;
   }
 }

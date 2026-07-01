@@ -251,8 +251,8 @@ public class CinecaExamsClient extends AbstractCinecaClient {
    * Books an exam session via {@code calesa-service-v1}.
    *
    * <p>Accessible to STUDENTE role via {@code checkAbildocStu}. This endpoint
-   * requires HTTP Basic Authentication — the Bearer JWT is rejected with a 500.
-   * The Cineca password is provided at request time and is never persisted.
+   * requires HTTP Basic Authentication — the Bearer JWT is rejected with a 500. The Cineca password
+   * is provided at request time and is never persisted.
    *
    * @param baseUrl  Cineca ESSE3 base URL
    * @param username Cineca username
@@ -261,7 +261,8 @@ public class CinecaExamsClient extends AbstractCinecaClient {
    * @param adId     teaching activity identifier
    * @param appId    exam session identifier
    * @param adsceId  libretto row identifier (activity context)
-   * @throws CinecaClient.CinecaBookingException     if Cineca rejects the booking (e.g. survey not filled)
+   * @throws CinecaClient.CinecaBookingException     if Cineca rejects the booking (e.g. survey not
+   *                                                 filled)
    * @throws CinecaClient.CinecaUnavailableException if Cineca is unreachable
    */
   public void bookExam(
@@ -295,8 +296,8 @@ public class CinecaExamsClient extends AbstractCinecaClient {
    * Cancels an exam booking via {@code calesa-service-v1}.
    *
    * <p>Accessible to STUDENTE role via {@code applista-student-permission}.
-   * Requires HTTP Basic Authentication; the Cineca password is provided at
-   * request time and is never persisted.
+   * Requires HTTP Basic Authentication; the Cineca password is provided at request time and is
+   * never persisted.
    *
    * @param baseUrl  Cineca ESSE3 base URL
    * @param username Cineca username
@@ -332,6 +333,307 @@ public class CinecaExamsClient extends AbstractCinecaClient {
             Mono.error(new CinecaClient.CinecaUnavailableException(
                 "Cineca error on cancelBooking")))
         .bodyToMono(Void.class)
+        .block();
+  }
+
+  /**
+   * Retrieves the questionnaire metadata for a booklet activity from
+   * {@code questionari-service-v1}.
+   *
+   * <p>Returns {@code questionarioId}, {@code questConfigId}, {@code anonimoFlg}
+   * and the {@code tagsValdid} string required to start a compilation session. The
+   * {@code eventCompId} is the fixed constant {@code EV_VAL_DID} for teaching evaluation
+   * questionnaires.
+   *
+   * @param baseUrl Cineca ESSE3 base URL
+   * @param jwt     Cineca JWT token
+   * @param adsceId booklet activity identifier
+   * @return questionnaire metadata, or {@code null} if none available
+   */
+  public CinecaSurveyUnit getSurveyUnit(String baseUrl, String jwt, Long adsceId) {
+    log.debug("CinecaExamsClient: GET survey unit adsceId={}", adsceId);
+    return webClient.get()
+        .uri(uriBuilder -> uriBuilder
+            .scheme("https")
+            .host(extractHost(baseUrl))
+            .pathSegment("e3rest", "api", "questionari-service-v1",
+                "questionari", "libretto", adsceId.toString(), "unitadidattiche")
+            .queryParam("eventCompId", "EV_VAL_DID")
+            .build())
+        .header(authHeader(), bearer(jwt))
+        .retrieve()
+        .onStatus(HttpStatusCode::is4xxClientError, r ->
+            r.bodyToMono(String.class).flatMap(body -> {
+              log.error("CinecaExamsClient: survey unit 4xx body: {}", body);
+              return Mono.error(new CinecaClient.CinecaAuthException(
+                  "Unauthorized for survey unit adsceId=" + adsceId));
+            }))
+        .onStatus(HttpStatusCode::is5xxServerError, r ->
+            Mono.error(new CinecaClient.CinecaUnavailableException(
+                "Cineca error on survey unit")))
+        .bodyToMono(CinecaSurveyUnit.class)
+        .block();
+  }
+
+  /**
+   * Starts a new questionnaire compilation session via {@code questionari-service-v1} and returns
+   * the first page.
+   *
+   * <p>Uses Bearer JWT. The {@code eventCompId} is the fixed constant
+   * {@code EV_VAL_DID}. The {@code tags} string (from {@code tagsValdid}) is passed in the request
+   * body. The returned page carries {@code questCompId} and {@code userCompId} that must be
+   * preserved for all subsequent steps.
+   *
+   * @param baseUrl        Cineca ESSE3 base URL
+   * @param jwt            Cineca JWT token
+   * @param stuId          student career identifier
+   * @param adsceId        booklet activity identifier
+   * @param questionarioId questionnaire identifier
+   * @param questConfigId  questionnaire configuration identifier
+   * @param tags           the {@code tagsValdid} pipe-separated tag string
+   * @return the first questionnaire page
+   * @throws CinecaClient.CinecaBookingException     if Cineca rejects the request
+   * @throws CinecaClient.CinecaUnavailableException if Cineca is unreachable
+   */
+  public CinecaSurveyPage startSurvey(
+      String baseUrl, String jwt,
+      Long stuId, Long adsceId, Long questionarioId, Long questConfigId, String tags) {
+    log.debug(
+        "CinecaExamsClient: PUT start survey stuId={} adsceId={} questionarioId={} questConfigId={}",
+        stuId, adsceId, questionarioId, questConfigId);
+    return webClient.put()
+        .uri(uriBuilder -> uriBuilder
+            .scheme("https")
+            .host(extractHost(baseUrl))
+            .pathSegment("e3rest", "api", "questionari-service-v1",
+                "questionari", "compilazione", stuId.toString(), adsceId.toString(),
+                "quest", questionarioId.toString(), "start")
+            .queryParam("eventCompId", "EV_VAL_DID")
+            .queryParam("questConfigId", questConfigId)
+            .build())
+        .header(authHeader(), bearer(jwt))
+        .bodyValue(Map.of("tags", tags))
+        .retrieve()
+        .onStatus(HttpStatusCode::is4xxClientError, r ->
+            r.bodyToMono(String.class).flatMap(body -> {
+              log.error("CinecaExamsClient: startSurvey 4xx body: {}", body);
+              return Mono.error(new CinecaClient.CinecaBookingException(body));
+            }))
+        .onStatus(HttpStatusCode::is5xxServerError, r ->
+            Mono.error(new CinecaClient.CinecaUnavailableException(
+                "Cineca error on startSurvey")))
+        .bodyToMono(CinecaSurveyPage.class)
+        .block();
+  }
+
+  /**
+   * Saves the answers for a questionnaire page via {@code questionari-service-v1}.
+   *
+   * <p>Uses Bearer JWT. Each answer must carry {@code corpoRisposta} (empty string
+   * for fixed-text answers); a null value triggers a NO_TEXT validation error.
+   *
+   * @param baseUrl        Cineca ESSE3 base URL
+   * @param jwt            Cineca JWT token
+   * @param stuId          student career identifier
+   * @param questionarioId questionnaire identifier
+   * @param questCompId    compilation session identifier
+   * @param pageId         page identifier
+   * @param answers        the answers to save
+   * @throws CinecaClient.CinecaBookingException     if Cineca rejects the answers
+   * @throws CinecaClient.CinecaUnavailableException if Cineca is unreachable
+   */
+  public void saveSurveyPage(
+      String baseUrl, String jwt, Long stuId, Long questionarioId,
+      Long questCompId, Long pageId, List<?> answers) {
+    log.debug("CinecaExamsClient: PUT save survey page stuId={} questCompId={} pageId={}",
+        stuId, questCompId, pageId);
+    webClient.put()
+        .uri(uriBuilder -> uriBuilder
+            .scheme("https")
+            .host(extractHost(baseUrl))
+            .pathSegment("e3rest", "api", "questionari-service-v1",
+                "questionari", "compilazione", stuId.toString(),
+                "quest", questionarioId.toString(), questCompId.toString(),
+                "save", pageId.toString())
+            .queryParam("eventCompId", "EV_VAL_DID")
+            .build())
+        .header(authHeader(), bearer(jwt))
+        .bodyValue(answers)
+        .retrieve()
+        .onStatus(HttpStatusCode::is4xxClientError, r ->
+            r.bodyToMono(String.class).flatMap(body -> {
+              log.error("CinecaExamsClient: saveSurveyPage 4xx body: {}", body);
+              return Mono.error(new CinecaClient.CinecaBookingException(body));
+            }))
+        .onStatus(HttpStatusCode::is5xxServerError, r ->
+            Mono.error(new CinecaClient.CinecaUnavailableException(
+                "Cineca error on saveSurveyPage")))
+        .bodyToMono(Void.class)
+        .block();
+  }
+
+  /**
+   * Retrieves an adjacent questionnaire page (next or prev) via {@code questionari-service-v1}.
+   *
+   * <p>Uses Bearer JWT. The page returned is determined dynamically by Cineca
+   * based on the answers given so far (branching logic may apply).
+   *
+   * @param baseUrl        Cineca ESSE3 base URL
+   * @param jwt            Cineca JWT token
+   * @param stuId          student career identifier
+   * @param adsceId        booklet activity identifier
+   * @param questionarioId questionnaire identifier
+   * @param questCompId    compilation session identifier
+   * @param pageId         current page identifier
+   * @param userCompId     user session identifier
+   * @param direction      {@code "next"} or {@code "prev"}
+   * @return the adjacent page, or {@code null} if there is none
+   * @throws CinecaClient.CinecaUnavailableException if Cineca is unreachable
+   */
+  public CinecaSurveyPage getAdjacentSurveyPage(
+      String baseUrl, String jwt, Long stuId, Long adsceId, Long questionarioId,
+      Long questCompId, Long pageId, Long userCompId, String direction) {
+    log.debug("CinecaExamsClient: GET survey {} page stuId={} questCompId={} pageId={}",
+        direction, stuId, questCompId, pageId);
+    return webClient.get()
+        .uri(uriBuilder -> uriBuilder
+            .scheme("https")
+            .host(extractHost(baseUrl))
+            .pathSegment("e3rest", "api", "questionari-service-v1",
+                "questionari", "compilazione", stuId.toString(), adsceId.toString(),
+                "quest", questionarioId.toString(), questCompId.toString(),
+                "pagina", pageId.toString(), direction)
+            .queryParam("userCompId", userCompId)
+            .build())
+        .header(authHeader(), bearer(jwt))
+        .retrieve()
+        .onStatus(status -> status.value() == 404, r -> {
+          log.debug("CinecaExamsClient: getAdjacentSurveyPage 404 — no adjacent page");
+          return Mono.empty();
+        })
+        .onStatus(HttpStatusCode::is4xxClientError, r ->
+            r.bodyToMono(String.class).flatMap(body -> {
+              log.error("CinecaExamsClient: getAdjacentSurveyPage 4xx body: {}", body);
+              return Mono.error(new CinecaClient.CinecaBookingException(body));
+            }))
+        .onStatus(HttpStatusCode::is5xxServerError, r ->
+            Mono.error(new CinecaClient.CinecaUnavailableException(
+                "Cineca error on getAdjacentSurveyPage")))
+        .bodyToMono(CinecaSurveyPage.class)
+        .block();
+  }
+
+  /**
+   * Retrieves a specific questionnaire page by id via {@code questionari-service-v1}.
+   *
+   * @return the page, or {@code null} if not found
+   */
+  public CinecaSurveyPage getSurveyPage(
+      String baseUrl, String jwt, Long stuId, Long adsceId, Long questionarioId,
+      Long questCompId, Long pageId, Long userCompId) {
+    log.debug("CinecaExamsClient: GET survey page stuId={} questCompId={} pageId={}",
+        stuId, questCompId, pageId);
+    return webClient.get()
+        .uri(uriBuilder -> uriBuilder
+            .scheme("https")
+            .host(extractHost(baseUrl))
+            .pathSegment("e3rest", "api", "questionari-service-v1",
+                "questionari", "compilazione", stuId.toString(), adsceId.toString(),
+                "quest", questionarioId.toString(), questCompId.toString(),
+                "getPagina", pageId.toString())
+            .queryParam("userCompId", userCompId)
+            .build())
+        .header(authHeader(), bearer(jwt))
+        .retrieve()
+        .onStatus(status -> status.value() == 404, r -> Mono.empty())
+        .onStatus(HttpStatusCode::is4xxClientError, r ->
+            r.bodyToMono(String.class).flatMap(body -> {
+              log.error("CinecaExamsClient: getSurveyPage 4xx body: {}", body);
+              return Mono.error(new CinecaClient.CinecaBookingException(body));
+            }))
+        .onStatus(HttpStatusCode::is5xxServerError, r ->
+            Mono.error(new CinecaClient.CinecaUnavailableException(
+                "Cineca error on getSurveyPage")))
+        .bodyToMono(CinecaSurveyPage.class)
+        .block();
+  }
+
+  /**
+   * Confirms and submits a completed questionnaire via {@code questionari-service-v1}.
+   *
+   * <p>Uses Bearer JWT. This is the final, irreversible step of the compilation flow.
+   *
+   * @param baseUrl        Cineca ESSE3 base URL
+   * @param jwt            Cineca JWT token
+   * @param stuId          student career identifier
+   * @param adsceId        booklet activity identifier
+   * @param questionarioId questionnaire identifier
+   * @param questCompId    compilation session identifier
+   * @param questConfigId  questionnaire configuration identifier
+   * @param userCompId     user session identifier
+   * @throws CinecaClient.CinecaBookingException     if Cineca rejects the confirmation
+   * @throws CinecaClient.CinecaUnavailableException if Cineca is unreachable
+   */
+  public void confirmSurvey(
+      String baseUrl, String jwt, Long stuId, Long adsceId, Long questionarioId,
+      Long questCompId, Long questConfigId, Long userCompId) {
+    log.debug("CinecaExamsClient: PUT confirm survey stuId={} questCompId={}", stuId, questCompId);
+    webClient.put()
+        .uri(uriBuilder -> uriBuilder
+            .scheme("https")
+            .host(extractHost(baseUrl))
+            .pathSegment("e3rest", "api", "questionari-service-v1",
+                "questionari", "compilazione", stuId.toString(), adsceId.toString(),
+                "quest", questionarioId.toString(), questCompId.toString(), "conferma")
+            .queryParam("questConfigId", questConfigId)
+            .queryParam("userCompId", userCompId)
+            .queryParam("eventCompId", "EV_VAL_DID")
+            .build())
+        .header(authHeader(), bearer(jwt))
+        .retrieve()
+        .onStatus(HttpStatusCode::is4xxClientError, r ->
+            r.bodyToMono(String.class).flatMap(body -> {
+              log.error("CinecaExamsClient: confirmSurvey 4xx body: {}", body);
+              return Mono.error(new CinecaClient.CinecaBookingException(body));
+            }))
+        .onStatus(HttpStatusCode::is5xxServerError, r ->
+            Mono.error(new CinecaClient.CinecaUnavailableException(
+                "Cineca error on confirmSurvey")))
+        .bodyToMono(Void.class)
+        .block();
+  }
+
+  /**
+   * Retrieves the compilation summary via {@code questionari-service-v1}.
+   *
+   * @return the summary, or {@code null} if not available
+   */
+  public CinecaSurveySummary getSurveySummary(
+      String baseUrl, String jwt, Long stuId, Long adsceId, Long questionarioId,
+      Long questCompId, Long questConfigId, Long userCompId) {
+    log.debug("CinecaExamsClient: GET survey summary stuId={} questCompId={}", stuId, questCompId);
+    return webClient.get()
+        .uri(uriBuilder -> uriBuilder
+            .scheme("https")
+            .host(extractHost(baseUrl))
+            .pathSegment("e3rest", "api", "questionari-service-v1",
+                "questionari", "compilazione", stuId.toString(), adsceId.toString(),
+                "quest", questionarioId.toString(), questCompId.toString(), "summary")
+            .queryParam("questConfigId", questConfigId)
+            .queryParam("userCompId", userCompId)
+            .queryParam("eventCompId", "EV_VAL_DID")
+            .build())
+        .header(authHeader(), bearer(jwt))
+        .retrieve()
+        .onStatus(HttpStatusCode::is4xxClientError, r ->
+            r.bodyToMono(String.class).flatMap(body -> {
+              log.error("CinecaExamsClient: getSurveySummary 4xx body: {}", body);
+              return Mono.error(new CinecaClient.CinecaBookingException(body));
+            }))
+        .onStatus(HttpStatusCode::is5xxServerError, r ->
+            Mono.error(new CinecaClient.CinecaUnavailableException(
+                "Cineca error on getSurveySummary")))
+        .bodyToMono(CinecaSurveySummary.class)
         .block();
   }
 
@@ -935,6 +1237,474 @@ public class CinecaExamsClient extends AbstractCinecaClient {
 
     public Long getStuId() {
       return stuId;
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class CinecaSurveyUnit {
+
+    @JsonProperty("adsceId")
+    private Long adsceId;
+    @JsonProperty("questionarioId")
+    private Long questionarioId;
+    @JsonProperty("questConfigId")
+    private Long questConfigId;
+    @JsonProperty("questionarioDes")
+    private String questionarioDes;
+    @JsonProperty("des")
+    private String des;
+    @JsonProperty("anonimoFlg")
+    private Integer anonimoFlg;
+    @JsonProperty("stato")
+    private Integer stato;
+    @JsonProperty("udLogPdsListWeb")
+    private List<CinecaSurveyUnitTag> udLogPdsListWeb;
+
+    public Long getAdsceId() {
+      return adsceId;
+    }
+
+    public Long getQuestionarioId() {
+      return questionarioId;
+    }
+
+    public Long getQuestConfigId() {
+      return questConfigId;
+    }
+
+    public String getQuestionarioDes() {
+      return questionarioDes;
+    }
+
+    public String getDes() {
+      return des;
+    }
+
+    public Integer getAnonimoFlg() {
+      return anonimoFlg;
+    }
+
+    public Integer getStato() {
+      return stato;
+    }
+
+    public List<CinecaSurveyUnitTag> getUdLogPdsListWeb() {
+      return udLogPdsListWeb;
+    }
+
+    /**
+     * Returns the {@code tagsValdid} string from the first teaching unit entry, required as the
+     * body of the start request. Returns {@code null} if absent.
+     */
+    public String resolveTags() {
+      if (udLogPdsListWeb == null || udLogPdsListWeb.isEmpty()) {
+        return null;
+      }
+      return udLogPdsListWeb.get(0).getTagsValdid();
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class CinecaSurveyUnitTag {
+
+    @JsonProperty("adsceId")
+    private Long adsceId;
+    @JsonProperty("adCod")
+    private String adCod;
+    @JsonProperty("adDes")
+    private String adDes;
+    @JsonProperty("docentiNome")
+    private String teacherFirstName;
+    @JsonProperty("docentiCognome")
+    private String teacherLastName;
+    @JsonProperty("statoLink")
+    private Integer surveyStatus;
+    @JsonProperty("tagsValdid")
+    private String tagsValdid;
+
+    public Long getAdsceId() {
+      return adsceId;
+    }
+
+    public String getAdCod() {
+      return adCod;
+    }
+
+    public String getAdDes() {
+      return adDes;
+    }
+
+    public String getTeacherFirstName() {
+      return teacherFirstName;
+    }
+
+    public String getTeacherLastName() {
+      return teacherLastName;
+    }
+
+    public Integer getSurveyStatus() {
+      return surveyStatus;
+    }
+
+    public String getTagsValdid() {
+      return tagsValdid;
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class CinecaSurveyPage {
+
+    @JsonProperty("paginaId")
+    private Long paginaId;
+    @JsonProperty("questCompId")
+    private Long questCompId;
+    @JsonProperty("userCompId")
+    private Long userCompId;
+    @JsonProperty("questionarioCod")
+    private String questionarioCod;
+    @JsonProperty("questionarioId")
+    private Long questionarioId;
+    @JsonProperty("pPaginaPrecId")
+    private Long prevPageId;
+    @JsonProperty("pPaginaSuccId")
+    private Long nextPageId;
+    @JsonProperty("pQuestionarioDes")
+    private String questionarioDes;
+    @JsonProperty("pQuestionarioNote")
+    private String questionarioNote;
+    @JsonProperty("des")
+    private String des;
+    @JsonProperty("numeroRisposte")
+    private Integer answerCount;
+    @JsonProperty("paragrafi")
+    private List<CinecaSurveyParagraph> paragrafi;
+
+    public Long getPaginaId() {
+      return paginaId;
+    }
+
+    public Long getQuestCompId() {
+      return questCompId;
+    }
+
+    public Long getUserCompId() {
+      return userCompId;
+    }
+
+    public String getQuestionarioCod() {
+      return questionarioCod;
+    }
+
+    public Long getQuestionarioId() {
+      return questionarioId;
+    }
+
+    public Long getPrevPageId() {
+      return prevPageId;
+    }
+
+    public Long getNextPageId() {
+      return nextPageId;
+    }
+
+    public String getQuestionarioDes() {
+      return questionarioDes;
+    }
+
+    public String getQuestionarioNote() {
+      return questionarioNote;
+    }
+
+    public String getDes() {
+      return des;
+    }
+
+    public Integer getAnswerCount() {
+      return answerCount;
+    }
+
+    public List<CinecaSurveyParagraph> getParagrafi() {
+      return paragrafi;
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class CinecaSurveyParagraph {
+
+    @JsonProperty("paragrafoId")
+    private Long paragrafoId;
+    @JsonProperty("paginaId")
+    private Long paginaId;
+    @JsonProperty("elemCod")
+    private String elemCod;
+    @JsonProperty("elementiDes")
+    private String des;
+    @JsonProperty("elementiNota")
+    private String note;
+    @JsonProperty("obbligatorioFlg")
+    private Integer mandatoryFlg;
+    @JsonProperty("domande")
+    private List<CinecaSurveyQuestion> domande;
+
+    public Long getParagrafoId() {
+      return paragrafoId;
+    }
+
+    public Long getPaginaId() {
+      return paginaId;
+    }
+
+    public String getElemCod() {
+      return elemCod;
+    }
+
+    public String getDes() {
+      return des;
+    }
+
+    public String getNote() {
+      return note;
+    }
+
+    public Integer getMandatoryFlg() {
+      return mandatoryFlg;
+    }
+
+    public List<CinecaSurveyQuestion> getDomande() {
+      return domande;
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class CinecaSurveyQuestion {
+
+    @JsonProperty("domandaId")
+    private Long domandaId;
+    @JsonProperty("paragrafoId")
+    private Long paragrafoId;
+    @JsonProperty("elemCod")
+    private String elemCod;
+    @JsonProperty("elementiDes")
+    private String des;
+    @JsonProperty("elementiNota")
+    private String note;
+    @JsonProperty("obbligatorioFlg")
+    private Integer mandatoryFlg;
+    @JsonProperty("numMaxSce")
+    private Integer maxChoices;
+    @JsonProperty("tipoFormatoCod")
+    private String formatCod;
+    @JsonProperty("rispDisponibili")
+    private List<CinecaSurveyAnswer> rispDisponibili;
+
+    public Long getDomandaId() {
+      return domandaId;
+    }
+
+    public Long getParagrafoId() {
+      return paragrafoId;
+    }
+
+    public String getElemCod() {
+      return elemCod;
+    }
+
+    public String getDes() {
+      return des;
+    }
+
+    public String getNote() {
+      return note;
+    }
+
+    public Integer getMandatoryFlg() {
+      return mandatoryFlg;
+    }
+
+    public Integer getMaxChoices() {
+      return maxChoices;
+    }
+
+    public String getFormatCod() {
+      return formatCod;
+    }
+
+    public List<CinecaSurveyAnswer> getRispDisponibili() {
+      return rispDisponibili;
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class CinecaSurveyAnswer {
+
+    @JsonProperty("rispostaId")
+    private Long rispostaId;
+    @JsonProperty("domandaId")
+    private Long domandaId;
+    @JsonProperty("elemCod")
+    private String elemCod;
+    @JsonProperty("elementiDes")
+    private String des;
+    @JsonProperty("elementiNota")
+    private String note;
+    @JsonProperty("rispostaFormatoCod")
+    private String answerFormatCod;
+    @JsonProperty("domandaFormatoCod")
+    private String questionFormatCod;
+    @JsonProperty("obbligatorioFlg")
+    private Integer mandatoryFlg;
+
+    public Long getRispostaId() {
+      return rispostaId;
+    }
+
+    public Long getDomandaId() {
+      return domandaId;
+    }
+
+    public String getElemCod() {
+      return elemCod;
+    }
+
+    public String getDes() {
+      return des;
+    }
+
+    public String getNote() {
+      return note;
+    }
+
+    public String getAnswerFormatCod() {
+      return answerFormatCod;
+    }
+
+    public String getQuestionFormatCod() {
+      return questionFormatCod;
+    }
+
+    public Integer getMandatoryFlg() {
+      return mandatoryFlg;
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class CinecaSurveySummary {
+
+    @JsonProperty("questCompId")
+    private Long questCompId;
+    @JsonProperty("questionarioId")
+    private Long questionarioId;
+    @JsonProperty("pQuestionarioDes")
+    private String questionarioDes;
+    @JsonProperty("stato")
+    private String stato;
+    @JsonProperty("pagine")
+    private List<CinecaSummaryPage> pagine;
+
+    public Long getQuestCompId() {
+      return questCompId;
+    }
+
+    public Long getQuestionarioId() {
+      return questionarioId;
+    }
+
+    public String getQuestionarioDes() {
+      return questionarioDes;
+    }
+
+    public String getStato() {
+      return stato;
+    }
+
+    public List<CinecaSummaryPage> getPagine() {
+      return pagine;
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class CinecaSummaryPage {
+
+    @JsonProperty("paginaId")
+    private Long paginaId;
+    @JsonProperty("paragrafiRiepilogo")
+    private List<CinecaSummaryParagraph> paragrafiRiepilogo;
+
+    public Long getPaginaId() {
+      return paginaId;
+    }
+
+    public List<CinecaSummaryParagraph> getParagrafiRiepilogo() {
+      return paragrafiRiepilogo;
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class CinecaSummaryParagraph {
+
+    @JsonProperty("paragrafoId")
+    private Long paragrafoId;
+    @JsonProperty("elementiDes")
+    private String des;
+    @JsonProperty("domandeRiepilogo")
+    private List<CinecaSummaryQuestion> domandeRiepilogo;
+    @JsonProperty("risposteRiepilogo")
+    private List<CinecaSummaryAnswer> risposteRiepilogo;
+
+    public Long getParagrafoId() {
+      return paragrafoId;
+    }
+
+    public String getDes() {
+      return des;
+    }
+
+    public List<CinecaSummaryQuestion> getDomandeRiepilogo() {
+      return domandeRiepilogo;
+    }
+
+    public List<CinecaSummaryAnswer> getRisposteRiepilogo() {
+      return risposteRiepilogo;
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class CinecaSummaryQuestion {
+
+    @JsonProperty("domandaId")
+    private Long domandaId;
+    @JsonProperty("elementiDes")
+    private String des;
+
+    public Long getDomandaId() {
+      return domandaId;
+    }
+
+    public String getDes() {
+      return des;
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class CinecaSummaryAnswer {
+
+    @JsonProperty("domandaId")
+    private Long domandaId;
+    @JsonProperty("elementiDes")
+    private String des;
+    @JsonProperty("testoLibero")
+    private String testoLibero;
+
+    public Long getDomandaId() {
+      return domandaId;
+    }
+
+    public String getDes() {
+      return des;
+    }
+
+    public String getTestoLibero() {
+      return testoLibero;
     }
   }
 }

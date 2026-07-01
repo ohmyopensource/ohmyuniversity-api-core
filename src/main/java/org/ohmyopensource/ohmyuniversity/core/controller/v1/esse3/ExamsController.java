@@ -3,10 +3,15 @@ package org.ohmyopensource.ohmyuniversity.core.controller.v1.esse3;
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookExamRequest;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookableSessionsResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SessionsResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookingsResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.LegacyBookingRequest;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.LegacyBookingsResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookingsResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SessionsResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveyConfirmRequest;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveyGetPageRequest;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveyNavigateRequest;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveySaveRequest;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveySummaryRequest;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveysResponse;
 import org.ohmyopensource.ohmyuniversity.core.service.esse3.ExamsService;
 import org.slf4j.Logger;
@@ -64,8 +69,8 @@ public class ExamsController extends AbstractEsse3Controller {
    * @param principal authenticated OhMyU principal
    * @param cdsId     course of study identifier
    * @param adId      teaching activity identifier
-   * @return {@code 200 OK} with available sessions, {@code 401} if session expired,
-   *         {@code 503} if Cineca is unavailable
+   * @return {@code 200 OK} with available sessions, {@code 401} if session expired, {@code 503} if
+   * Cineca is unavailable
    */
   @GetMapping("/sessions")
   public ResponseEntity<SessionsResponse> getSessions(
@@ -79,12 +84,12 @@ public class ExamsController extends AbstractEsse3Controller {
    * Returns bookable exam sessions from libretto-service-v2.
    *
    * <p>Accessible to STUDENTE role via {@code checkMatId}, bypassing the
-   * {@code checkAbildocStu} restriction that blocks calesa-service on some
-   * universities (e.g. UNIMOL).
+   * {@code checkAbildocStu} restriction that blocks calesa-service on some universities (e.g.
+   * UNIMOL).
    *
    * @param principal authenticated OhMyU principal
-   * @return {@code 200 OK} with bookable sessions, {@code 401} if session expired,
-   *         {@code 503} if Cineca is unavailable
+   * @return {@code 200 OK} with bookable sessions, {@code 401} if session expired, {@code 503} if
+   * Cineca is unavailable
    */
   @GetMapping("/bookable")
   public ResponseEntity<BookableSessionsResponse> getBookableSessions(
@@ -99,8 +104,8 @@ public class ExamsController extends AbstractEsse3Controller {
    * Does not require Cineca password.
    *
    * @param principal authenticated OhMyU principal
-   * @return {@code 200 OK} with active bookings, {@code 401} if session expired,
-   *         {@code 503} if Cineca is unavailable
+   * @return {@code 200 OK} with active bookings, {@code 401} if session expired, {@code 503} if
+   * Cineca is unavailable
    */
   @GetMapping("/bookings")
   public ResponseEntity<BookingsResponse> getBookings(
@@ -118,8 +123,8 @@ public class ExamsController extends AbstractEsse3Controller {
    *
    * @param principal authenticated OhMyU principal
    * @param request   request body containing the Cineca password
-   * @return {@code 200 OK} with full history, {@code 400} if password is missing,
-   *         {@code 401} if Cineca auth fails, {@code 503} if Cineca is unavailable
+   * @return {@code 200 OK} with full history, {@code 400} if password is missing, {@code 401} if
+   * Cineca auth fails, {@code 503} if Cineca is unavailable
    */
   @PostMapping("/bookings/legacy")
   public ResponseEntity<LegacyBookingsResponse> getLegacyBookings(
@@ -138,13 +143,147 @@ public class ExamsController extends AbstractEsse3Controller {
    * Returns teaching evaluation surveys split into pending and completed.
    *
    * @param principal authenticated OhMyU principal
-   * @return {@code 200 OK} with survey status, {@code 401} if session expired,
-   *         {@code 503} if Cineca is unavailable
+   * @return {@code 200 OK} with survey status, {@code 401} if session expired, {@code 503} if
+   * Cineca is unavailable
    */
   @GetMapping("/surveys")
   public ResponseEntity<SurveysResponse> getSurveys(
       @AuthenticationPrincipal OmuPrincipal principal) {
     return execute(principal, () -> examsService.getSurveys(principal));
+  }
+
+  /**
+   * Starts a questionnaire compilation session for a booklet activity and returns its first page.
+   *
+   * <p>Uses the Cineca JWT (no password). The {@code adsceId} identifies the
+   * booklet activity whose teaching evaluation questionnaire is to be compiled.
+   *
+   * @param principal authenticated OhMyU principal
+   * @param adsceId   booklet activity identifier
+   * @return {@code 200 OK} with the started session and first page, {@code 422} with the Cineca
+   * message if unavailable/rejected, {@code 401} if the session expired, {@code 503} if Cineca is
+   * unavailable
+   */
+  @PostMapping("/surveys/start")
+  public ResponseEntity<?> startSurvey(
+      @AuthenticationPrincipal OmuPrincipal principal,
+      @RequestParam Long adsceId) {
+    return executeWithBusinessError(principal, () ->
+        examsService.startSurvey(principal, adsceId));
+  }
+
+  /**
+   * Saves the answers for a questionnaire page.
+   *
+   * @param principal authenticated OhMyU principal
+   * @param request   save request with session ids and answers
+   * @return {@code 204 No Content} on success, {@code 422} with the Cineca message if rejected
+   * (e.g. validation errors), {@code 400} if the request is malformed, {@code 401}/{@code 503} on
+   * session/availability errors
+   */
+  @PostMapping("/surveys/save")
+  public ResponseEntity<?> saveSurveyPage(
+      @AuthenticationPrincipal OmuPrincipal principal,
+      @RequestBody SurveySaveRequest request) {
+    if (request == null || request.getQuestionarioId() == null
+        || request.getQuestCompId() == null || request.getPageId() == null
+        || request.getAnswers() == null) {
+      log.warn("ExamsController: malformed survey save for user={}", principal.omuUserId());
+      return ResponseEntity.badRequest().build();
+    }
+    return executeWithBusinessError(principal, () -> {
+      examsService.saveSurveyPage(principal, request.getQuestionarioId(),
+          request.getQuestCompId(), request.getPageId(), request.getAnswers());
+      return "OK";
+    });
+  }
+
+  /**
+   * Fetches an adjacent questionnaire page (next or prev).
+   *
+   * @param principal authenticated OhMyU principal
+   * @param request   navigation request with session ids and direction
+   * @return {@code 200 OK} with the adjacent page, {@code 422} with the Cineca message if rejected,
+   * {@code 400} if malformed, {@code 401}/{@code 503} on session/availability errors
+   */
+  @PostMapping("/surveys/navigate")
+  public ResponseEntity<?> navigateSurvey(
+      @AuthenticationPrincipal OmuPrincipal principal,
+      @RequestBody SurveyNavigateRequest request) {
+    if (request == null || request.getAdsceId() == null
+        || request.getQuestionarioId() == null || request.getQuestCompId() == null
+        || request.getPageId() == null || request.getUserCompId() == null) {
+      log.warn("ExamsController: malformed survey navigate for user={}", principal.omuUserId());
+      return ResponseEntity.badRequest().build();
+    }
+    return executeWithBusinessError(principal, () ->
+        examsService.navigateSurvey(principal, request.getAdsceId(),
+            request.getQuestionarioId(), request.getQuestCompId(),
+            request.getPageId(), request.getUserCompId(), request.getDirection()));
+  }
+
+  /**
+   * Confirms and submits a completed questionnaire. Irreversible.
+   *
+   * @param principal authenticated OhMyU principal
+   * @param request   confirm request with session ids
+   * @return {@code 204 No Content} on success, {@code 422} with the Cineca message if rejected,
+   * {@code 400} if malformed, {@code 401}/{@code 503} on session/availability errors
+   */
+  @PostMapping("/surveys/confirm")
+  public ResponseEntity<?> confirmSurvey(
+      @AuthenticationPrincipal OmuPrincipal principal,
+      @RequestBody SurveyConfirmRequest request) {
+    if (request == null || request.getAdsceId() == null
+        || request.getQuestionarioId() == null || request.getQuestCompId() == null
+        || request.getQuestConfigId() == null || request.getUserCompId() == null) {
+      log.warn("ExamsController: malformed survey confirm for user={}", principal.omuUserId());
+      return ResponseEntity.badRequest().build();
+    }
+    return executeWithBusinessError(principal, () -> {
+      examsService.confirmSurvey(principal, request.getAdsceId(),
+          request.getQuestionarioId(), request.getQuestCompId(),
+          request.getQuestConfigId(), request.getUserCompId());
+      return "OK";
+    });
+  }
+
+  /**
+   * Loads a specific questionnaire page (for editing from the summary).
+   */
+  @PostMapping("/surveys/page")
+  public ResponseEntity<?> getSurveyPage(
+      @AuthenticationPrincipal OmuPrincipal principal,
+      @RequestBody SurveyGetPageRequest request) {
+    if (request == null || request.getAdsceId() == null
+        || request.getQuestionarioId() == null || request.getQuestCompId() == null
+        || request.getPageId() == null || request.getUserCompId() == null) {
+      log.warn("ExamsController: malformed survey page for user={}", principal.omuUserId());
+      return ResponseEntity.badRequest().build();
+    }
+    return executeWithBusinessError(principal, () ->
+        examsService.getSurveyPage(principal, request.getAdsceId(),
+            request.getQuestionarioId(), request.getQuestCompId(),
+            request.getPageId(), request.getUserCompId()));
+  }
+
+  /**
+   * Returns the compilation summary for review before final confirmation.
+   */
+  @PostMapping("/surveys/summary")
+  public ResponseEntity<?> surveySummary(
+      @AuthenticationPrincipal OmuPrincipal principal,
+      @RequestBody SurveySummaryRequest request) {
+    if (request == null || request.getAdsceId() == null
+        || request.getQuestionarioId() == null || request.getQuestCompId() == null
+        || request.getQuestConfigId() == null || request.getUserCompId() == null) {
+      log.warn("ExamsController: malformed survey summary for user={}", principal.omuUserId());
+      return ResponseEntity.badRequest().build();
+    }
+    return executeWithBusinessError(principal, () ->
+        examsService.getSurveySummary(principal, request.getAdsceId(),
+            request.getQuestionarioId(), request.getQuestCompId(),
+            request.getQuestConfigId(), request.getUserCompId()));
   }
 
   /**
@@ -156,10 +295,9 @@ public class ExamsController extends AbstractEsse3Controller {
    * @param appId     exam session identifier
    * @param adsceId   libretto row identifier
    * @param request   request body containing the Cineca password
-   * @return {@code 204 No Content} on success, {@code 422} with the Cineca
-   *         message if rejected (e.g. survey not filled), {@code 400} if the
-   *         password is missing, {@code 401} if not authorized, {@code 503}
-   *         if Cineca is unavailable
+   * @return {@code 204 No Content} on success, {@code 422} with the Cineca message if rejected
+   * (e.g. survey not filled), {@code 400} if the password is missing, {@code 401} if not
+   * authorized, {@code 503} if Cineca is unavailable
    */
   @PostMapping("/bookings")
   public ResponseEntity<String> bookExam(
@@ -185,9 +323,9 @@ public class ExamsController extends AbstractEsse3Controller {
    * @param adId      teaching activity identifier
    * @param appId     exam session identifier
    * @param request   request body containing the Cineca password
-   * @return {@code 204 No Content} on success, {@code 422} with the Cineca
-   *         message if rejected, {@code 400} if the password is missing,
-   *         {@code 401} if not authorized, {@code 503} if Cineca is unavailable
+   * @return {@code 204 No Content} on success, {@code 422} with the Cineca message if rejected,
+   * {@code 400} if the password is missing, {@code 401} if not authorized, {@code 503} if Cineca is
+   * unavailable
    */
   @PostMapping("/bookings/cancel")
   public ResponseEntity<String> cancelBooking(
