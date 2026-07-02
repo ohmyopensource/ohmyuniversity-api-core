@@ -133,6 +133,39 @@ public class CinecaExamsClient extends AbstractCinecaClient {
   }
 
   /**
+   * Retrieves ALL exam sessions for the libretto (no {@code q} filter), including already-booked
+   * ones — unlike {@link #getBookableSessions}, whose filter excludes booked exams. Used to read
+   * the live {@code numIscritti} (default field) for booked exams.
+   */
+  public List<CinecaBookableSession> getAllLibrettoSessions(
+      String baseUrl, String jwt, Long matId) {
+    log.debug("CinecaExamsClient: GET all libretto sessions (no q) matId={}", matId);
+    List<CinecaBookableSession> result = webClient.get()
+        .uri(uriBuilder -> uriBuilder
+            .scheme("https")
+            .host(extractHost(baseUrl))
+            .pathSegment("e3rest", "api", "libretto-service-v2",
+                "libretti", matId.toString(), "appelli")
+            .queryParam("optionalFields", "adStuCod,adStuDes")
+            .build())
+        .header(authHeader(), bearer(jwt))
+        .retrieve()
+        .onStatus(HttpStatusCode::is4xxClientError, r ->
+            r.bodyToMono(String.class).flatMap(body -> {
+              log.error("CinecaExamsClient: all libretto sessions 4xx body: {}", body);
+              return Mono.error(new CinecaClient.CinecaAuthException(
+                  "Unauthorized for all libretto sessions matId=" + matId));
+            }))
+        .onStatus(HttpStatusCode::is5xxServerError, r ->
+            Mono.error(new CinecaClient.CinecaUnavailableException(
+                "Cineca error on all libretto sessions")))
+        .bodyToFlux(CinecaBookableSession.class)
+        .collectList()
+        .block();
+    return result != null ? result : List.of();
+  }
+
+  /**
    * Retrieves active bookings from {@code libretto-service-v2}.
    *
    * <p>Returns all exam registrations for the student. Callers are responsible

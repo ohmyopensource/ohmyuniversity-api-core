@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaSessionStore;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient;
@@ -148,8 +149,16 @@ public class ExamsService extends AbstractEsse3Service {
     String baseUrl = resolveBaseUrl(principal.universityId());
 
     List<CinecaBooking> all = examsClient.getBookings(baseUrl, jwt, principal.matId());
-
     log.debug("ExamsService: fetched {} raw bookings for matId={}", all.size(), principal.matId());
+
+    Map<String, Integer> numIscrittiByKey = examsClient
+        .getAllLibrettoSessions(baseUrl, jwt, principal.matId()).stream()
+        .filter(s -> s.getAdsceId() != null && s.getAppId() != null
+            && s.getRegisteredCount() != null)
+        .collect(Collectors.toMap(
+            s -> s.getAdsceId() + ":" + s.getAppId(),
+            CinecaBookableSession::getRegisteredCount,
+            (a, b) -> a));
 
     List<IscrizioneAppello> active = all.stream()
         .filter(b -> {
@@ -168,7 +177,7 @@ public class ExamsService extends AbstractEsse3Service {
             return false;
           }
         })
-        .map(this::toIscrizioneAppello)
+        .map(b -> toIscrizioneAppello(b, numIscrittiByKey))
         .toList();
 
     BookingsResponse response = new BookingsResponse();
@@ -507,6 +516,7 @@ public class ExamsService extends AbstractEsse3Service {
     i.setDataFineIscr(b.getRegistrationEnd());
     i.setAulaDes(b.getRoomDes());
     i.setTipoIscrCod(b.getTipoIscrCod());
+    i.setPosizApp(b.getPosition());
     return i;
   }
 
@@ -598,5 +608,27 @@ public class ExamsService extends AbstractEsse3Service {
     ans.setDes(a.getDes());
     ans.setFormatCod(a.getAnswerFormatCod());
     return ans;
+  }
+
+  private IscrizioneAppello toIscrizioneAppello(
+      CinecaBooking b, Map<String, Integer> numIscrittiByKey) {
+    IscrizioneAppello i = new IscrizioneAppello();
+    i.setApplistaId(b.getApplistaId());
+    i.setCdsId(b.getCdsId());
+    i.setAdId(b.getAdId());
+    i.setAppId(b.getAppId());
+    i.setAdStuCod(b.getAdStuCod());
+    i.setAdStuDes(b.getAdStuDes());
+    i.setAdsceId(b.getAdsceId());
+    i.setDataOraTurno(b.getExamDateTime());
+    i.setDataInizioIscr(b.getRegistrationStart());
+    i.setDataFineIscr(b.getRegistrationEnd());
+    i.setAulaDes(b.getRoomDes());
+    i.setTipoIscrCod(b.getTipoIscrCod());
+    i.setPosizApp(b.getPosition());
+    if (b.getAdsceId() != null && b.getAppId() != null) {
+      i.setNumIscritti(numIscrittiByKey.get(b.getAdsceId() + ":" + b.getAppId()));
+    }
+    return i;
   }
 }

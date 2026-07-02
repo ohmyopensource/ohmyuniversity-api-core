@@ -189,8 +189,8 @@ omu:
     UNIFG:
       name: Università degli Studi di Foggia
       base-url: https://unifg.esse3.cineca.it/e3rest/api
-      moodle-url: https://moodle.unifg.it # TODO verify
-      library-url: https://www.unifg.it/biblioteca # TODO verify
+      moodle-url: https://elearning.unifg.it
+      library-url: https://www.unifg.it/it/servizi-e-opportunita/servizi-gli-studenti/biblioteche
       esse3-portal-url: https://unifg.esse3.cineca.it/Start.do
 
     UNIGE:
@@ -420,8 +420,8 @@ omu:
     UNICH:
       name: Università degli Studi "Gabriele D'Annunzio" di Chieti e Pescara
       base-url: https://unich.esse3.cineca.it/e3rest/api
-      moodle-url: https://moodle.unich.it # TODO verify
-      library-url: https://www.unich.it/biblioteca # TODO verify
+      moodle-url: https://elearning.unich.it
+      library-url: https://www.unich.it/didattica/frequentare/biblioteche
       esse3-portal-url: https://unich.esse3.cineca.it/Start.do
 
     UNIOR:
