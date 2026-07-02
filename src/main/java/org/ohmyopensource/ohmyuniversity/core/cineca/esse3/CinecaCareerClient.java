@@ -231,6 +231,8 @@ public class CinecaCareerClient extends AbstractCinecaClient {
     private String dataEsa;
     @JsonProperty("tipoGiudCod")
     private String tipoGiudCod;
+    @JsonProperty("modValCod")
+    private CinecaValueWrapper modValCod;
     @JsonProperty("tipoGiudDes")
     private String tipoGiudDes;
 
@@ -252,6 +254,10 @@ public class CinecaCareerClient extends AbstractCinecaClient {
 
     public String getTipoGiudDes() {
       return tipoGiudDes;
+    }
+
+    public String getModValCod() {
+      return modValCod != null ? modValCod.getValue() : null;
     }
   }
 

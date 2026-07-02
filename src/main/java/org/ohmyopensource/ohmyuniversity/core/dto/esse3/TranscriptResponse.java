@@ -32,9 +32,8 @@ public class TranscriptResponse {
    * Represents a single row in the student transcript (libretto).
    *
    * <p>Each row corresponds to an exam or academic activity and includes:
-   * - exam metadata (code, description, year)
-   * - outcome information (grade, lode, status)
-   * - credit and exam attempt data
+   * - exam metadata (code, description, year) - outcome information (grade, lode, status) - credit
+   * and exam attempt data
    */
   public static class RigaLibretto {
 
@@ -47,6 +46,7 @@ public class TranscriptResponse {
     private Double peso;
     private String tipoInsCod;
     private String tipoInsDes;
+    private String modValCod;
     private Integer voto;
     private Boolean lode;
     private String dataEsame;
@@ -125,6 +125,14 @@ public class TranscriptResponse {
 
     public void setTipoInsDes(String tipoInsDes) {
       this.tipoInsDes = tipoInsDes;
+    }
+
+    public String getModValCod() {
+      return modValCod;
+    }
+
+    public void setModValCod(String modValCod) {
+      this.modValCod = modValCod;
     }
 
     public Integer getVoto() {

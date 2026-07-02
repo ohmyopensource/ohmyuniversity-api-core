@@ -21,14 +21,14 @@ import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.Cin
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityConnectionRepository;
-import org.ohmyopensource.ohmyuniversity.core.dto.esse3.TranscriptResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.esse3.TranscriptResponse.RigaLibretto;
-import org.ohmyopensource.ohmyuniversity.core.dto.esse3.GradesResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.esse3.StudyPlanResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.ExamHistoryResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.ExamHistoryResponse.EsameConStorico;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.ExamHistoryResponse.Tentativo;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.GradesResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.RecommendationsResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.StudyPlanResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.TranscriptResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.TranscriptResponse.RigaLibretto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -117,7 +117,9 @@ public class CareerService extends AbstractEsse3Service {
     for (var m : medie) {
       String tipo = m.getTipoMediaCod();
       Integer base = m.getBase();
-      if (tipo == null || base == null) continue;
+      if (tipo == null || base == null) {
+        continue;
+      }
       if (TIPO_MEDIA_ARITMETICA.equals(tipo) && base == 30) {
         response.setMediaAritmetica(m.getMedia());
       } else if (TIPO_MEDIA_PESATA.equals(tipo) && base == 30) {
@@ -198,7 +200,9 @@ public class CareerService extends AbstractEsse3Service {
     Map<Long, EsameConStorico> map = new LinkedHashMap<>();
     for (CinecaBooking b : all) {
       Long key = b.getAdsceId();
-      if (key == null) continue;
+      if (key == null) {
+        continue;
+      }
 
       EsameConStorico esame = map.computeIfAbsent(key, k -> {
         EsameConStorico e = new EsameConStorico();
@@ -224,7 +228,8 @@ public class CareerService extends AbstractEsse3Service {
         try {
           LocalDate data = LocalDate.parse(dataOra.split(" ")[0], CINECA_DATE_FMT);
           t.setFuturo(!data.isBefore(LocalDate.now()));
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
       }
 
       CinecaBookingResult result = b.getResult();
@@ -290,7 +295,8 @@ public class CareerService extends AbstractEsse3Service {
               s.setScore((anno * 100) + cfu);
               return s;
             })
-            .sorted(java.util.Comparator.comparingInt(RecommendationsResponse.EsameSuggerito::getScore))
+            .sorted(
+                java.util.Comparator.comparingInt(RecommendationsResponse.EsameSuggerito::getScore))
             .toList();
 
     log.debug("CareerService: {} recommendations for stuId={}", suggestions.size(),
@@ -322,6 +328,7 @@ public class CareerService extends AbstractEsse3Service {
       riga.setVoto(esito.getVoto() != null ? esito.getVoto().intValue() : null);
       riga.setLode(esito.getLodeFlg() != null && esito.getLodeFlg() == 1);
       riga.setDataEsame(esito.getDataEsa());
+      riga.setModValCod(esito.getModValCod());
     }
     return riga;
   }
