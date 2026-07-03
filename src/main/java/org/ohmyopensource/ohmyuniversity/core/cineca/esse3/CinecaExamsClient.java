@@ -1346,6 +1346,10 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     private String adCod;
     @JsonProperty("adDes")
     private String adDes;
+    @JsonProperty("udDes")
+    private String udDes;
+    @JsonProperty("tipoCredDes")
+    private String tipoCredDes;
     @JsonProperty("docentiNome")
     private String teacherFirstName;
     @JsonProperty("docentiCognome")
@@ -1365,6 +1369,21 @@ public class CinecaExamsClient extends AbstractCinecaClient {
 
     public String getAdDes() {
       return adDes;
+    }
+
+    public String getUdDes() {
+      return udDes;
+    }
+
+    public String getTipoCredDes() {
+      return tipoCredDes;
+    }
+
+    public String getDocente() {
+      String nome = teacherFirstName != null ? teacherFirstName.trim() : "";
+      String cognome = teacherLastName != null ? teacherLastName.trim() : "";
+      String full = (nome + " " + cognome).trim();
+      return full.isEmpty() ? null : full;
     }
 
     public String getTeacherFirstName() {

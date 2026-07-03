@@ -24,6 +24,7 @@ import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.Cin
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaSurveyRow;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaSurveySummary;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaSurveyUnit;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaSurveyUnitTag;
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityConnectionRepository;
@@ -45,6 +46,8 @@ import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveyStartResponse.Surv
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveySummaryResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveySummaryResponse.SummaryItem;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveySummaryResponse.SummaryPage;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveyUnitsResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveyUnitsResponse.SurveyModule;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveysResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveysResponse.QuestionarioEsame;
 import org.slf4j.Logger;
@@ -249,7 +252,7 @@ public class ExamsService extends AbstractEsse3Service {
    * @param adsceId   booklet activity identifier
    * @return the started session with its first page
    */
-  public SurveyStartResponse startSurvey(OmuPrincipal principal, Long adsceId) {
+  public SurveyStartResponse startSurvey(OmuPrincipal principal, Long adsceId, String tags) {
     String jwt = resolveCinecaJwt(principal);
     String baseUrl = resolveBaseUrl(principal.universityId());
 
@@ -259,11 +262,11 @@ public class ExamsService extends AbstractEsse3Service {
           "{\"retErrMsg\":\"Questionario non disponibile per questa attività\"}");
     }
 
-    String tags = unit.resolveTags();
+    String resolvedTags = (tags != null && !tags.isBlank()) ? tags : unit.resolveTags();
 
     CinecaSurveyPage page = examsClient.startSurvey(
         baseUrl, jwt, principal.stuId(), adsceId,
-        unit.getQuestionarioId(), unit.getQuestConfigId(), tags);
+        unit.getQuestionarioId(), unit.getQuestConfigId(), resolvedTags);
 
     log.info("ExamsService: started survey adsceId={} questCompId={} for stuId={}",
         adsceId, page != null ? page.getQuestCompId() : null, principal.stuId());
@@ -276,6 +279,45 @@ public class ExamsService extends AbstractEsse3Service {
     response.setAnonimoFlg(unit.getAnonimoFlg());
     response.setQuestionarioDes(unit.getQuestionarioDes());
     response.setPage(toSurveyPage(page));
+    return response;
+  }
+
+  /**
+   * Returns the "box" of questionnaire modules for a booklet activity. A box may hold several
+   * modules (e.g. Lezione, Laboratorio, or different teachers), each a separate questionnaire.
+   */
+  public SurveyUnitsResponse getSurveyUnits(OmuPrincipal principal, Long adsceId) {
+    String jwt = resolveCinecaJwt(principal);
+    String baseUrl = resolveBaseUrl(principal.universityId());
+
+    CinecaSurveyUnit unit = examsClient.getSurveyUnit(baseUrl, jwt, adsceId);
+    if (unit == null || unit.getQuestionarioId() == null || unit.getQuestConfigId() == null) {
+      throw new CinecaClient.CinecaBookingException(
+          "{\"retErrMsg\":\"Questionario non disponibile per questa attività\"}");
+    }
+
+    SurveyUnitsResponse response = new SurveyUnitsResponse();
+    response.setAdsceId(adsceId);
+    response.setQuestionarioId(unit.getQuestionarioId());
+    response.setQuestConfigId(unit.getQuestConfigId());
+    response.setAnonimoFlg(unit.getAnonimoFlg());
+    response.setQuestionarioDes(unit.getQuestionarioDes());
+
+    List<CinecaSurveyUnitTag> tags =
+        unit.getUdLogPdsListWeb() == null ? List.of() : unit.getUdLogPdsListWeb();
+    response.setModuli(tags.stream().map(t -> {
+      SurveyModule m = new SurveyModule();
+      m.setAdDes(t.getAdDes());
+      m.setUdDes(t.getUdDes());
+      m.setDocente(t.getDocente());
+      m.setModuloLabel(t.getTipoCredDes());
+      m.setStatoLink(t.getSurveyStatus());
+      m.setTags(t.getTagsValdid());
+      return m;
+    }).toList());
+
+    log.debug("ExamsService: survey box adsceId={} has {} modules for stuId={}",
+        adsceId, response.getModuli().size(), principal.stuId());
     return response;
   }
 

@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -153,6 +154,17 @@ public class ExamsController extends AbstractEsse3Controller {
   }
 
   /**
+   * Returns the box of questionnaire modules for a booklet activity.
+   */
+  @GetMapping("/surveys/{adsceId}/units")
+  public ResponseEntity<?> getSurveyUnits(
+      @AuthenticationPrincipal OmuPrincipal principal,
+      @PathVariable Long adsceId) {
+    return executeWithBusinessError(principal, () ->
+        examsService.getSurveyUnits(principal, adsceId));
+  }
+
+  /**
    * Starts a questionnaire compilation session for a booklet activity and returns its first page.
    *
    * <p>Uses the Cineca JWT (no password). The {@code adsceId} identifies the
@@ -167,9 +179,10 @@ public class ExamsController extends AbstractEsse3Controller {
   @PostMapping("/surveys/start")
   public ResponseEntity<?> startSurvey(
       @AuthenticationPrincipal OmuPrincipal principal,
-      @RequestParam Long adsceId) {
+      @RequestParam Long adsceId,
+      @RequestParam(required = false) String tags) {
     return executeWithBusinessError(principal, () ->
-        examsService.startSurvey(principal, adsceId));
+        examsService.startSurvey(principal, adsceId, tags));
   }
 
   /**
