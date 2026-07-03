@@ -174,6 +174,8 @@ public class CinecaCareerClient extends AbstractCinecaClient {
     private CinecaExamResult esito;
     @JsonProperty("numAppelliPrenotabili")
     private Integer numAppelliPrenotabili;
+    @JsonProperty("chiaveADContestualizzata")
+    private CinecaActivityKeyContext activityKeyContext;
 
     public Long getAdsceId() {
       return adsceId;
@@ -218,6 +220,18 @@ public class CinecaCareerClient extends AbstractCinecaClient {
     public Integer getNumAppelliPrenotabili() {
       return numAppelliPrenotabili;
     }
+
+    public Long getAdId() {
+      return activityKeyContext != null ? activityKeyContext.getAdId() : null;
+    }
+
+    public Long getCdsId() {
+      return activityKeyContext != null ? activityKeyContext.getCdsId() : null;
+    }
+
+    public Integer getAaOffId() {
+      return activityKeyContext != null ? activityKeyContext.getAaOffId() : null;
+    }
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -258,6 +272,29 @@ public class CinecaCareerClient extends AbstractCinecaClient {
 
     public String getModValCod() {
       return modValCod != null ? modValCod.getValue() : null;
+    }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class CinecaActivityKeyContext {
+
+    @JsonProperty("adId")
+    private Long adId;
+    @JsonProperty("cdsId")
+    private Long cdsId;
+    @JsonProperty("aaOffId")
+    private Integer aaOffId;
+
+    public Long getAdId() {
+      return adId;
+    }
+
+    public Long getCdsId() {
+      return cdsId;
+    }
+
+    public Integer getAaOffId() {
+      return aaOffId;
     }
   }
 

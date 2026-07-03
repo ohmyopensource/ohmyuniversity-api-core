@@ -40,6 +40,9 @@ public class TranscriptResponse {
     private Long adsceId;
     private String adCod;
     private String adDes;
+    private Long adId;
+    private Long cdsId;
+    private Integer aaOffId;
     private Integer annoCorso;
     private String stato;
     private String statoDes;
@@ -77,6 +80,30 @@ public class TranscriptResponse {
 
     public void setAdDes(String adDes) {
       this.adDes = adDes;
+    }
+
+    public Long getAdId() {
+      return adId;
+    }
+
+    public void setAdId(Long v) {
+      this.adId = v;
+    }
+
+    public Long getCdsId() {
+      return cdsId;
+    }
+
+    public void setCdsId(Long v) {
+      this.cdsId = v;
+    }
+
+    public Integer getAaOffId() {
+      return aaOffId;
+    }
+
+    public void setAaOffId(Integer v) {
+      this.aaOffId = v;
     }
 
     public Integer getAnnoCorso() {

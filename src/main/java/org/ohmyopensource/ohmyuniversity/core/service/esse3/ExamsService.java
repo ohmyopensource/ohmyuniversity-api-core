@@ -9,6 +9,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaSessionStore;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaCourseCatalogClient;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaCourseCatalogClient.CinecaLogistics;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaCourseCatalogClient.CinecaOfferedActivity;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaBookableSession;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaBooking;
@@ -32,6 +35,7 @@ import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookableSessionsResponse
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookableSessionsResponse.AppelloLibretto;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookingsResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookingsResponse.IscrizioneAppello;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.CourseDetailResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.LegacyBookingsResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.LegacyBookingsResponse.EsitoPrenotazione;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.LegacyBookingsResponse.Prenotazione;
@@ -77,16 +81,19 @@ public class ExamsService extends AbstractEsse3Service {
       DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
   private final CinecaExamsClient examsClient;
+  private final CinecaCourseCatalogClient courseCatalogClient;
 
   // ============ Constructor ============
 
   public ExamsService(
       CinecaExamsClient examsClient,
+      CinecaCourseCatalogClient courseCatalogClient,
       CinecaSessionStore sessionStore,
       UniversityRegistry universityRegistry,
       UniversityConnectionRepository connectionRepository) {
     super(sessionStore, universityRegistry, connectionRepository);
     this.examsClient = examsClient;
+    this.courseCatalogClient = courseCatalogClient;
   }
 
   // ============ Public Methods ============
@@ -501,6 +508,55 @@ public class ExamsService extends AbstractEsse3Service {
         cdsId, adId, appId, principal.stuId());
   }
 
+  /**
+   * Returns publicly available course catalog details for a teaching activity, combining
+   * logistics (period, location, teaching dates) and offer data (language, exam type, evaluation
+   * type, mandatory flag, course page URL).
+   *
+   * <p>Does not require Cineca authentication — both source endpoints are
+   * public. Returns an empty response (all fields {@code null}) if Cineca has no data for the
+   * given activity, rather than failing, since this enriches an already-displayed exam.
+   *
+   * @param principal authenticated OhMyU principal (used only to resolve the university base URL)
+   * @param adCod     teaching activity code
+   * @param cdsCod    course of study code
+   * @param aaOffId   offer year identifier; may be {@code null}
+   * @param cdsOffId  course of study identifier for the offer lookup; may be {@code null}
+   * @return aggregated course detail response
+   */
+  public CourseDetailResponse getCourseDetail(
+      OmuPrincipal principal, String adCod, String cdsCod, Long aaOffId, Long cdsOffId) {
+    String baseUrl = resolveBaseUrl(principal.universityId());
+
+    CourseDetailResponse response = new CourseDetailResponse();
+
+    List<CinecaLogistics> logistics =
+        courseCatalogClient.getLogistics(baseUrl, adCod, cdsCod, aaOffId);
+    if (!logistics.isEmpty()) {
+      CinecaLogistics l = logistics.get(0);
+      response.setPeriod(blankToNull(l.getPeriodDes()));
+      response.setLocation(blankToNull(l.getLocationDes()));
+      response.setTeachingStartDate(blankToNull(l.getStartDate()));
+      response.setTeachingEndDate(blankToNull(l.getEndDate()));
+    }
+
+    if (aaOffId != null && cdsOffId != null) {
+      List<CinecaOfferedActivity> activities =
+          courseCatalogClient.getOfferedActivities(baseUrl, aaOffId, cdsOffId, adCod);
+      if (!activities.isEmpty()) {
+        CinecaOfferedActivity a = activities.get(0);
+        response.setTeachingLanguage(blankToNull(a.getTeachingLanguage()));
+        response.setExamType(blankToNull(a.getExamTypeDes()));
+        response.setEvaluationType(blankToNull(a.getEvaluationTypeDes()));
+        response.setMandatory(a.isMandatory());
+        response.setCoursePageUrl(blankToNull(a.getCoursePageUrl()));
+      }
+    }
+
+    log.debug("ExamsService: fetched course detail adCod={} cdsCod={}", adCod, cdsCod);
+    return response;
+  }
+
   // ============ Mappers ============
 
   private Appello toAppello(CinecaExamSession s) {
@@ -655,5 +711,13 @@ public class ExamsService extends AbstractEsse3Service {
       i.setNumIscritti(numIscrittiByKey.get(b.getAdsceId() + ":" + b.getAppId()));
     }
     return i;
+  }
+
+  /**
+   * Converts blank or empty Cineca strings to {@code null} so the frontend can rely on presence
+   * checks instead of comparing against {@code ""}.
+   */
+  private static String blankToNull(String s) {
+    return (s == null || s.isBlank()) ? null : s;
   }
 }

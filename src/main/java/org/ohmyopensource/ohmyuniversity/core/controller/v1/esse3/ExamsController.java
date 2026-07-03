@@ -4,6 +4,7 @@ import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookExamRequest;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookableSessionsResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BookingsResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.CourseDetailResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.LegacyBookingRequest;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.LegacyBookingsResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SessionsResponse;
@@ -39,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>{@code GET  /v1/exams/bookings} — active upcoming bookings</li>
  *   <li>{@code POST /v1/exams/bookings/legacy} — full booking history (Basic Auth)</li>
  *   <li>{@code GET  /v1/exams/surveys} — teaching evaluation surveys</li>
+ *   <li>{@code GET  /v1/exams/course-detail} — course catalog details (logistics + offer)</li>
  *   <li>{@code POST /v1/exams/bookings} — book an exam session (Basic Auth)</li>
  *   <li>{@code POST /v1/exams/bookings/cancel} — cancel a booking (Basic Auth)</li>
  * </ul>
@@ -297,6 +299,32 @@ public class ExamsController extends AbstractEsse3Controller {
         examsService.getSurveySummary(principal, request.getAdsceId(),
             request.getQuestionarioId(), request.getQuestCompId(),
             request.getQuestConfigId(), request.getUserCompId()));
+  }
+
+  /**
+   * Returns publicly available course catalog details for a teaching activity (period, location,
+   * teaching dates, language, exam type, evaluation type, mandatory flag, course page URL).
+   *
+   * <p>Enriches the exam accordion in the career view beyond what the
+   * transcript already provides. Does not require the Cineca password.
+   *
+   * @param principal authenticated OhMyU principal
+   * @param adCod     teaching activity code
+   * @param cdsCod    course of study code
+   * @param aaOffId   offer year identifier (optional; enables offer-data lookup when provided)
+   * @param cdsOffId  course of study identifier for the offer lookup (optional)
+   * @return {@code 200 OK} with course detail (fields may be {@code null} if unavailable),
+   * {@code 401} if session expired, {@code 503} if Cineca is unavailable
+   */
+  @GetMapping("/course-detail")
+  public ResponseEntity<CourseDetailResponse> getCourseDetail(
+      @AuthenticationPrincipal OmuPrincipal principal,
+      @RequestParam String adCod,
+      @RequestParam String cdsCod,
+      @RequestParam(required = false) Long aaOffId,
+      @RequestParam(required = false) Long cdsOffId) {
+    return execute(principal, () ->
+        examsService.getCourseDetail(principal, adCod, cdsCod, aaOffId, cdsOffId));
   }
 
   /**

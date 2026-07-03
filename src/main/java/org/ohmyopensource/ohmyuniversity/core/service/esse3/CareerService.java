@@ -322,6 +322,9 @@ public class CareerService extends AbstractEsse3Service {
     riga.setTipoInsDes(r.getTipoInsDes());
     riga.setNumAppelliPrenotabili(r.getNumAppelliPrenotabili());
     riga.setSuperata("S".equals(r.getStato()));
+    riga.setAdId(r.getAdId());
+    riga.setCdsId(r.getCdsId());
+    riga.setAaOffId(r.getAaOffId());
 
     CinecaExamResult esito = r.getEsito();
     if (esito != null) {
