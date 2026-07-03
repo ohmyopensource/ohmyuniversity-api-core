@@ -544,24 +544,6 @@ public class ExamsService extends AbstractEsse3Service {
     return a;
   }
 
-  private IscrizioneAppello toIscrizioneAppello(CinecaBooking b) {
-    IscrizioneAppello i = new IscrizioneAppello();
-    i.setApplistaId(b.getApplistaId());
-    i.setCdsId(b.getCdsId());
-    i.setAdId(b.getAdId());
-    i.setAppId(b.getAppId());
-    i.setAdStuCod(b.getAdStuCod());
-    i.setAdStuDes(b.getAdStuDes());
-    i.setAdsceId(b.getAdsceId());
-    i.setDataOraTurno(b.getExamDateTime());
-    i.setDataInizioIscr(b.getRegistrationStart());
-    i.setDataFineIscr(b.getRegistrationEnd());
-    i.setAulaDes(b.getRoomDes());
-    i.setTipoIscrCod(b.getTipoIscrCod());
-    i.setPosizApp(b.getPosition());
-    return i;
-  }
-
   private Prenotazione toPrenotazione(CinecaLegacyBooking b) {
     Prenotazione p = new Prenotazione();
     p.setApplistaId(b.getApplistaId());
@@ -668,6 +650,7 @@ public class ExamsService extends AbstractEsse3Service {
     i.setAulaDes(b.getRoomDes());
     i.setTipoIscrCod(b.getTipoIscrCod());
     i.setPosizApp(b.getPosition());
+    i.setDataIns(b.getBookingDate());
     if (b.getAdsceId() != null && b.getAppId() != null) {
       i.setNumIscritti(numIscrittiByKey.get(b.getAdsceId() + ":" + b.getAppId()));
     }

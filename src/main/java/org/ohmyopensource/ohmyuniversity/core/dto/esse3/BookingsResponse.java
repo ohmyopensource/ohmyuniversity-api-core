@@ -34,6 +34,7 @@ public class BookingsResponse {
     private String tipoIscrCod;
     private Integer posizApp;
     private Integer numIscritti;
+    private String dataIns;
 
     public Long getApplistaId() {
       return applistaId;
@@ -145,6 +146,14 @@ public class BookingsResponse {
 
     public void setNumIscritti(Integer v) {
       this.numIscritti = v;
+    }
+
+    public String getDataIns() {
+      return dataIns;
+    }
+
+    public void setDataIns(String v) {
+      this.dataIns = v;
     }
 
   }

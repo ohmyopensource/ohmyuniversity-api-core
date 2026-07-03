@@ -935,6 +935,8 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     private Double credits;
     @JsonProperty("posizApp")
     private Integer position;
+    @JsonProperty("dataIns")
+    private String bookingDate;
     @JsonProperty("domandeEsame")
     private String examQuestions;
     @JsonProperty("tipoIscrCod")
@@ -992,6 +994,10 @@ public class CinecaExamsClient extends AbstractCinecaClient {
 
     public Integer getPosition() {
       return position;
+    }
+
+    public String getBookingDate() {
+      return bookingDate;
     }
 
     public String getExamQuestions() {
