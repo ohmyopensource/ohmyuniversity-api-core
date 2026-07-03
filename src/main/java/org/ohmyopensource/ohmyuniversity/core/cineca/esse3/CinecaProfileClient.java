@@ -438,6 +438,10 @@ public class CinecaProfileClient extends AbstractCinecaClient {
     private String facDes;
     @JsonProperty("annoCorso")
     private Integer annoCorso;
+    @JsonProperty("durataCorso")
+    private Integer durataCorso;
+    @JsonProperty("valoreMin")
+    private String valoreMin;
     @JsonProperty("aaIscrId")
     private Integer aaIscrId;
     @JsonProperty("aaOrdId")
@@ -541,6 +545,14 @@ public class CinecaProfileClient extends AbstractCinecaClient {
 
     public Integer getAnnoCorso() {
       return annoCorso;
+    }
+
+    public Integer getDurataCorso() {
+      return durataCorso;
+    }
+
+    public String getValoreMin() {
+      return valoreMin;
     }
 
     public Integer getAaIscrId() {

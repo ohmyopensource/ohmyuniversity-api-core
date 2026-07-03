@@ -217,6 +217,8 @@ public class ProfileService extends AbstractEsse3Service {
     r.setFacCod(c.getFacCod());
     r.setFacDes(c.getFacDes());
     r.setAnnoCorso(c.getAnnoCorso());
+    r.setDurataCorso(c.getDurataCorso());
+    r.setCfuTitolo(parseCfuTitolo(c.getValoreMin()));
     r.setAaIscrId(c.getAaIscrId());
     r.setAaOrdId(c.getAaOrdId());
     r.setDataImm(c.getDataImm());
@@ -255,5 +257,20 @@ public class ProfileService extends AbstractEsse3Service {
     r.setRearImagePresent(b.getRearImagePresent() != null && b.getRearImagePresent() == 1);
     r.setBadgeBlbId(b.getBadgeBlbId());
     return r;
+  }
+
+  /**
+   * Parses the "valoreMin" field (credits required to obtain the degree). Cineca returns it as a
+   * String; non-numeric or blank values yield null.
+   */
+  private static Integer parseCfuTitolo(String valoreMin) {
+    if (valoreMin == null || valoreMin.isBlank()) {
+      return null;
+    }
+    try {
+      return (int) Double.parseDouble(valoreMin.trim());
+    } catch (NumberFormatException e) {
+      return null;
+    }
   }
 }
