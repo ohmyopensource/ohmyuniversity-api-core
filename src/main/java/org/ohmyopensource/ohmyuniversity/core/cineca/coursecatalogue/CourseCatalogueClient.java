@@ -118,7 +118,7 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
       Optional<CinecaCourseCatalogueDetail> result;
       try {
         JsonNode root = rawBody == null ? null : objectMapper.readTree(rawBody);
-        JsonNode courseNode = root == null ? null : findCourseNode(root, cdsCod);
+        JsonNode courseNode = root == null ? null : findCourseNode(root, cdsCod, year);
         result = courseNode == null
             ? Optional.empty()
             : Optional.of(objectMapper.treeToValue(courseNode, CinecaCourseCatalogueDetail.class));
@@ -138,24 +138,29 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
    * contains both the Course Catalogue course code and the full multi-year
    * {@code percorsi} plan.
    */
-  private JsonNode findCourseNode(JsonNode node, String targetCdsCod) {
+  private JsonNode findCourseNode(JsonNode node, String targetCdsCod, int targetYear) {
     if (node.isObject()) {
       JsonNode cdsCodNode = node.get("cdsCod");
       JsonNode subNode = node.get("cdsSub");
       if (cdsCodNode != null && targetCdsCod.equals(cdsCodNode.asText())
           && subNode != null && subNode.isArray() && !subNode.isEmpty()) {
-        return subNode.get(0);
+        for (JsonNode candidate : subNode) {
+          JsonNode aaNode = candidate.get("aa");
+          if (aaNode != null && String.valueOf(targetYear).equals(aaNode.asText())) {
+            return candidate;
+          }
+        }
       }
       Iterator<String> fieldNames = node.fieldNames();
       while (fieldNames.hasNext()) {
-        JsonNode result = findCourseNode(node.get(fieldNames.next()), targetCdsCod);
+        JsonNode result = findCourseNode(node.get(fieldNames.next()), targetCdsCod, targetYear);
         if (result != null) {
           return result;
         }
       }
     } else if (node.isArray()) {
       for (JsonNode child : node) {
-        JsonNode result = findCourseNode(child, targetCdsCod);
+        JsonNode result = findCourseNode(child, targetCdsCod, targetYear);
         if (result != null) {
           return result;
         }
@@ -258,8 +263,31 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaPercorso {
 
+    @JsonProperty("pdsId")
+    private String pdsId;
+    @JsonProperty("pdsCod")
+    private String pdsCod;
+    @JsonProperty("comune")
+    private Boolean comune;
     @JsonProperty("anni")
     private List<CinecaAnnoOfferta> anni;
+
+    public String getPdsId() {
+      return pdsId;
+    }
+
+    public String getPdsCod() {
+      return pdsCod;
+    }
+
+    /**
+     * True for the shared/pooled percorso some universities expose (observed
+     * as {@code "comune": true}), which is not a real curriculum but a
+     * catch-all bucket — always excluded from selection.
+     */
+    public Boolean getComune() {
+      return comune;
+    }
 
     public List<CinecaAnnoOfferta> getAnni() {
       return anni;
@@ -270,17 +298,17 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
   public static class CinecaAnnoOfferta {
 
     @JsonProperty("anno")
-    private Integer anno;
+    private String anno;
     @JsonProperty("annoOfferta")
-    private Integer annoOfferta;
+    private String annoOfferta;
     @JsonProperty("insegnamenti")
     private List<CinecaInsegnamentoGroup> insegnamenti;
 
-    public Integer getAnno() {
+    public String getAnno() {
       return anno;
     }
 
-    public Integer getAnnoOfferta() {
+    public String getAnnoOfferta() {
       return annoOfferta;
     }
 
@@ -476,6 +504,8 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
     private String modPrerequisitiIt;
     @JsonProperty("mod_contenuti_it")
     private String modContenutiIt;
+    @JsonProperty("contenuti_it")
+    private String contenutiIt;
 
     public String getChiaveUdCod() {
       return chiaveUdCod;
@@ -491,6 +521,16 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
 
     public String getModContenutiIt() {
       return modContenutiIt;
+    }
+
+    /**
+     * Course-level content ("contenuti_it"). Populated for single-subject
+     * courses ("corso monodisciplinare") that have no per-module breakdown
+     * at all — their whole program lives here instead of in {@code
+     * mod_contenuti_it} entries.
+     */
+    public String getContenutiIt() {
+      return contenutiIt;
     }
 
     public boolean isCourseLevel() {
