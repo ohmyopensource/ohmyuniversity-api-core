@@ -47,6 +47,17 @@ public class UniversityRegistry {
   }
 
   /**
+   * Resolves the Cineca Course Catalogue base URL for a university, if configured.
+   *
+   * @param universityId university short code (e.g. UNIMOL)
+   * @return the Course Catalogue base URL, or {@code null} if the university is unknown or has
+   * not configured one
+   */
+  public String getCourseCatalogueUrl(String universityId) {
+    return resolve(universityId).map(UniversityConfig::courseCatalogueUrl).orElse(null);
+  }
+
+  /**
    * Immutable configuration model for a single university.
    *
    * @param name            human-readable university name
@@ -60,6 +71,7 @@ public class UniversityRegistry {
       String baseUrl,
       String moodleUrl,
       String libraryUrl,
-      String esse3PortalUrl) {
+      String esse3PortalUrl,
+      String courseCatalogueUrl) {
   }
 }

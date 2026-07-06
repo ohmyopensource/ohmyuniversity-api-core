@@ -381,6 +381,7 @@ omu:
       moodle-url: https://moodle.unimol.it
       library-url: https://biblioteche.unimol.it
       esse3-portal-url: https://unimol.esse3.cineca.it/Start.do
+      course-catalogue-url: https://unimol.coursecatalogue.cineca.it
 
     UNIPMN:
       name: Università degli Studi del Piemonte Orientale "Amedeo Avogadro"
@@ -423,6 +424,7 @@ omu:
       moodle-url: https://elearning.unich.it
       library-url: https://www.unich.it/didattica/frequentare/biblioteche
       esse3-portal-url: https://unich.esse3.cineca.it/Start.do
+      course-catalogue-url: https://unich.coursecatalogue.cineca.it
 
     UNIOR:
       name: Università degli Studi "L'Orientale" di Napoli
