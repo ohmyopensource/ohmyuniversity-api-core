@@ -129,7 +129,7 @@ public class CinecaProfileClient extends AbstractCinecaClient {
     log.debug("CinecaProfileClient: GET all carriere");
     List<CinecaCarriera> result = webClient.get()
         .uri(baseUrl + "/carriere-service-v1/carriere"
-            + "?optionalFields=tipoCorsoCod,tipoCorsoDes,attlauFlg")
+            + "?optionalFields=tipoCorsoCod,tipoCorsoDes,attlauFlg,cdsId")
         .header(authHeader(), bearer(jwt))
         .retrieve()
         .onStatus(HttpStatusCode::is4xxClientError, r ->
@@ -468,6 +468,8 @@ public class CinecaProfileClient extends AbstractCinecaClient {
     private String sediDes;
     @JsonProperty("sedeId")
     private Long sedeId;
+    @JsonProperty("cdsId")
+    private Long cdsId;
     @JsonProperty("userId")
     private String userId;
 
@@ -605,6 +607,10 @@ public class CinecaProfileClient extends AbstractCinecaClient {
 
     public Long getSedeId() {
       return sedeId;
+    }
+
+    public Long getCdsId() {
+      return cdsId;
     }
 
     public String getUserId() {

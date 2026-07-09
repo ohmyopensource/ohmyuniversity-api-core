@@ -2,7 +2,6 @@ package org.ohmyopensource.ohmyuniversity.core.service;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaLoginResponse;
@@ -172,29 +171,29 @@ public class AuthService {
     }
 
     List<TrattoCarriera> tratti = cinecaUser.getTrattiCarriera();
-    Map<Long, Integer> attlauFlgByMatId = new java.util.HashMap<>();
+
+    List<CinecaProfileClient.CinecaCarriera> carriere = List.of();
     if (cinecaResponse.getJwt() != null) {
       try {
-        List<CinecaProfileClient.CinecaCarriera> carriere = cinecaProfileClient.getAllCarriere(
+        carriere = cinecaProfileClient.getAllCarriere(
             uniConfig.baseUrl(), cinecaResponse.getJwt());
-        for (CinecaProfileClient.CinecaCarriera c : carriere) {
-          if (c.getMatId() != null && c.getAttlauFlg() != null) {
-            attlauFlgByMatId.put(c.getMatId(), c.getAttlauFlg());
-          }
-        }
       } catch (Exception e) {
-        log.warn("AuthService: could not fetch attlauFlg from carriere-service for user={}", omuUserId);
+        log.warn("AuthService: could not fetch carriere-service for user={}, "
+            + "falling back to trattiCarriera", omuUserId);
       }
     }
 
-    List<ProfiloCarriera> profiliCorrenti = tratti == null ? List.of() : tratti.stream()
-        .map(t -> {
-          ProfiloCarriera p = toProfiloCarriera(t, request.getUniversityId(), uniConfig.name());
-          Integer attlauFlg = attlauFlgByMatId.get(t.getMatId());
-          p.setLaureato(attlauFlg != null && attlauFlg == 1);
-          return p;
-        })
-        .toList();
+    List<ProfiloCarriera> profiliCorrenti;
+    if (!carriere.isEmpty()) {
+      profiliCorrenti = carriere.stream()
+          .map(c -> toProfiloCarrieraFromCarriera(
+              c, request.getUniversityId(), uniConfig.name()))
+          .toList();
+    } else {
+      profiliCorrenti = tratti == null ? List.of() : tratti.stream()
+          .map(t -> toProfiloCarriera(t, request.getUniversityId(), uniConfig.name()))
+          .toList();
+    }
 
     for (ProfiloCarriera p : profiliCorrenti) {
       CachedProfiloCarriera cached = cachedProfiloRepository
@@ -218,17 +217,6 @@ public class AuthService {
       cached.setAttivo(p.isAttivo());
       cached.setLaureato(p.isLaureato());
 
-      if (!p.isLaureato() && cinecaResponse.getJwt() != null) {
-        try {
-          CinecaProfileClient.CinecaCarriera carriera = cinecaProfileClient.getCarriera(
-              uniConfig.baseUrl(), cinecaResponse.getJwt(), p.getMatId());
-          if (carriera != null && carriera.getAttlauFlg() != null) {
-            cached.setLaureato(carriera.getAttlauFlg() == 1);
-          }
-        } catch (Exception e) {
-          log.warn("AuthService: could not fetch attlauFlg for matId={}", p.getMatId());
-        }
-      }
       cachedProfiloRepository.save(cached);
     }
 
@@ -367,8 +355,8 @@ public class AuthService {
   }
 
   /**
-   * Switches the active career context for the authenticated user.
-   * Updates Redis with the new stuId, matId and matricola and issues a new JWT.
+   * Switches the active career context for the authenticated user. Updates Redis with the new
+   * stuId, matId and matricola and issues a new JWT.
    *
    * @param omuUserId    internal user ID
    * @param universityId university context
@@ -438,12 +426,48 @@ public class AuthService {
   }
 
   /**
-   * Switches the active university context for the authenticated user.
-   * Requires an active Cineca session (JWT in Redis) for the target university.
+   * Maps a Cineca career (CinecaCarriera from carriere-service) into the internal API DTO. This is
+   * the authoritative mapping used at login time, as carriere-service exposes all careers of the
+   * student (including multiple degree courses under the same university) with complete metadata.
    *
-   * @param omuUserId         internal user ID
+   * @param c              Cineca career entry from carriere-service
+   * @param universityId   university identifier
+   * @param universityName human-readable university name
+   * @return normalized career profile DTO
+   */
+  private ProfiloCarriera toProfiloCarrieraFromCarriera(
+      CinecaProfileClient.CinecaCarriera c,
+      String universityId,
+      String universityName) {
+
+    ProfiloCarriera p = new ProfiloCarriera();
+    p.setUniversityId(universityId);
+    p.setUniversityName(universityName);
+    p.setStuId(c.getStuId());
+    p.setMatId(c.getMatId());
+    p.setMatricola(c.getMatricola());
+    p.setCorsoNome(c.getCdsDes());
+    p.setCorsoCodice(c.getCdsCod());
+    p.setTipoCorsoCod(c.getTipoCorsoCod());
+    p.setStatusStudente(c.getStaStuCod());
+    p.setStatusDescrizione(c.getStatiStuDes());
+    p.setAnnoCorso(c.getAnnoCorso());
+    p.setDurataAnni(c.getDurataCorso());
+    p.setAnnoAccademico(c.getAaIscrId());
+    p.setCdsId(c.getCdsId());
+    p.setAttivo("A".equals(c.getStaStuCod()));
+    p.setLaureato(c.getAttlauFlg() != null && c.getAttlauFlg() == 1);
+
+    return p;
+  }
+
+  /**
+   * Switches the active university context for the authenticated user. Requires an active Cineca
+   * session (JWT in Redis) for the target university.
+   *
+   * @param omuUserId          internal user ID
    * @param targetUniversityId university to switch to
-   * @param refreshToken      current refresh token (reused)
+   * @param refreshToken       current refresh token (reused)
    * @return new OhMyU access token for the target university
    * @throws IllegalArgumentException if no active session exists for the target university
    */
