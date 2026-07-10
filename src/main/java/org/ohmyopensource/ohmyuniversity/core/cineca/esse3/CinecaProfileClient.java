@@ -54,10 +54,19 @@ public class CinecaProfileClient extends AbstractCinecaClient {
   /**
    * Retrieves the profile avatar bytes from {@code anagrafica-service-v2}.
    *
+   * <p>A 4xx here is treated as "no avatar uploaded" rather than a session error:
+   * Cineca returns 403 (not 404) for students without a profile photo, and this
+   * happens even with a freshly-issued, otherwise valid JWT (confirmed in
+   * production — every other endpoint succeeded in the same request burst).
+   * Escalating it to {@link CinecaClient.CinecaAuthException} would incorrectly
+   * trigger a token refresh and, if the retry also 4xx's, a full logout — for a
+   * missing photo, not an actual auth problem. Only 5xx (Cineca-side failure) is
+   * still treated as a real error.
+   *
    * @param baseUrl Cineca ESSE3 base URL
    * @param jwt     Cineca JWT token
    * @param persId  Cineca person identifier
-   * @return JPEG image bytes, or {@code null} if not available
+   * @return JPEG image bytes, or {@code null} if no avatar is available
    */
   public byte[] getAvatar(String baseUrl, String jwt, Long persId) {
     log.debug("CinecaProfileClient: GET avatar persId={}", persId);
@@ -65,13 +74,14 @@ public class CinecaProfileClient extends AbstractCinecaClient {
         .uri(baseUrl + "/anagrafica-service-v2/persone/" + persId + "/foto")
         .header(authHeader(), bearer(jwt))
         .retrieve()
-        .onStatus(HttpStatusCode::is4xxClientError, r ->
-            Mono.error(new CinecaClient.CinecaAuthException(
-                "Unauthorized for avatar persId=" + persId)))
+        .onStatus(HttpStatusCode::is4xxClientError, r -> Mono.empty())
         .onStatus(HttpStatusCode::is5xxServerError, r ->
             Mono.error(new CinecaClient.CinecaUnavailableException(
                 "Cineca error on avatar")))
         .bodyToMono(byte[].class)
+        .onErrorResume(e -> e instanceof CinecaClient.CinecaUnavailableException
+            ? Mono.error(e)
+            : Mono.empty())
         .block();
   }
 
@@ -146,10 +156,16 @@ public class CinecaProfileClient extends AbstractCinecaClient {
   /**
    * Retrieves the university badge for a student from {@code badge-service-v1}.
    *
+   * <p>A 4xx here is treated as "no badge available" rather than a session error,
+   * same reasoning as {@link #getAvatar}: escalating it to
+   * {@link CinecaClient.CinecaAuthException} risks a spurious token refresh and
+   * potential logout for a per-resource condition that has nothing to do with
+   * the session being valid. Only 5xx (Cineca-side failure) is still a real error.
+   *
    * @param baseUrl Cineca ESSE3 base URL
    * @param jwt     Cineca JWT token
    * @param stuId   student career identifier
-   * @return list of badges; empty if none associated
+   * @return list of badges; empty if none associated or on a 4xx response
    */
   public List<CinecaBadge> getBadges(String baseUrl, String jwt, Long stuId) {
     log.debug("CinecaProfileClient: GET badges stuId={}", stuId);
@@ -157,12 +173,14 @@ public class CinecaProfileClient extends AbstractCinecaClient {
         .uri(baseUrl + "/badge-service-v1/badges?stuId=" + stuId)
         .header(authHeader(), bearer(jwt))
         .retrieve()
-        .onStatus(HttpStatusCode::is4xxClientError, r ->
-            Mono.error(new CinecaClient.CinecaAuthException("Unauthorized for badge")))
+        .onStatus(HttpStatusCode::is4xxClientError, r -> Mono.empty())
         .onStatus(HttpStatusCode::is5xxServerError, r ->
             Mono.error(new CinecaClient.CinecaUnavailableException("Cineca error on badge")))
         .bodyToFlux(CinecaBadge.class)
         .collectList()
+        .onErrorResume(e -> e instanceof CinecaClient.CinecaUnavailableException
+            ? Mono.error(e)
+            : Mono.just(List.of()))
         .block();
 
     return result != null ? result : List.of();
