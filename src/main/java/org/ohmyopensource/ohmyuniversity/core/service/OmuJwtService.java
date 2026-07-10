@@ -67,7 +67,8 @@ public class OmuJwtService {
       String universityId,
       Long stuId,
       Long matId,
-      String matricola) {
+      String matricola,
+      String sessionId) {
 
     Instant now = Instant.now();
     Instant expiry = now.plusMillis(expirationMs);
@@ -80,6 +81,7 @@ public class OmuJwtService {
         .claim("matId", matId)
         .claim("matricola", matricola)
         .claim("hasCarriera", stuId != null && matId != null)
+        .claim("sid", sessionId)
         .issuedAt(Date.from(now))
         .expiration(Date.from(expiry))
         .signWith(signingKey)
@@ -106,7 +108,8 @@ public class OmuJwtService {
   /**
    * Generates a cryptographically random refresh token identifier.
    *
-   * <p>The generated value is composed of two UUIDs without dashes in order to increase entropy and
+   * <p>The generated value is composed of two UUIDs without dashes in order to increase entropy
+   * and
    * reduce predictability.
    *
    * @return generated refresh token

@@ -95,7 +95,7 @@ public class AuthService {
    *                                                 system
    */
   @Transactional
-  public LoginResponse login(LoginRequest request) {
+  public LoginResponse login(LoginRequest request, String ipAddress, String userAgent) {
     UniversityRegistry.UniversityConfig uniConfig =
         universityRegistry.resolve(request.getUniversityId())
             .orElseThrow(() -> new IllegalArgumentException(
@@ -249,16 +249,21 @@ public class AuthService {
       }
     }
 
+    String sessionId = java.util.UUID.randomUUID().toString();
+
     String accessToken = jwtService.issue(
         omuUserId,
         codiceFiscale,
         request.getUniversityId(),
         defaultTratte != null ? defaultTratte.getStuId() : null,
         defaultTratte != null ? defaultTratte.getMatId() : null,
-        defaultTratte != null ? defaultTratte.getMatricola() : null);
+        defaultTratte != null ? defaultTratte.getMatricola() : null,
+        sessionId);
 
     String refreshToken = jwtService.generateRefreshToken();
     sessionStore.storeRefreshToken(refreshToken, omuUserId);
+    sessionStore.createSession(omuUserId, sessionId, refreshToken,
+        request.getUniversityId(), ipAddress, userAgent);
 
     LoginResponse response = new LoginResponse();
     response.setAccessToken(accessToken);
@@ -294,6 +299,8 @@ public class AuthService {
    */
   public void logout(String refreshToken, String universityId) {
     sessionStore.getUserIdByRefreshToken(refreshToken).ifPresent(omuUserId -> {
+      sessionStore.getSessionIdByRefreshToken(refreshToken)
+          .ifPresent(sessionId -> sessionStore.deleteSession(omuUserId, sessionId));
       sessionStore.deleteRefreshToken(refreshToken);
       sessionStore.clearSession(omuUserId, universityId);
       log.info("AuthService: logout for user={} university={}", omuUserId, universityId);
@@ -321,6 +328,8 @@ public class AuthService {
     String omuUserId = sessionStore.getUserIdByRefreshToken(refreshToken)
         .orElseThrow(() -> new IllegalArgumentException("Invalid or expired refresh token"));
 
+    sessionStore.touchSession(refreshToken);
+
     OmuUser omuUser = userRepository.findById(java.util.UUID.fromString(omuUserId))
         .orElseThrow(() -> new IllegalArgumentException("User not found: " + omuUserId));
 
@@ -344,6 +353,7 @@ public class AuthService {
     Long stuId = sessionStore.getStuId(omuUserId, universityId).orElse(null);
     Long matId = sessionStore.getMatId(omuUserId, universityId).orElse(null);
     String matricola = sessionStore.getMatricola(omuUserId, universityId).orElse(null);
+    String sessionId = sessionStore.getSessionIdByRefreshToken(refreshToken).orElse(null);
 
     return jwtService.issue(
         omuUserId,
@@ -351,7 +361,8 @@ public class AuthService {
         universityId,
         stuId,
         matId,
-        matricola);
+        matricola,
+        sessionId);
   }
 
   /**
@@ -366,7 +377,7 @@ public class AuthService {
    * @return new OhMyU access token
    */
   public String switchCarriera(String omuUserId, String universityId,
-      Long stuId, Long matId, String matricola) {
+      Long stuId, Long matId, String matricola, String sessionId) {
 
     sessionStore.storeStuId(omuUserId, universityId, stuId);
     sessionStore.storeMatId(omuUserId, universityId, matId);
@@ -381,7 +392,7 @@ public class AuthService {
         matId);
 
     return jwtService.issue(omuUserId, omuUser.getCodiceFiscale(),
-        universityId, stuId, matId, matricola);
+        universityId, stuId, matId, matricola, sessionId);
   }
 
   /**
@@ -483,6 +494,7 @@ public class AuthService {
     Long stuId = sessionStore.getStuId(omuUserId, targetUniversityId).orElse(null);
     Long matId = sessionStore.getMatId(omuUserId, targetUniversityId).orElse(null);
     String matricola = sessionStore.getMatricola(omuUserId, targetUniversityId).orElse(null);
+    String sessionId = sessionStore.getSessionIdByRefreshToken(refreshToken).orElse(null);
 
     sessionStore.storeRefreshToken(refreshToken, omuUserId);
 
@@ -491,7 +503,29 @@ public class AuthService {
         targetUniversityId.replaceAll("[\r\n]", "_"));
 
     return jwtService.issue(omuUserId, omuUser.getCodiceFiscale(),
-        targetUniversityId, stuId, matId, matricola);
+        targetUniversityId, stuId, matId, matricola, sessionId);
+  }
+
+  /**
+   * Lists the user's currently active sessions (device/IP metadata), most recently used first.
+   *
+   * @param omuUserId internal user ID
+   * @return list of session records
+   */
+  public java.util.List<CinecaSessionStore.SessionRecord> listSessions(String omuUserId) {
+    return sessionStore.getUserSessions(omuUserId).stream()
+        .sorted((a, b) -> b.lastUsedAt().compareTo(a.lastUsedAt()))
+        .toList();
+  }
+
+  /**
+   * Revokes a specific session, invalidating its refresh token and logging that device out.
+   *
+   * @param omuUserId internal user ID
+   * @param sessionId session identifier to revoke
+   */
+  public void revokeSession(String omuUserId, String sessionId) {
+    sessionStore.deleteSession(omuUserId, sessionId);
   }
 
   private ProfiloCarriera fromCached(CachedProfiloCarriera c) {

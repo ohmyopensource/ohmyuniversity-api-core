@@ -1,6 +1,8 @@
 package org.ohmyopensource.ohmyuniversity.core.cineca;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,8 +13,8 @@ import org.springframework.stereotype.Component;
  * Stores and manages Cineca and OhMyUniversity session tokens using Redis.
  *
  * <p>This component acts as a transient session store:
- * - Cineca JWT and auth tokens are cached with a strict TTL
- * - OhMyU refresh tokens are mapped to internal user IDs
+ * - Cineca JWT and auth tokens are cached with a strict TTL - OhMyU refresh tokens are mapped to
+ * internal user IDs
  *
  * <p>No session-related data is persisted to the database. All entries expire automatically based
  * on their TTL, ensuring alignment with Cineca session constraints and improving security.
@@ -31,7 +33,11 @@ public class CinecaSessionStore {
   private static final Duration CINECA_CAREER_TTL = Duration.ofDays(30);
   private static final Duration OMU_REFRESH_TTL = Duration.ofDays(7);
   private static final Duration USER_INFO_TTL = Duration.ofDays(7);
+  private static final Duration OMU_SESSION_TTL = Duration.ofDays(7);
 
+  private static final String KEY_SESSION = "omu:session:%s";
+  private static final String KEY_USER_SESSIONS = "omu:sessions:%s";
+  private static final String KEY_REFRESH_SESSION = "omu:refresh-session:%s";
   private static final String KEY_CINECA_JWT = "cineca:jwt:%s:%s";
   private static final String KEY_CINECA_AUTH = "cineca:auth:%s:%s";
   private static final String KEY_CINECA_PERS = "cineca:pers:%s:%s";
@@ -139,7 +145,8 @@ public class CinecaSessionStore {
   /**
    * Retrieves the Cineca person identifier (persId) from Redis.
    *
-   * <p>The value is parsed from its string representation back into a Long. If no value is found or
+   * <p>The value is parsed from its string representation back into a Long. If no value is found
+   * or
    * the key has expired, an empty Optional is returned.
    *
    * @param omuUserId    internal OhMyUniversity user identifier
@@ -216,7 +223,9 @@ public class CinecaSessionStore {
    * @param matricola    student registration number
    */
   public void storeMatricola(String omuUserId, String universityId, String matricola) {
-    if (matricola == null) return;
+    if (matricola == null) {
+      return;
+    }
     String key = String.format(KEY_CINECA_MATRICOLA, omuUserId, universityId);
     redis.opsForValue().set(key, matricola.replaceAll("[\r\n]", "_"), CINECA_CAREER_TTL);
   }
@@ -303,5 +312,134 @@ public class CinecaSessionStore {
 
   public Optional<String> getUserId(String omuUserId) {
     return Optional.ofNullable(redis.opsForValue().get(String.format(KEY_USER_ID, omuUserId)));
+  }
+
+  /**
+   * Creates a new tracked session (device/IP metadata) tied to a freshly issued refresh token.
+   *
+   * @param omuUserId    internal user ID
+   * @param sessionId    newly generated session identifier
+   * @param refreshToken refresh token issued for this session
+   * @param universityId university context active at login time
+   * @param ipAddress    client IP address at login time
+   * @param userAgent    client User-Agent header at login time
+   */
+  public void createSession(String omuUserId, String sessionId, String refreshToken,
+      String universityId, String ipAddress, String userAgent) {
+    String now = Instant.now().toString();
+    String sessionKey = String.format(KEY_SESSION, sessionId);
+
+    java.util.Map<String, String> fields = new java.util.HashMap<>();
+    fields.put("refreshToken", refreshToken);
+    fields.put("universityId", universityId);
+    fields.put("ipAddress", ipAddress == null ? "" : ipAddress);
+    fields.put("userAgent", userAgent == null ? "" : userAgent);
+    fields.put("createdAt", now);
+    fields.put("lastUsedAt", now);
+
+    redis.opsForHash().putAll(sessionKey, fields);
+    redis.expire(sessionKey, OMU_SESSION_TTL);
+
+    redis.opsForSet().add(String.format(KEY_USER_SESSIONS, omuUserId), sessionId);
+    redis.opsForValue().set(String.format(KEY_REFRESH_SESSION, refreshToken), sessionId,
+        OMU_SESSION_TTL);
+
+    log.debug("CinecaSessionStore: created session={} for user={}", sessionId, omuUserId);
+  }
+
+  /**
+   * Lists all currently valid (non-expired) sessions for a user. Session IDs whose Redis hash has
+   * already expired but still linger in the tracking Set (Sets don't expire individual members) are
+   * lazily pruned during the read.
+   *
+   * @param omuUserId internal user ID
+   * @return snapshot of currently valid sessions, unordered
+   */
+  public List<SessionRecord> getUserSessions(String omuUserId) {
+    String setKey = String.format(KEY_USER_SESSIONS, omuUserId);
+    java.util.Set<String> sessionIds = redis.opsForSet().members(setKey);
+    if (sessionIds == null || sessionIds.isEmpty()) {
+      return java.util.List.of();
+    }
+
+    java.util.List<SessionRecord> result = new java.util.ArrayList<>();
+    for (String sessionId : sessionIds) {
+      String sessionKey = String.format(KEY_SESSION, sessionId);
+      java.util.Map<Object, Object> raw = redis.opsForHash().entries(sessionKey);
+      if (raw.isEmpty()) {
+        redis.opsForSet().remove(setKey, sessionId);
+        continue;
+      }
+      result.add(new SessionRecord(
+          sessionId,
+          (String) raw.get("universityId"),
+          (String) raw.get("ipAddress"),
+          (String) raw.get("userAgent"),
+          Instant.parse((String) raw.get("createdAt")),
+          Instant.parse((String) raw.get("lastUsedAt"))));
+    }
+    return result;
+  }
+
+  /**
+   * Updates the last-used timestamp of the session tied to a refresh token. Called on token refresh
+   * so the session list reflects genuine recent activity, not just login time.
+   *
+   * @param refreshToken refresh token used in the refresh call
+   */
+  public void touchSession(String refreshToken) {
+    getSessionIdByRefreshToken(refreshToken).ifPresent(sessionId -> {
+      String sessionKey = String.format(KEY_SESSION, sessionId);
+      if (Boolean.TRUE.equals(redis.hasKey(sessionKey))) {
+        redis.opsForHash().put(sessionKey, "lastUsedAt", Instant.now().toString());
+        redis.expire(sessionKey, OMU_SESSION_TTL);
+      }
+    });
+  }
+
+  /**
+   * Resolves the session identifier tied to a given refresh token.
+   *
+   * @param refreshToken refresh token
+   * @return optional session ID if the mapping is still valid
+   */
+  public Optional<String> getSessionIdByRefreshToken(String refreshToken) {
+    return Optional.ofNullable(
+        redis.opsForValue().get(String.format(KEY_REFRESH_SESSION, refreshToken)));
+  }
+
+  /**
+   * Revokes a session: deletes its metadata, removes it from the user's session set, and
+   * invalidates the associated refresh token so the device is fully logged out.
+   *
+   * @param omuUserId internal user ID
+   * @param sessionId session identifier to revoke
+   */
+  public void deleteSession(String omuUserId, String sessionId) {
+    String sessionKey = String.format(KEY_SESSION, sessionId);
+    String refreshToken = (String) redis.opsForHash().get(sessionKey, "refreshToken");
+
+    redis.delete(sessionKey);
+    redis.opsForSet().remove(String.format(KEY_USER_SESSIONS, omuUserId), sessionId);
+
+    if (refreshToken != null) {
+      redis.delete(String.format(KEY_OMU_REFRESH, refreshToken));
+      redis.delete(String.format(KEY_REFRESH_SESSION, refreshToken));
+    }
+
+    log.info("CinecaSessionStore: revoked session={} for user={}", sessionId, omuUserId);
+  }
+
+  /**
+   * Immutable snapshot of a tracked session, read from Redis.
+   */
+  public record SessionRecord(
+      String sessionId,
+      String universityId,
+      String ipAddress,
+      String userAgent,
+      Instant createdAt,
+      Instant lastUsedAt) {
+
   }
 }
