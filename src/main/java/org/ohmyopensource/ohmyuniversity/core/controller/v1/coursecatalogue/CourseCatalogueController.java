@@ -4,6 +4,8 @@ import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.controller.v1.esse3.AbstractEsse3Controller;
 import org.ohmyopensource.ohmyuniversity.core.dto.coursecatalogue.CoursePlanResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.coursecatalogue.CourseSyllabusResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.coursecatalogue.DocenteDetailResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.coursecatalogue.DocentiListResponse;
 import org.ohmyopensource.ohmyuniversity.core.service.coursecatalogue.CourseCatalogueService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -13,14 +15,16 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Controller exposing Cineca Course Catalogue data — a separate Cineca
- * product from ESSE3 (see {@link CourseCatalogueService}) — used to enrich
- * the career view beyond what the student's own libretto provides.
+ * Controller exposing Cineca Course Catalogue data — a separate Cineca product from ESSE3 (see
+ * {@link CourseCatalogueService}) — used to enrich the career view beyond what the student's own
+ * libretto provides.
  *
  * <p>Exposed endpoints:
  * <ul>
- *   <li>{@code GET /v1/course-catalogue/plan} — full multi-year course plan for the student's cohort</li>
- *   <li>{@code GET /v1/course-catalogue/syllabus} — prerequisites and CFU breakdown for one activity</li>
+ *   <li>{@code GET /v1/course-catalogue/plan} — full multi-year course plan for the student's
+ *   cohort</li>
+ *   <li>{@code GET /v1/course-catalogue/syllabus} — prerequisites and CFU breakdown for one
+ *   activity</li>
  * </ul>
  */
 @RestController
@@ -34,8 +38,8 @@ public class CourseCatalogueController extends AbstractEsse3Controller {
   }
 
   /**
-   * Returns the full multi-year teaching plan for the authenticated
-   * student's degree course and cohort.
+   * Returns the full multi-year teaching plan for the authenticated student's degree course and
+   * cohort.
    *
    * @param principal authenticated OhMyU principal
    * @return {@code 200 OK} with the course plan (empty if not resolvable), {@code 401} if session
@@ -48,8 +52,8 @@ public class CourseCatalogueController extends AbstractEsse3Controller {
   }
 
   /**
-   * Returns the syllabus (prerequisites and per-module CFU breakdown) for a
-   * single teaching activity.
+   * Returns the syllabus (prerequisites and per-module CFU breakdown) for a single teaching
+   * activity.
    *
    * @param principal authenticated OhMyU principal
    * @param adCod     ESSE3 teaching activity code
@@ -61,5 +65,34 @@ public class CourseCatalogueController extends AbstractEsse3Controller {
       @AuthenticationPrincipal OmuPrincipal principal,
       @RequestParam String adCod) {
     return execute(principal, () -> courseCatalogueService.getCourseSyllabus(principal, adCod));
+  }
+
+  /**
+   * Returns the professors teaching the authenticated student's degree course.
+   *
+   * @param principal authenticated OhMyU principal
+   * @return {@code 200 OK} with the professor list (empty if not resolvable)
+   */
+  @GetMapping("/docenti")
+  public ResponseEntity<DocentiListResponse> getDocenti(
+      @AuthenticationPrincipal OmuPrincipal principal,
+      @RequestParam(defaultValue = "false") boolean tutti) {
+    return execute(principal, () -> tutti
+        ? courseCatalogueService.getAllDocenti(principal)
+        : courseCatalogueService.getDocenti(principal));
+  }
+
+  /**
+   * Returns full detail for a single professor.
+   *
+   * @param principal authenticated OhMyU principal
+   * @param docenteId Course Catalogue internal id (from {@code GET /docenti})
+   * @return {@code 200 OK} with the professor detail
+   */
+  @GetMapping("/docenti/{docenteId}")
+  public ResponseEntity<DocenteDetailResponse> getDocenteDetail(
+      @AuthenticationPrincipal OmuPrincipal principal,
+      @org.springframework.web.bind.annotation.PathVariable String docenteId) {
+    return execute(principal, () -> courseCatalogueService.getDocenteDetail(principal, docenteId));
   }
 }
