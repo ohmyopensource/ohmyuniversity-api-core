@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaSessionStore;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaCareerClient;
@@ -20,7 +21,11 @@ import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.Cin
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaBookingResult;
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry;
+import org.ohmyopensource.ohmyuniversity.core.domain.entity.CachedProfiloCarriera;
+import org.ohmyopensource.ohmyuniversity.core.domain.repository.CachedProfiloCarrieraRepository;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityConnectionRepository;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.CareerProfileResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.CareerProfilesResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.ExamHistoryResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.ExamHistoryResponse.EsameConStorico;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.ExamHistoryResponse.Tentativo;
@@ -59,21 +64,36 @@ public class CareerService extends AbstractEsse3Service {
 
   private final CinecaCareerClient careerClient;
   private final CinecaExamsClient examsClient;
+  private final CachedProfiloCarrieraRepository cachedProfiloRepository;
 
   // ============ Constructor ============
 
+  /**
+   * Constructs the service with the required Cineca clients and shared ESSE3 session/registry
+   * dependencies, plus the local career profile cache used only by {@link #getAggregatedProfiles}.
+   *
+   * @param careerClient            ESSE3 career client (transcript, grades, study plan)
+   * @param examsClient             ESSE3 exams client, used here for booking-based history
+   * @param sessionStore            shared Cineca session store (see AbstractEsse3Service)
+   * @param universityRegistry      shared university configuration registry
+   * @param connectionRepository    shared university connection repository
+   * @param cachedProfiloRepository local read cache of career profiles, populated asynchronously by
+   *                                the auth event listener
+   */
   public CareerService(
       CinecaCareerClient careerClient,
       CinecaExamsClient examsClient,
       CinecaSessionStore sessionStore,
       UniversityRegistry universityRegistry,
-      UniversityConnectionRepository connectionRepository) {
+      UniversityConnectionRepository connectionRepository,
+      CachedProfiloCarrieraRepository cachedProfiloRepository) {
     super(sessionStore, universityRegistry, connectionRepository);
     this.careerClient = careerClient;
     this.examsClient = examsClient;
+    this.cachedProfiloRepository = cachedProfiloRepository;
   }
 
-  // ============ Public Methods ============
+  // ============ Class Methods ============
 
   /**
    * Retrieves the student transcript from libretto-service-v2.
@@ -285,7 +305,8 @@ public class CareerService extends AbstractEsse3Service {
         : detail.getActivities().stream()
             .filter(a -> a.getAdCod() != null && !passed.contains(a.getAdCod()))
             .map(a -> {
-              RecommendationsResponse.EsameSuggerito s = new RecommendationsResponse.EsameSuggerito();
+              RecommendationsResponse.EsameSuggerito s =
+                  new RecommendationsResponse.EsameSuggerito();
               s.setAdCod(a.getAdCod());
               s.setAdDes(a.getAdDes());
               s.setCfu(a.getCfu());
@@ -307,8 +328,46 @@ public class CareerService extends AbstractEsse3Service {
     return response;
   }
 
-  // ============ Mappers ============
+  /**
+   * Returns every cached career profile for the authenticated user across all universities and
+   * platform vendors — powers the avatar panel's multi-university profile switcher.
+   *
+   * <p>Unlike every other method in this service, this never calls Cineca:
+   * it reads only the local cache populated asynchronously by
+   * {@code UserAuthenticatedEventListener} after each login (see {@code cached_profilo_carriera}).
+   * As a result it works even if the vendor session for a given university has since expired, and
+   * cannot throw {@link org.ohmyopensource.ohmyuniversity.core.exception.CinecaAuthException}.
+   *
+   * <p>This aggregation used to be embedded directly in the login response
+   * before authentication was extracted into its own service; the auth service has no access to
+   * this cache, so the client must now call this endpoint separately after login to populate the
+   * avatar panel.
+   *
+   * @param principal authenticated OhMyU principal
+   * @return every cached profile known for this user
+   */
+  public CareerProfilesResponse getAggregatedProfiles(OmuPrincipal principal) {
+    List<CachedProfiloCarriera> cached =
+        cachedProfiloRepository.findByUserId(UUID.fromString(principal.omuUserId()));
 
+    List<CareerProfileResponse> profiles = cached.stream()
+        .map(this::toCareerProfileResponse)
+        .toList();
+
+    log.debug("CareerService: aggregated {} cached profiles for user={}",
+        profiles.size(), principal.omuUserId());
+
+    CareerProfilesResponse response = new CareerProfilesResponse();
+    response.setProfili(profiles);
+    return response;
+  }
+
+  /**
+   * Maps a raw transcript row to its API response shape.
+   *
+   * @param r raw transcript row
+   * @return the mapped row
+   */
   private RigaLibretto toRigaLibretto(CinecaTranscriptRow r) {
     RigaLibretto riga = new RigaLibretto();
     riga.setAdsceId(r.getAdsceId());
@@ -336,6 +395,12 @@ public class CareerService extends AbstractEsse3Service {
     return riga;
   }
 
+  /**
+   * Maps a raw study plan activity to its API response shape.
+   *
+   * @param a raw study plan activity
+   * @return the mapped row
+   */
   private StudyPlanResponse.RigaPiano toRigaPiano(CinecaStudyPlanActivity a) {
     StudyPlanResponse.RigaPiano riga = new StudyPlanResponse.RigaPiano();
     riga.setAdsceId(a.getAdsceId());
@@ -345,5 +410,32 @@ public class CareerService extends AbstractEsse3Service {
     riga.setCfu(a.getCfu());
     riga.setObbligatorio(a.isRequired());
     return riga;
+  }
+
+  /**
+   * Maps a cached career profile entity to its API response shape.
+   *
+   * @param c cached career profile entity
+   * @return the mapped profile
+   */
+  private CareerProfileResponse toCareerProfileResponse(CachedProfiloCarriera c) {
+    CareerProfileResponse p = new CareerProfileResponse();
+    p.setUniversityId(c.getUniversityId());
+    p.setUniversityName(c.getUniversityName());
+    p.setStuId(c.getStuId());
+    p.setMatId(c.getMatId());
+    p.setMatricola(c.getMatricola());
+    p.setCorsoNome(c.getCorsoNome());
+    p.setCorsoCodice(c.getCorsoCodice());
+    p.setCdsId(c.getCdsId());
+    p.setTipoCorsoCod(c.getTipoCorsoCod());
+    p.setStatusStudente(c.getStatusStudente());
+    p.setStatusDescrizione(c.getStatusDescr());
+    p.setAnnoCorso(c.getAnnoCorso());
+    p.setDurataAnni(c.getDurataAnni());
+    p.setAnnoAccademico(c.getAnnoAccademico());
+    p.setAttivo(c.isAttivo());
+    p.setLaureato(c.isLaureato());
+    return p;
   }
 }

@@ -3,7 +3,7 @@ package org.ohmyopensource.ohmyuniversity.core.cineca.esse3;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaUnavailableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
@@ -52,11 +52,11 @@ public class CinecaStrutturaClient extends AbstractCinecaClient {
         .retrieve()
         .onStatus(HttpStatusCode::is4xxClientError, r -> Mono.empty())
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on strutture")))
         .bodyToFlux(CinecaStruttura.class)
         .collectList()
-        .onErrorResume(e -> e instanceof CinecaClient.CinecaUnavailableException
+        .onErrorResume(e -> e instanceof CinecaUnavailableException
             ? Mono.error(e)
             : Mono.just(List.of()))
         .block();
@@ -79,10 +79,10 @@ public class CinecaStrutturaClient extends AbstractCinecaClient {
         .retrieve()
         .onStatus(HttpStatusCode::is4xxClientError, r -> Mono.empty())
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on struttura detail")))
         .bodyToMono(CinecaStruttura.class)
-        .onErrorResume(e -> e instanceof CinecaClient.CinecaUnavailableException
+        .onErrorResume(e -> e instanceof CinecaUnavailableException
             ? Mono.error(e)
             : Mono.empty())
         .block();
@@ -104,10 +104,10 @@ public class CinecaStrutturaClient extends AbstractCinecaClient {
         .retrieve()
         .onStatus(HttpStatusCode::is4xxClientError, r -> Mono.empty())
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on sede detail")))
         .bodyToMono(CinecaSede.class)
-        .onErrorResume(e -> e instanceof CinecaClient.CinecaUnavailableException
+        .onErrorResume(e -> e instanceof CinecaUnavailableException
             ? Mono.error(e)
             : Mono.empty())
         .block();

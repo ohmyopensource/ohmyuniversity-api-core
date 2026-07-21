@@ -13,11 +13,13 @@ import org.springframework.stereotype.Component;
  * ESSE3 configurations.
  *
  * <p>Each university is identified by a short code (e.g. "UNIMOL") and maps to:
- * - human-readable name
- * - Cineca ESSE3 base API URL
- * - Moodle URL
- * - Library portal URL
- * - ESSE3 student portal URL
+ * <ul>
+ *   <li>human-readable name</li>
+ *   <li>Cineca ESSE3 base API URL</li>
+ *   <li>Moodle URL</li>
+ *   <li>Library portal URL</li>
+ *   <li>ESSE3 student portal URL</li>
+ * </ul>
  *
  * <p>This registry acts as the single source of truth for resolving external university endpoints.
  */
@@ -50,8 +52,8 @@ public class UniversityRegistry {
    * Resolves the Cineca Course Catalogue base URL for a university, if configured.
    *
    * @param universityId university short code (e.g. UNIMOL)
-   * @return the Course Catalogue base URL, or {@code null} if the university is unknown or has
-   * not configured one
+   * @return the Course Catalogue base URL, or {@code null} if the university is unknown or has not
+   * configured one
    */
   public String getCourseCatalogueUrl(String universityId) {
     return resolve(universityId).map(UniversityConfig::courseCatalogueUrl).orElse(null);
@@ -60,11 +62,11 @@ public class UniversityRegistry {
   /**
    * Immutable configuration model for a single university.
    *
-   * @param name            human-readable university name
-   * @param baseUrl         Cineca ESSE3 REST API base URL
-   * @param moodleUrl       URL of the university Moodle instance
-   * @param libraryUrl      URL of the university library portal
-   * @param esse3PortalUrl  URL of the ESSE3 student portal
+   * @param name           human-readable university name
+   * @param baseUrl        Cineca ESSE3 REST API base URL
+   * @param moodleUrl      URL of the university Moodle instance
+   * @param libraryUrl     URL of the university library portal
+   * @param esse3PortalUrl URL of the ESSE3 student portal
    */
   public record UniversityConfig(
       String name,
@@ -73,5 +75,6 @@ public class UniversityRegistry {
       String libraryUrl,
       String esse3PortalUrl,
       String courseCatalogueUrl) {
+
   }
 }

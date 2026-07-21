@@ -1,11 +1,12 @@
 package org.ohmyopensource.ohmyuniversity.core.controller.v1.esse3;
 
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
-import org.ohmyopensource.ohmyuniversity.core.dto.esse3.TranscriptResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.esse3.GradesResponse;
-import org.ohmyopensource.ohmyuniversity.core.dto.esse3.StudyPlanResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.CareerProfilesResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.ExamHistoryResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.GradesResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.RecommendationsResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.StudyPlanResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.TranscriptResponse;
 import org.ohmyopensource.ohmyuniversity.core.service.esse3.CareerService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -51,8 +52,8 @@ public class CareerController extends AbstractEsse3Controller {
    * Returns the student transcript — all exam records with grades, status and CFU.
    *
    * @param principal authenticated OhMyU principal
-   * @return {@code 200 OK} with transcript rows, {@code 401} if session expired,
-   *         {@code 503} if Cineca is unavailable
+   * @return {@code 200 OK} with transcript rows, {@code 401} if session expired, {@code 503} if
+   * Cineca is unavailable
    */
   @GetMapping("/transcript")
   public ResponseEntity<TranscriptResponse> getTranscript(
@@ -64,8 +65,8 @@ public class CareerController extends AbstractEsse3Controller {
    * Returns grade averages (arithmetic, weighted, base-110) and CFU progress statistics.
    *
    * @param principal authenticated OhMyU principal
-   * @return {@code 200 OK} with grade statistics, {@code 401} if session expired,
-   *         {@code 503} if Cineca is unavailable
+   * @return {@code 200 OK} with grade statistics, {@code 401} if session expired, {@code 503} if
+   * Cineca is unavailable
    */
   @GetMapping("/grades")
   public ResponseEntity<GradesResponse> getGrades(
@@ -77,8 +78,8 @@ public class CareerController extends AbstractEsse3Controller {
    * Returns the student's study plan — all planned activities with CFU and year.
    *
    * @param principal authenticated OhMyU principal
-   * @return {@code 200 OK} with study plan rows, {@code 401} if session expired,
-   *         {@code 503} if Cineca is unavailable
+   * @return {@code 200 OK} with study plan rows, {@code 401} if session expired, {@code 503} if
+   * Cineca is unavailable
    */
   @GetMapping("/study-plan")
   public ResponseEntity<StudyPlanResponse> getStudyPlan(
@@ -90,8 +91,8 @@ public class CareerController extends AbstractEsse3Controller {
    * Returns the complete exam attempt history grouped by course activity.
    *
    * @param principal authenticated OhMyU principal
-   * @return {@code 200 OK} with grouped history, {@code 401} if session expired,
-   *         {@code 503} if Cineca is unavailable
+   * @return {@code 200 OK} with grouped history, {@code 401} if session expired, {@code 503} if
+   * Cineca is unavailable
    */
   @GetMapping("/exam-history")
   public ResponseEntity<ExamHistoryResponse> getExamHistory(
@@ -106,11 +107,28 @@ public class CareerController extends AbstractEsse3Controller {
    *
    * @param principal authenticated OhMyU principal
    * @return {@code 200 OK} with ordered recommendations, {@code 401} if session expired,
-   *         {@code 503} if Cineca is unavailable
+   * {@code 503} if Cineca is unavailable
    */
   @GetMapping("/recommendations")
   public ResponseEntity<RecommendationsResponse> getRecommendations(
       @AuthenticationPrincipal OmuPrincipal principal) {
     return execute(principal, () -> careerService.getRecommendations(principal));
+  }
+
+  /**
+   * Returns every cached career profile for the authenticated user across all universities/vendors
+   * — feeds the avatar panel's multiprofile switcher.
+   *
+   * <p>Unlike the other endpoints in this controller, this never calls
+   * Cineca — it reads only the local cache, so it cannot fail with 401/503 for an expired vendor
+   * session, and does not go through {@link #execute}.
+   *
+   * @param principal authenticated OhMyU principal
+   * @return {@code 200 OK} with every cached profile for this user
+   */
+  @GetMapping("/profiles")
+  public ResponseEntity<CareerProfilesResponse> getProfiles(
+      @AuthenticationPrincipal OmuPrincipal principal) {
+    return ResponseEntity.ok(careerService.getAggregatedProfiles(principal));
   }
 }

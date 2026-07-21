@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaSessionStore;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaCourseCatalogClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaCourseCatalogClient.CinecaLogistics;
@@ -54,6 +53,7 @@ import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveyUnitsResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveyUnitsResponse.SurveyModule;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveysResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.SurveysResponse.QuestionarioEsame;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaBookingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -85,6 +85,17 @@ public class ExamsService extends AbstractEsse3Service {
 
   // ============ Constructor ============
 
+  /**
+   * Constructs the service with the required Cineca clients and shared ESSE3 session/registry
+   * dependencies.
+   *
+   * @param examsClient          ESSE3 exams client (sessions, bookings, surveys)
+   * @param courseCatalogClient  Course Catalogue client, used only by getCourseDetail for
+   *                             logistics/offer enrichment
+   * @param sessionStore         shared Cineca session store (see AbstractEsse3Service)
+   * @param universityRegistry   shared university configuration registry
+   * @param connectionRepository shared university connection repository
+   */
   public ExamsService(
       CinecaExamsClient examsClient,
       CinecaCourseCatalogClient courseCatalogClient,
@@ -96,7 +107,15 @@ public class ExamsService extends AbstractEsse3Service {
     this.courseCatalogClient = courseCatalogClient;
   }
 
-  // ============ Public Methods ============
+  // ============ Class Methods ============
+
+  /**
+   * Converts blank or empty Cineca strings to {@code null} so the frontend can rely on presence
+   * checks instead of comparing against {@code ""}.
+   */
+  private static String blankToNull(String s) {
+    return (s == null || s.isBlank()) ? null : s;
+  }
 
   /**
    * Retrieves available exam sessions from calesa-service-v1 for a specific activity.
@@ -257,6 +276,8 @@ public class ExamsService extends AbstractEsse3Service {
    *
    * @param principal authenticated OhMyU principal
    * @param adsceId   booklet activity identifier
+   * @param tags      caller-supplied tags string; falls back to the unit's own resolved tags when
+   *                  {@code null} or blank
    * @return the started session with its first page
    */
   public SurveyStartResponse startSurvey(OmuPrincipal principal, Long adsceId, String tags) {
@@ -265,7 +286,7 @@ public class ExamsService extends AbstractEsse3Service {
 
     CinecaSurveyUnit unit = examsClient.getSurveyUnit(baseUrl, jwt, adsceId);
     if (unit == null || unit.getQuestionarioId() == null || unit.getQuestConfigId() == null) {
-      throw new CinecaClient.CinecaBookingException(
+      throw new CinecaBookingException(
           "{\"retErrMsg\":\"Questionario non disponibile per questa attività\"}");
     }
 
@@ -292,6 +313,10 @@ public class ExamsService extends AbstractEsse3Service {
   /**
    * Returns the "box" of questionnaire modules for a booklet activity. A box may hold several
    * modules (e.g. Lezione, Laboratorio, or different teachers), each a separate questionnaire.
+   *
+   * @param principal authenticated OhMyU principal
+   * @param adsceId   booklet activity identifier
+   * @return the survey unit box with all its modules
    */
   public SurveyUnitsResponse getSurveyUnits(OmuPrincipal principal, Long adsceId) {
     String jwt = resolveCinecaJwt(principal);
@@ -299,7 +324,7 @@ public class ExamsService extends AbstractEsse3Service {
 
     CinecaSurveyUnit unit = examsClient.getSurveyUnit(baseUrl, jwt, adsceId);
     if (unit == null || unit.getQuestionarioId() == null || unit.getQuestConfigId() == null) {
-      throw new CinecaClient.CinecaBookingException(
+      throw new CinecaBookingException(
           "{\"retErrMsg\":\"Questionario non disponibile per questa attività\"}");
     }
 
@@ -380,6 +405,14 @@ public class ExamsService extends AbstractEsse3Service {
 
   /**
    * Loads a specific questionnaire page by id (for editing from the summary).
+   *
+   * @param principal      authenticated OhMyU principal
+   * @param adsceId        booklet activity identifier
+   * @param questionarioId questionnaire identifier
+   * @param questCompId    compilation session identifier
+   * @param pageId         page identifier to load
+   * @param userCompId     user session identifier
+   * @return the requested page, or {@code null} if not found
    */
   public SurveyPage getSurveyPage(OmuPrincipal principal, Long adsceId, Long questionarioId,
       Long questCompId, Long pageId, Long userCompId) {
@@ -419,6 +452,14 @@ public class ExamsService extends AbstractEsse3Service {
 
   /**
    * Retrieves the compilation summary, flattening question/answer pairs per page.
+   *
+   * @param principal      authenticated OhMyU principal
+   * @param adsceId        booklet activity identifier
+   * @param questionarioId questionnaire identifier
+   * @param questCompId    compilation session identifier
+   * @param questConfigId  questionnaire configuration identifier
+   * @param userCompId     user session identifier
+   * @return the summary, grouped by page
    */
   public SurveySummaryResponse getSurveySummary(OmuPrincipal principal, Long adsceId,
       Long questionarioId, Long questCompId, Long questConfigId, Long userCompId) {
@@ -477,6 +518,10 @@ public class ExamsService extends AbstractEsse3Service {
    * @param adId      teaching activity identifier
    * @param appId     exam session identifier
    * @param adsceId   libretto row identifier
+   * @param password  Cineca password (never persisted)
+   * @throws org.ohmyopensource.ohmyuniversity.core.exception.CinecaBookingException if Cineca
+   *                                                                                 rejects the
+   *                                                                                 booking
    */
   public void bookExam(OmuPrincipal principal, Long cdsId, Long adId, Long appId,
       Long adsceId, String password) {
@@ -496,6 +541,7 @@ public class ExamsService extends AbstractEsse3Service {
    * @param cdsId     course of study identifier
    * @param adId      teaching activity identifier
    * @param appId     exam session identifier
+   * @param password  Cineca password (never persisted)
    */
   public void cancelBooking(OmuPrincipal principal, Long cdsId, Long adId, Long appId,
       String password) {
@@ -509,13 +555,13 @@ public class ExamsService extends AbstractEsse3Service {
   }
 
   /**
-   * Returns publicly available course catalog details for a teaching activity, combining
-   * logistics (period, location, teaching dates) and offer data (language, exam type, evaluation
-   * type, mandatory flag, course page URL).
+   * Returns publicly available course catalog details for a teaching activity, combining logistics
+   * (period, location, teaching dates) and offer data (language, exam type, evaluation type,
+   * mandatory flag, course page URL).
    *
    * <p>Does not require Cineca authentication — both source endpoints are
-   * public. Returns an empty response (all fields {@code null}) if Cineca has no data for the
-   * given activity, rather than failing, since this enriches an already-displayed exam.
+   * public. Returns an empty response (all fields {@code null}) if Cineca has no data for the given
+   * activity, rather than failing, since this enriches an already-displayed exam.
    *
    * @param principal authenticated OhMyU principal (used only to resolve the university base URL)
    * @param adCod     teaching activity code
@@ -557,8 +603,9 @@ public class ExamsService extends AbstractEsse3Service {
     return response;
   }
 
-  // ============ Mappers ============
-
+  /**
+   * Maps a raw exam session to its API response shape.
+   */
   private Appello toAppello(CinecaExamSession s) {
     Appello a = new Appello();
     a.setAppId(s.getAppId());
@@ -577,6 +624,9 @@ public class ExamsService extends AbstractEsse3Service {
     return a;
   }
 
+  /**
+   * Maps a raw bookable session to its API response shape.
+   */
   private AppelloLibretto toAppelloLibretto(CinecaBookableSession s) {
     AppelloLibretto a = new AppelloLibretto();
     a.setAppId(s.getAppId());
@@ -600,6 +650,9 @@ public class ExamsService extends AbstractEsse3Service {
     return a;
   }
 
+  /**
+   * Maps a raw legacy booking to its API response shape.
+   */
   private Prenotazione toPrenotazione(CinecaLegacyBooking b) {
     Prenotazione p = new Prenotazione();
     p.setApplistaId(b.getApplistaId());
@@ -635,6 +688,9 @@ public class ExamsService extends AbstractEsse3Service {
     return p;
   }
 
+  /**
+   * Maps a raw survey row to its API response shape.
+   */
   private QuestionarioEsame toQuestionarioEsame(CinecaSurveyRow r) {
     QuestionarioEsame q = new QuestionarioEsame();
     q.setAdCod(r.getAdCod());
@@ -646,6 +702,9 @@ public class ExamsService extends AbstractEsse3Service {
     return q;
   }
 
+  /**
+   * Maps a raw survey page to its API response shape, recursively mapping its paragraphs.
+   */
   private SurveyPage toSurveyPage(CinecaSurveyPage p) {
     SurveyPage page = new SurveyPage();
     page.setPaginaId(p.getPaginaId());
@@ -658,6 +717,9 @@ public class ExamsService extends AbstractEsse3Service {
     return page;
   }
 
+  /**
+   * Maps a raw survey paragraph to its API response shape, recursively mapping its questions.
+   */
   private SurveyParagraph toSurveyParagraph(CinecaSurveyParagraph p) {
     SurveyParagraph par = new SurveyParagraph();
     par.setParagrafoId(p.getParagrafoId());
@@ -669,6 +731,9 @@ public class ExamsService extends AbstractEsse3Service {
     return par;
   }
 
+  /**
+   * Maps a raw survey question to its API response shape, recursively mapping its answers.
+   */
   private SurveyQuestion toSurveyQuestion(CinecaSurveyQuestion q) {
     SurveyQuestion question = new SurveyQuestion();
     question.setDomandaId(q.getDomandaId());
@@ -682,6 +747,9 @@ public class ExamsService extends AbstractEsse3Service {
     return question;
   }
 
+  /**
+   * Maps a raw survey answer option to its API response shape.
+   */
   private SurveyAnswer toSurveyAnswer(CinecaSurveyAnswer a) {
     SurveyAnswer ans = new SurveyAnswer();
     ans.setRispostaId(a.getRispostaId());
@@ -690,6 +758,14 @@ public class ExamsService extends AbstractEsse3Service {
     return ans;
   }
 
+  /**
+   * Maps a raw active booking to its API response shape, enriching it with the live
+   * registered-count looked up from the pre-built {@code numIscrittiByKey} map.
+   *
+   * @param b                the raw booking
+   * @param numIscrittiByKey registered-count lookup, keyed by {@code adsceId:appId}
+   * @return the mapped booking
+   */
   private IscrizioneAppello toIscrizioneAppello(
       CinecaBooking b, Map<String, Integer> numIscrittiByKey) {
     IscrizioneAppello i = new IscrizioneAppello();
@@ -711,13 +787,5 @@ public class ExamsService extends AbstractEsse3Service {
       i.setNumIscritti(numIscrittiByKey.get(b.getAdsceId() + ":" + b.getAppId()));
     }
     return i;
-  }
-
-  /**
-   * Converts blank or empty Cineca strings to {@code null} so the frontend can rely on presence
-   * checks instead of comparing against {@code ""}.
-   */
-  private static String blankToNull(String s) {
-    return (s == null || s.isBlank()) ? null : s;
   }
 }

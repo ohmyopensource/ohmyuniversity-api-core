@@ -10,9 +10,12 @@ package org.ohmyopensource.ohmyuniversity.core.config;
  * identity and university-specific academic data.
  *
  * <p>This principal is intentionally lightweight and contains only the minimum information
- * required
- * to: - identify the user - resolve the active university context - access the correct Cineca
- * academic profile
+ * required to:
+ * <ul>
+ *   <li>identify the user</li>
+ *   <li>resolve the active university context</li>
+ *   <li>access the correct Cineca academic profile</li>
+ * </ul>
  *
  * <p>No sensitive credentials or session tokens are stored here.
  */

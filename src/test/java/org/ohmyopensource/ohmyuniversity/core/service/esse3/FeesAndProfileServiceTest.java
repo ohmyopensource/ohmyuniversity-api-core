@@ -59,7 +59,14 @@ class FeesAndProfileServiceTest {
     profileService = new ProfileService(profileClient, sessionStore, universityRegistry, connectionRepository);
 
     principal = new OmuPrincipal(
-        OMU_USER_ID, "TSTXXX00A00X000X", UNIVERSITY_ID, STU_ID, MAT_ID, "178026", true);
+        OMU_USER_ID,
+        "TSTXXX00A00X000X",
+        UNIVERSITY_ID,
+        STU_ID,
+        MAT_ID,
+        "178026",
+        true,
+        "test-session-id");
 
     when(sessionStore.getCinecaJwt(OMU_USER_ID, UNIVERSITY_ID)).thenReturn(Optional.of(CINECA_JWT));
     when(sessionStore.getCinecaPersId(OMU_USER_ID, UNIVERSITY_ID)).thenReturn(Optional.of(PERS_ID));

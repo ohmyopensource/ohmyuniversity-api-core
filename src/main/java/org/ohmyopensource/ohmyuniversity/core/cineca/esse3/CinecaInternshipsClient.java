@@ -3,7 +3,8 @@ package org.ohmyopensource.ohmyuniversity.core.cineca.esse3;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaAuthException;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaUnavailableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
@@ -24,6 +25,8 @@ import reactor.core.publisher.Mono;
 public class CinecaInternshipsClient extends AbstractCinecaClient {
 
   private static final Logger log = LoggerFactory.getLogger(CinecaInternshipsClient.class);
+
+  // ============ Class Methods ============
 
   /**
    * Retrieves the list of internship applications for a student.
@@ -48,11 +51,11 @@ public class CinecaInternshipsClient extends AbstractCinecaClient {
         .onStatus(HttpStatusCode::is4xxClientError, r ->
             r.bodyToMono(String.class).flatMap(body -> {
               log.error("CinecaInternshipsClient: applications 4xx body: {}", body);
-              return Mono.error(new CinecaClient.CinecaAuthException(
+              return Mono.error(new CinecaAuthException(
                   "Unauthorized for internship applications stuId=" + stuId));
             }))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on internship applications")))
         .bodyToFlux(CinecaInternshipApplication.class)
         .collectList()
@@ -62,6 +65,9 @@ public class CinecaInternshipsClient extends AbstractCinecaClient {
 
   // ============ DTOs ============
 
+  /**
+   * A single internship application (domanda di tirocinio) submitted by a student.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaInternshipApplication {
 
@@ -119,23 +125,76 @@ public class CinecaInternshipsClient extends AbstractCinecaClient {
     @JsonProperty("candVisEnteFlg")
     private Integer candVisEnteFlg;
 
-    public Long getDomTiroId() { return domTiroId; }
-    public Long getStuId() { return stuId; }
-    public Long getDomTiroPrg() { return domTiroPrg; }
-    public Long getAaId() { return aaId; }
-    public String getStatoDomTiroCod() { return statoDomTiroCod; }
-    public String getStatoDomTiroDes() { return statoDomTiroDes; }
-    public String getTipoTirocCod() { return tipoTirocCod; }
-    public String getTipoTirocDes() { return tipoTirocDes; }
-    public Long getEnteId() { return enteId; }
-    public String getEnteDes() { return enteDes; }
-    public String getPiva() { return piva; }
-    public String getCf() { return cf; }
-    public String getOppTitolo() { return oppTitolo; }
-    public String getOppDes() { return oppDes; }
-    public String getStartDate() { return startDate; }
-    public Integer getDurationMonths() { return durationMonths; }
-    public Integer getAbilRicCfu() { return abilRicCfu; }
-    public Integer getCandVisEnteFlg() { return candVisEnteFlg; }
+    public Long getDomTiroId() {
+      return domTiroId;
+    }
+
+    public Long getStuId() {
+      return stuId;
+    }
+
+    public Long getDomTiroPrg() {
+      return domTiroPrg;
+    }
+
+    public Long getAaId() {
+      return aaId;
+    }
+
+    public String getStatoDomTiroCod() {
+      return statoDomTiroCod;
+    }
+
+    public String getStatoDomTiroDes() {
+      return statoDomTiroDes;
+    }
+
+    public String getTipoTirocCod() {
+      return tipoTirocCod;
+    }
+
+    public String getTipoTirocDes() {
+      return tipoTirocDes;
+    }
+
+    public Long getEnteId() {
+      return enteId;
+    }
+
+    public String getEnteDes() {
+      return enteDes;
+    }
+
+    public String getPiva() {
+      return piva;
+    }
+
+    public String getCf() {
+      return cf;
+    }
+
+    public String getOppTitolo() {
+      return oppTitolo;
+    }
+
+    public String getOppDes() {
+      return oppDes;
+    }
+
+    public String getStartDate() {
+      return startDate;
+    }
+
+    public Integer getDurationMonths() {
+      return durationMonths;
+    }
+
+    public Integer getAbilRicCfu() {
+      return abilRicCfu;
+    }
+
+    public Integer getCandVisEnteFlg() {
+      return candVisEnteFlg;
+    }
   }
 }

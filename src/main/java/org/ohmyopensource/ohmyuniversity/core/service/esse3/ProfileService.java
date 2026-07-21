@@ -1,7 +1,6 @@
 package org.ohmyopensource.ohmyuniversity.core.service.esse3;
 
 import java.util.stream.Stream;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaSessionStore;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaProfileClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaProfileClient.CinecaBadge;
@@ -13,6 +12,8 @@ import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityConnec
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BadgeResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.CareerInfoResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.PersonaResponse;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaAuthException;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaUnavailableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,15 @@ public class ProfileService extends AbstractEsse3Service {
 
   // ============ Constructor ============
 
+  /**
+   * Constructs the service with the required Cineca client and shared ESSE3 session/registry
+   * dependencies.
+   *
+   * @param profileClient        ESSE3 profile client (persona, carriera, avatar, badge)
+   * @param sessionStore         shared Cineca session store (see AbstractEsse3Service)
+   * @param universityRegistry   shared university configuration registry
+   * @param connectionRepository shared university connection repository
+   */
   public ProfileService(
       CinecaProfileClient profileClient,
       CinecaSessionStore sessionStore,
@@ -43,7 +53,22 @@ public class ProfileService extends AbstractEsse3Service {
     this.profileClient = profileClient;
   }
 
-  // ============ Public Methods ============
+  // ============ Class Methods ============
+
+  /**
+   * Parses the "valoreMin" field (credits required to obtain the degree). Cineca returns it as a
+   * String; non-numeric or blank values yield null.
+   */
+  private static Integer parseCfuTitolo(String valoreMin) {
+    if (valoreMin == null || valoreMin.isBlank()) {
+      return null;
+    }
+    try {
+      return (int) Double.parseDouble(valoreMin.trim());
+    } catch (NumberFormatException e) {
+      return null;
+    }
+  }
 
   /**
    * Retrieves full personal profile for the authenticated user.
@@ -74,7 +99,7 @@ public class ProfileService extends AbstractEsse3Service {
 
     CinecaPersona p = profileClient.getPersona(baseUrl, jwt, persId);
     if (p == null) {
-      throw new CinecaClient.CinecaAuthException("Persona not found for persId=" + persId);
+      throw new CinecaAuthException("Persona not found for persId=" + persId);
     }
 
     log.debug("ProfileService: fetched persona persId={}", p.getPersId());
@@ -93,7 +118,7 @@ public class ProfileService extends AbstractEsse3Service {
 
     CinecaCarriera c = profileClient.getCarriera(baseUrl, jwt, principal.matId());
     if (c == null) {
-      throw new CinecaClient.CinecaUnavailableException("No carriera found");
+      throw new CinecaUnavailableException("No carriera found");
     }
 
     log.debug("ProfileService: fetched career info tipoCorsoCod={}", c.getTipoCorsoCod());
@@ -135,8 +160,9 @@ public class ProfileService extends AbstractEsse3Service {
     return toBadgeResponse(badges.get(0));
   }
 
-  // ============ Mappers ============
-
+  /**
+   * Maps a raw persona to its full API response shape, including address fields.
+   */
   private PersonaResponse toProfiloResponse(CinecaPersona p) {
     PersonaResponse r = new PersonaResponse();
     r.setPersId(p.getPersId());
@@ -196,6 +222,9 @@ public class ProfileService extends AbstractEsse3Service {
     return r;
   }
 
+  /**
+   * Maps a raw career entry to its API response shape.
+   */
   private CareerInfoResponse toCarrieraInfoResponse(CinecaCarriera c) {
     CareerInfoResponse r = new CareerInfoResponse();
     r.setStuId(c.getStuId());
@@ -236,6 +265,9 @@ public class ProfileService extends AbstractEsse3Service {
     return r;
   }
 
+  /**
+   * Maps a raw university badge to its API response shape.
+   */
   private BadgeResponse toBadgeResponse(CinecaBadge b) {
     BadgeResponse r = new BadgeResponse();
     r.setBdgId(b.getBdgId());
@@ -257,20 +289,5 @@ public class ProfileService extends AbstractEsse3Service {
     r.setRearImagePresent(b.getRearImagePresent() != null && b.getRearImagePresent() == 1);
     r.setBadgeBlbId(b.getBadgeBlbId());
     return r;
-  }
-
-  /**
-   * Parses the "valoreMin" field (credits required to obtain the degree). Cineca returns it as a
-   * String; non-numeric or blank values yield null.
-   */
-  private static Integer parseCfuTitolo(String valoreMin) {
-    if (valoreMin == null || valoreMin.isBlank()) {
-      return null;
-    }
-    try {
-      return (int) Double.parseDouble(valoreMin.trim());
-    } catch (NumberFormatException e) {
-      return null;
-    }
   }
 }

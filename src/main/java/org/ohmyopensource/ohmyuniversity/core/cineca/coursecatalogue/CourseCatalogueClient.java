@@ -5,11 +5,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.AbstractCinecaClient;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaAuthException;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaUnavailableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -60,7 +62,7 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
 
   /**
    * Dedicated Jackson mapper used to parse the course listing response manually as a raw string,
-   * bypassing WebClient's auto-configured codecs — which, in this project's Jackson setup, cannot
+   * bypassing WebClient's autoconfigured codecs — which, in this project's Jackson setup, cannot
    * decode the generic {@link JsonNode} type directly.
    */
   private final ObjectMapper objectMapper = new ObjectMapper();
@@ -134,7 +136,7 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
     if (root == null) {
       return List.of();
     }
-    List<CinecaCourseCode> result = new java.util.ArrayList<>();
+    List<CinecaCourseCode> result = new ArrayList<>();
     collectCourseCodes(root, year, result);
     return result;
   }
@@ -158,10 +160,10 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
               .build())
           .retrieve()
           .onStatus(HttpStatusCode::is4xxClientError, r ->
-              Mono.error(new CinecaClient.CinecaAuthException(
+              Mono.error(new CinecaAuthException(
                   "Unauthorized for course catalogue listing year=" + year)))
           .onStatus(HttpStatusCode::is5xxServerError, r ->
-              Mono.error(new CinecaClient.CinecaUnavailableException(
+              Mono.error(new CinecaUnavailableException(
                   "Cineca error on course catalogue listing")))
           .bodyToMono(String.class)
           .block();
@@ -255,6 +257,8 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
    * @param courseCode      Course Catalogue course code
    * @param cohortYear      cohort (immatricolazione) year
    * @return the activity detail, or {@code null} if not found
+   * @throws CinecaAuthException        if the request is unauthorized
+   * @throws CinecaUnavailableException if Cineca is unreachable or returns a server error
    */
   public CinecaInsegnamentoDetail getInsegnamentoDetail(
       String baseUrl, int annoOfferta, String insegnamentoCod, int ordinamentoAa,
@@ -279,10 +283,10 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
         .retrieve()
         .onStatus(status -> status.value() == 404, r -> Mono.empty())
         .onStatus(HttpStatusCode::is4xxClientError, r ->
-            Mono.error(new CinecaClient.CinecaAuthException(
+            Mono.error(new CinecaAuthException(
                 "Unauthorized for insegnamento detail cod=" + insegnamentoCod)))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on insegnamento detail")))
         .bodyToMono(String.class)
         .block();
@@ -326,6 +330,11 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
             .queryParam("sede", sedeId)
             .build())
         .retrieve()
+        .onStatus(HttpStatusCode::is4xxClientError, r ->
+            Mono.error(new CinecaAuthException(
+                "Unauthorized for lista-docenti aa=" + aa + " cdsCod=" + cdsCod)))
+        .onStatus(HttpStatusCode::is5xxServerError, r ->
+            Mono.error(new CinecaUnavailableException("Cineca error on lista-docenti")))
         .bodyToMono(String.class)
         .block();
 
@@ -334,15 +343,14 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
     }
 
     try {
-      ObjectMapper mapper = new ObjectMapper();
-      JsonNode root = mapper.readTree(raw);
+      JsonNode root = objectMapper.readTree(raw);
       JsonNode docenti = root.get("docenti");
       if (docenti == null) {
         return List.of();
       }
       List<CatalogueDocente> result = new java.util.ArrayList<>();
       for (JsonNode d : docenti) {
-        result.add(mapper.treeToValue(d, CatalogueDocente.class));
+        result.add(objectMapper.treeToValue(d, CatalogueDocente.class));
       }
       return result;
     } catch (Exception e) {
@@ -376,9 +384,9 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
         .onStatus(HttpStatusCode::is4xxClientError, r -> Mono.empty())
         .onStatus(HttpStatusCode::is5xxServerError, r ->
             Mono.error(
-                new CinecaClient.CinecaUnavailableException("Cineca error on docente detail")))
+                new CinecaUnavailableException("Cineca error on docente detail")))
         .bodyToMono(String.class)
-        .onErrorResume(e -> e instanceof CinecaClient.CinecaUnavailableException
+        .onErrorResume(e -> e instanceof CinecaUnavailableException
             ? Mono.error(e) : Mono.empty())
         .block();
 
@@ -387,8 +395,7 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
     }
 
     try {
-      ObjectMapper mapper = new ObjectMapper();
-      return mapper.readValue(raw, CatalogueDocenteDetail.class);
+      return objectMapper.readValue(raw, CatalogueDocenteDetail.class);
     } catch (Exception e) {
       log.error("CourseCatalogueClient: failed to parse docente detail id={}", docenteId, e);
       return null;
@@ -418,9 +425,9 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
         .retrieve()
         .onStatus(HttpStatusCode::is4xxClientError, r -> Mono.empty())
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException("Cineca error on corso base")))
+            Mono.error(new CinecaUnavailableException("Cineca error on corso base")))
         .bodyToMono(String.class)
-        .onErrorResume(e -> e instanceof CinecaClient.CinecaUnavailableException
+        .onErrorResume(e -> e instanceof CinecaUnavailableException
             ? Mono.error(e) : Mono.empty())
         .block();
 
@@ -429,13 +436,12 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
     }
 
     try {
-      ObjectMapper mapper = new ObjectMapper();
-      JsonNode root = mapper.readTree(raw);
+      JsonNode root = objectMapper.readTree(raw);
 
       if (!root.isArray() || root.isEmpty()) {
         return Optional.empty();
       }
-      return Optional.of(mapper.treeToValue(root.get(0), CinecaCorsoBase.class));
+      return Optional.of(objectMapper.treeToValue(root.get(0), CinecaCorsoBase.class));
     } catch (Exception e) {
       log.error("CourseCatalogueClient: failed to parse corso base cod={} year={}", cod, year, e);
       return Optional.empty();
@@ -475,9 +481,9 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
         .onStatus(HttpStatusCode::is4xxClientError, r -> Mono.empty())
         .onStatus(HttpStatusCode::is5xxServerError, r ->
             Mono.error(
-                new CinecaClient.CinecaUnavailableException("Cineca error on corso offerta")))
+                new CinecaUnavailableException("Cineca error on corso offerta")))
         .bodyToMono(String.class)
-        .onErrorResume(e -> e instanceof CinecaClient.CinecaUnavailableException
+        .onErrorResume(e -> e instanceof CinecaUnavailableException
             ? Mono.error(e) : Mono.empty())
         .block();
 
@@ -486,8 +492,7 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
     }
 
     try {
-      ObjectMapper mapper = new ObjectMapper();
-      JsonNode root = mapper.readTree(raw);
+      JsonNode root = objectMapper.readTree(raw);
 
       List<CorsoOffertaAttivita> result = new java.util.ArrayList<>();
       Iterator<String> years = root.fieldNames();
@@ -504,7 +509,7 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
             continue;
           }
           for (JsonNode a : attivitaNode) {
-            result.add(mapper.treeToValue(a, CorsoOffertaAttivita.class));
+            result.add(objectMapper.treeToValue(a, CorsoOffertaAttivita.class));
           }
         }
       }
@@ -517,6 +522,10 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
 
   // ============ DTOs ============
 
+  /**
+   * A single resolved course entry from the Course Catalogue listing: own course code, ESSE3 cdsCod
+   * and full multi-year plan.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaCourseCatalogueDetail {
 
@@ -581,6 +590,10 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A single curriculum track ("percorso") within a course, containing its per-year teaching
+   * offer.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaPercorso {
 
@@ -615,6 +628,9 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * The teaching offer for one academic year within a percorso.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaAnnoOfferta {
 
@@ -638,6 +654,9 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A named group of activities (e.g. "Attività caratterizzanti") within a year's offer.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaInsegnamentoGroup {
 
@@ -655,6 +674,9 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A single activity entry in the multi-year course plan.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaCoursePlanEntry {
 
@@ -728,6 +750,9 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * Per-module teaching period, used as a fallback source for the parent activity's period.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaModuloPeriodo {
 
@@ -739,6 +764,9 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * Detailed syllabus for a single teaching activity: modules, professors and program texts.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaInsegnamentoDetail {
 
@@ -768,6 +796,9 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A single module within an activity's detail, with its own credits and professors.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaModuloInfo {
 
@@ -807,6 +838,9 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A professor reference as returned inside a module's docenti array.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaDocenteInfo {
 
@@ -818,6 +852,9 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * Program text entry (prerequisites/contents), either module-level or course-level.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaTestiEntry {
 
@@ -862,6 +899,9 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A professor entry from the lista-docenti endpoint.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CatalogueDocente {
 
@@ -1206,6 +1246,9 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * Base data for a single course: internal codes required to query the teaching offer.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaCorsoBase {
 
@@ -1229,6 +1272,9 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A single teaching activity within a course's full offer, with its assigned professors.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CorsoOffertaAttivita {
 
@@ -1252,6 +1298,9 @@ public class CourseCatalogueClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A professor assigned to a specific activity, as returned by corso-offerta.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CorsoOffertaDocente {
 

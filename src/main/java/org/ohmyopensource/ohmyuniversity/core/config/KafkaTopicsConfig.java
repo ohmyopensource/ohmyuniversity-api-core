@@ -9,28 +9,27 @@ import org.springframework.kafka.config.TopicBuilder;
  * Kafka topic definitions for OhMyUniversity! core service.
  *
  * <p>All topics follow the naming convention: {@code {bounded-context}.{entity}.{fact-passato}}.
- * The verb {@code discovered} is used for all events originating from a Cineca sync,
- * meaning OhMyU discovered a fact by comparing Cineca data against its local state —
- * not because a user performed an action inside OhMyU.
+ * The verb {@code discovered} is used for all events originating from a Cineca sync, meaning OhMyU
+ * discovered a fact by comparing Cineca data against its local state — not because a user performed
+ * an action inside OhMyU.
  *
  * <p>Topic configuration:
- * - 3 partitions: allows up to 3 parallel consumers per group, sufficient for current load
- * - replication factor 1: suitable for local development and single-broker setups;
- *   increase to 3 in production with a multi-broker cluster
+ * - 3 partitions: allows up to 3 parallel consumers per group, sufficient for current load -
+ * replication factor 1: suitable for local development and single-broker setups; increase to 3 in
+ * production with a multi-broker cluster
  */
 @Configuration
 public class KafkaTopicsConfig {
 
   /**
-   * Topic published when a Cineca sync reveals a course edition
-   * that has no chat channel yet.
+   * Topic published when a Cineca sync reveals a course edition that has no chat channel yet.
    *
    * <p>Consumer: {@code ohmyuniversity-chat} — creates the channel via
    * {@code ChatChannelService.createIfAbsent()}.
    *
    * <p>Must be consumed before {@code enrollment.discovered} and
-   * {@code teaching-assignment.discovered} for the same {@code externalChannelId},
-   * otherwise those events are silently dropped by the chat consumer.
+   * {@code teaching-assignment.discovered} for the same {@code externalChannelId}, otherwise those
+   * events are silently dropped by the chat consumer.
    */
   @Bean
   public NewTopic courseEditionDiscoveredTopic() {
@@ -41,8 +40,7 @@ public class KafkaTopicsConfig {
   }
 
   /**
-   * Topic published when a Cineca sync reveals that a student
-   * is enrolled in a course edition.
+   * Topic published when a Cineca sync reveals that a student is enrolled in a course edition.
    *
    * <p>Consumer: {@code ohmyuniversity-chat} — adds the student as {@code STUDENT}
    * member to the corresponding chat channel.
@@ -59,8 +57,8 @@ public class KafkaTopicsConfig {
   }
 
   /**
-   * Topic published when a Cineca sync reveals that a professor
-   * is the titular holder ({@code titolareFlg}) of a course edition.
+   * Topic published when a Cineca sync reveals that a professor is the titular holder
+   * ({@code titolareFlg}) of a course edition.
    *
    * <p>Consumer: {@code ohmyuniversity-chat} — adds the professor as {@code TEACHER_ADMIN}
    * member to the corresponding chat channel.
@@ -77,8 +75,7 @@ public class KafkaTopicsConfig {
   }
 
   /**
-   * Topic published when a Cineca sync reveals that a student
-   * is associated with a campus.
+   * Topic published when a Cineca sync reveals that a student is associated with a campus.
    *
    * <p>Consumer: {@code ohmyuniversity-canteen} — upserts the student-campus association
    * so the canteen service can target the correct campus menu for that student.
@@ -89,6 +86,22 @@ public class KafkaTopicsConfig {
   @Bean
   public NewTopic campusAssignmentDiscoveredTopic() {
     return TopicBuilder.name("campus-assignment.discovered")
+        .partitions(3)
+        .replicas(1)
+        .build();
+  }
+
+  /**
+   * Topic published by the auth service when a user successfully logs in.
+   *
+   * <p>Consumer: {@code ohmyuniversity-core} — upserts the local user shadow record,
+   * refreshes the cached career profile, and triggers the Cineca transcript sync. Named
+   * {@code user.authenticated} to match this file's {entity}.{fact-passato} convention, same as the
+   * other topics here.
+   */
+  @Bean
+  public NewTopic userAuthenticatedTopic() {
+    return TopicBuilder.name("user.authenticated")
         .partitions(3)
         .replicas(1)
         .build();

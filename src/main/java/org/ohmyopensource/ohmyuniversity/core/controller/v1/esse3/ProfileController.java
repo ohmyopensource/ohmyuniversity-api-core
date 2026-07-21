@@ -1,11 +1,11 @@
 package org.ohmyopensource.ohmyuniversity.core.controller.v1.esse3;
 
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaAuthException;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaUnavailableException;
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.BadgeResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.CareerInfoResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.PersonaResponse;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaAuthException;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaUnavailableException;
 import org.ohmyopensource.ohmyuniversity.core.service.esse3.ProfileService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,8 +57,8 @@ public class ProfileController extends AbstractEsse3Controller {
    * <p>Falls back to JWT/Redis claims if persId is not cached in session.
    *
    * @param principal authenticated OhMyU principal
-   * @return {@code 200 OK} with personal data, {@code 401} if session expired,
-   *         {@code 503} if Cineca is unavailable
+   * @return {@code 200 OK} with personal data, {@code 401} if session expired, {@code 503} if
+   * Cineca is unavailable
    */
   @GetMapping("/persona")
   public ResponseEntity<PersonaResponse> getPersona(
@@ -70,8 +70,8 @@ public class ProfileController extends AbstractEsse3Controller {
    * Returns career metadata (degree type, course name, faculty, enrollment year, etc.).
    *
    * @param principal authenticated OhMyU principal
-   * @return {@code 200 OK} with career info, {@code 401} if session expired,
-   *         {@code 503} if Cineca is unavailable
+   * @return {@code 200 OK} with career info, {@code 401} if session expired, {@code 503} if Cineca
+   * is unavailable
    */
   @GetMapping("/info")
   public ResponseEntity<CareerInfoResponse> getInfo(
@@ -86,15 +86,17 @@ public class ProfileController extends AbstractEsse3Controller {
    * requires a custom content type and null-check on the response body.
    *
    * @param principal authenticated OhMyU principal
-   * @return {@code 200 OK} with JPEG bytes, {@code 404} if no avatar exists,
-   *         {@code 401} if session expired, {@code 503} if Cineca is unavailable
+   * @return {@code 200 OK} with JPEG bytes, {@code 404} if no avatar exists, {@code 401} if session
+   * expired, {@code 503} if Cineca is unavailable
    */
   @GetMapping(value = "/avatar", produces = MediaType.IMAGE_JPEG_VALUE)
   public ResponseEntity<byte[]> getAvatar(
       @AuthenticationPrincipal OmuPrincipal principal) {
     try {
       byte[] avatar = profileService.getAvatar(principal);
-      if (avatar == null) return ResponseEntity.notFound().build();
+      if (avatar == null) {
+        return ResponseEntity.notFound().build();
+      }
       return ResponseEntity.ok()
           .contentType(MediaType.IMAGE_JPEG)
           .body(avatar);
@@ -111,15 +113,17 @@ public class ProfileController extends AbstractEsse3Controller {
    * Returns the university badge for the authenticated student.
    *
    * @param principal authenticated OhMyU principal
-   * @return {@code 200 OK} with badge data, {@code 404} if no badge exists,
-   *         {@code 401} if session expired, {@code 503} if Cineca is unavailable
+   * @return {@code 200 OK} with badge data, {@code 404} if no badge exists, {@code 401} if session
+   * expired, {@code 503} if Cineca is unavailable
    */
   @GetMapping("/badge")
   public ResponseEntity<BadgeResponse> getBadge(
       @AuthenticationPrincipal OmuPrincipal principal) {
     try {
       BadgeResponse badge = profileService.getBadge(principal);
-      if (badge == null) return ResponseEntity.notFound().build();
+      if (badge == null) {
+        return ResponseEntity.notFound().build();
+      }
       return ResponseEntity.ok(badge);
     } catch (CinecaAuthException e) {
       log.warn("ProfileController: Cineca session expired for user={}", principal.omuUserId());

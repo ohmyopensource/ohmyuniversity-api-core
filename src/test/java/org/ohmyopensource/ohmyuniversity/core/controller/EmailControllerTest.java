@@ -73,7 +73,9 @@ class EmailControllerTest {
         "UNIMOL",
         89486L,
         106279L,
-        "178026", true);
+        "178026",
+        true,
+        "test-session-id");
   }
 
   /**

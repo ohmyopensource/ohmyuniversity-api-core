@@ -74,7 +74,8 @@ class AgendaControllerTest {
         89486L,
         106279L,
         "178026",
-        true);
+        true,
+        "test-session-id");
   }
 
   /**

@@ -15,19 +15,24 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Entity that links an OhMyUniversity user to a specific Cineca/ESSE3 account.
+ * Entity that links an OhMyUniversity user to a specific platform vendor account (Cineca/ESSE3,
+ * GOMP, Multiversity, ...).
  *
  * <p>A single user can have multiple university connections, each representing:
- * - a different university tenant
- * - or multiple Cineca accounts within the same university context
+ * - a different university tenant - or multiple accounts within the same university context
  *
  * <p>This entity does NOT store any authentication/session credentials.
- * Cineca tokens (JWT, authToken) are stored in Redis with TTL and never persisted.
+ * Vendor tokens (JWT, authToken) are stored in Redis with TTL and never persisted here — the auth
+ * service's AuthSessionStore owns that data.
+ *
+ * <p>This is a local shadow copy: the auth service is the source of truth for
+ * this data, writing to its own database. The core service maintains this mirror only to satisfy
+ * its own foreign key constraints (e.g. on cached_profilo_carriera), kept in sync via the
+ * user.authenticated Kafka event consumed by {@code UserAuthenticatedEventListener}.
  *
  * <p>Responsibilities:
- * - Map internal user identity to external Cineca account
- * - Store university metadata (id, name, base URL)
- * - Track connection lifecycle (creation, last usage)
+ * - Map internal user identity to an external vendor account - Store university metadata (id, name,
+ * base URL) - Track connection lifecycle (creation, last usage)
  */
 @Entity
 @Table(name = "university_connection")
@@ -49,9 +54,7 @@ public class UniversityConnection {
   private OmuUser user;
 
   /**
-   * University tenant identifier used in Cineca context.
-   *
-   * <p>Example: UNIMOL, POLIMI, UNIROMA1
+   * University tenant identifier (e.g. UNIMOL, POLIMI, UNIROMA1).
    */
   @NotBlank
   @Column(name = "university_id", nullable = false, length = 20)
@@ -65,18 +68,19 @@ public class UniversityConnection {
   private String universityName;
 
   /**
-   * Base URL of the Cineca ESSE3 API for this university instance.
+   * Base URL of the platform vendor's API for this university instance (e.g. Cineca ESSE3 REST API
+   * base URL).
    */
   @NotBlank
-  @Column(name = "cineca_base_url", nullable = false, length = 500)
-  private String cinecaBaseUrl;
+  @Column(name = "vendor_base_url", nullable = false, length = 500)
+  private String vendorBaseUrl;
 
   /**
-   * Cineca username used to authenticate against the ESSE3 system.
+   * Username used to authenticate against the vendor system.
    */
   @NotBlank
-  @Column(name = "username_cineca", nullable = false)
-  private String usernameCineca;
+  @Column(name = "username_vendor", nullable = false)
+  private String usernameVendor;
 
   /**
    * Timestamp when the connection was first created.
@@ -130,20 +134,20 @@ public class UniversityConnection {
     this.universityName = universityName;
   }
 
-  public String getCinecaBaseUrl() {
-    return cinecaBaseUrl;
+  public String getVendorBaseUrl() {
+    return vendorBaseUrl;
   }
 
-  public void setCinecaBaseUrl(String cinecaBaseUrl) {
-    this.cinecaBaseUrl = cinecaBaseUrl;
+  public void setVendorBaseUrl(String vendorBaseUrl) {
+    this.vendorBaseUrl = vendorBaseUrl;
   }
 
-  public String getUsernameCineca() {
-    return usernameCineca;
+  public String getUsernameVendor() {
+    return usernameVendor;
   }
 
-  public void setUsernameCineca(String usernameCineca) {
-    this.usernameCineca = usernameCineca;
+  public void setUsernameVendor(String usernameVendor) {
+    this.usernameVendor = usernameVendor;
   }
 
   public Instant getConnectedAt() {

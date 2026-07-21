@@ -13,14 +13,19 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * Spring Security configuration for the core microservice.
  *
  * <p>This configuration defines a stateless JWT-based security model where:
- * - Authentication is handled via OhMyUniversity JWT tokens
- * - No server-side session is maintained
- * - Requests are authorized based on JWT claims validated by {@link JwtAuthenticationFilter}
+ * <ul>
+ *   <li>Authentication is handled via OhMyUniversity JWT tokens</li>
+ *   <li>No server-side session is maintained</li>
+ *   <li>Requests are authorized based on JWT claims validated by {@link JwtAuthenticationFilter}
+ *   </li>
+ * </ul>
  *
  * <p>Public endpoints:
- * - /api/auth/** (authentication flow)
- * - /actuator/health (health checks)
- * - /swagger-ui/** and /v3/api-docs/** (API documentation)
+ * <ul>
+ *   <li>/api/auth/** (authentication flow)</li>
+ *   <li>/actuator/health (health checks)</li>
+ *   <li>/swagger-ui/** and /v3/api-docs/** (API documentation)</li>
+ * </ul>
  *
  * <p>All remaining endpoints require a valid authenticated principal.
  */
@@ -46,11 +51,13 @@ public class SecurityConfig {
    * Configures the Spring Security filter chain.
    *
    * <p>Security rules:
-   * - CSRF disabled (stateless REST API)
-   * - Stateless session management
-   * - Public access to authentication and documentation endpoints
-   * - All other endpoints require authentication
-   * - JWT filter applied before UsernamePasswordAuthenticationFilter
+   * <ul>
+   *   <li>CSRF disabled (stateless REST API)</li>
+   *   <li>Stateless session management</li>
+   *   <li>Public access to authentication and documentation endpoints</li>
+   *   <li>All other endpoints require authentication</li>
+   *   <li>JWT filter applied before UsernamePasswordAuthenticationFilter</li>
+   * </ul>
    *
    * @param http Spring Security HTTP configuration
    * @return configured SecurityFilterChain
@@ -62,9 +69,6 @@ public class SecurityConfig {
         .csrf(AbstractHttpConfigurer::disable)
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/api/v1/auth/login").permitAll()
-            .requestMatchers("/api/v1/auth/refresh").permitAll()
-            .requestMatchers("/api/v1/auth/logout").permitAll()
             .requestMatchers("/api/v1/email/auth/callback").permitAll()
             .requestMatchers("/actuator/health").permitAll()
             .requestMatchers("/error").permitAll()

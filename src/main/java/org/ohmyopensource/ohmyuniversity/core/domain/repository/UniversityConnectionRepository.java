@@ -11,12 +11,12 @@ import org.springframework.stereotype.Repository;
  * Repository responsible for managing {@link UniversityConnection} entities.
  *
  * <p>This repository handles persistence of the relationship between an OhMyUniversity user and
- * their associated university/Cineca account.
+ * their associated platform vendor account.
  *
- * <p>It is used to:
- * - Store and retrieve university-specific user credentials
- * - Resolve Cineca usernames per university context
- * - Maintain mappings between internal users and external ESSE3 accounts
+ * <p>This table is a local shadow of data owned by the auth service — see
+ * {@link UniversityConnection} for details. It is used here to: - Store and retrieve
+ * university-specific user connections - Resolve vendor usernames per university context - Maintain
+ * mappings between internal users and external vendor accounts
  *
  * <p>This layer is part of the authentication and identity linkage subsystem.
  */
@@ -33,18 +33,18 @@ public interface UniversityConnectionRepository
   List<UniversityConnection> findByUserId(UUID userId);
 
   /**
-   * Finds a specific university connection for a user and Cineca username.
+   * Finds a specific university connection for a user and vendor username.
    *
-   * <p>This method is used to ensure uniqueness of the Cineca account mapping within a specific
+   * <p>This method is used to ensure uniqueness of the vendor account mapping within a specific
    * university context.
    *
    * @param userId         internal user identifier
    * @param universityId   university identifier
-   * @param usernameCineca Cineca username
+   * @param usernameVendor vendor username
    * @return matching university connection if present
    */
-  Optional<UniversityConnection> findByUserIdAndUniversityIdAndUsernameCineca(
+  Optional<UniversityConnection> findByUserIdAndUniversityIdAndUsernameVendor(
       UUID userId,
       String universityId,
-      String usernameCineca);
+      String usernameVendor);
 }

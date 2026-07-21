@@ -12,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaSessionStore;
+import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaCourseCatalogClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaLegacyBooking;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.CinecaLegacyBookingResult;
@@ -27,6 +28,7 @@ import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityConnec
 class ExamsServiceExtraTest {
 
   private CinecaExamsClient examsClient;
+  private CinecaCourseCatalogClient courseCatalogClient;
   private CinecaSessionStore sessionStore;
   private UniversityRegistry universityRegistry;
   private UniversityConnectionRepository connectionRepository;
@@ -47,15 +49,23 @@ class ExamsServiceExtraTest {
   @BeforeEach
   void setUp() {
     examsClient = mock(CinecaExamsClient.class);
+    courseCatalogClient = mock(CinecaCourseCatalogClient.class);
     sessionStore = mock(CinecaSessionStore.class);
     universityRegistry = mock(UniversityRegistry.class);
     connectionRepository = mock(UniversityConnectionRepository.class);
 
     service = new ExamsService(
-        examsClient, sessionStore, universityRegistry, connectionRepository);
+        examsClient, courseCatalogClient, sessionStore, universityRegistry, connectionRepository);
 
     principal = new OmuPrincipal(
-        OMU_USER_ID, "DLMLSS04E14L113Q", UNIVERSITY_ID, STU_ID, MAT_ID, "178026", true);
+        OMU_USER_ID,
+        "DLMLSS04E14L113Q",
+        UNIVERSITY_ID,
+        STU_ID,
+        MAT_ID,
+        "178026",
+        true,
+        "test-session-id");
 
     when(sessionStore.getCinecaJwt(OMU_USER_ID, UNIVERSITY_ID))
         .thenReturn(Optional.of(CINECA_JWT));
@@ -68,7 +78,7 @@ class ExamsServiceExtraTest {
 
     UniversityConnection conn = mock(UniversityConnection.class);
     when(conn.getUniversityId()).thenReturn(UNIVERSITY_ID);
-    when(conn.getUsernameCineca()).thenReturn(USERNAME);
+    when(conn.getUsernameVendor()).thenReturn(USERNAME);
     when(connectionRepository.findByUserId(UUID.fromString(OMU_USER_ID)))
         .thenReturn(List.of(conn));
   }

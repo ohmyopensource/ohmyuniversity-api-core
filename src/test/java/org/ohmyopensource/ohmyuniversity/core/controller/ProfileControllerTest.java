@@ -13,8 +13,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaAuthException;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaUnavailableException;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaAuthException;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaUnavailableException;
 import org.ohmyopensource.ohmyuniversity.core.config.JwtAuthenticationFilter;
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.controller.v1.esse3.ProfileController;
@@ -63,7 +63,8 @@ class ProfileControllerTest {
         89486L,
         106279L,
         "178026",
-        true);
+        true,
+        "test-session-id");
   }
 
   private RequestPostProcessor auth() {

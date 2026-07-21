@@ -1,10 +1,10 @@
 package org.ohmyopensource.ohmyuniversity.core.controller.v1.esse3;
 
 import java.util.function.Supplier;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaAuthException;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaBookingException;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaUnavailableException;
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaAuthException;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaBookingException;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaUnavailableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;

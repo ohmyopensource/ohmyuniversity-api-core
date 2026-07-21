@@ -13,7 +13,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaAuthException;
+import org.ohmyopensource.ohmyuniversity.core.domain.repository.CachedProfiloCarrieraRepository;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaAuthException;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaSessionStore;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaCareerClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaCareerClient.CinecaExamResult;
@@ -27,25 +28,17 @@ import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry.UniversityConfig;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityConnectionRepository;
-import org.ohmyopensource.ohmyuniversity.core.dto.esse3.TranscriptResponse;
 import org.ohmyopensource.ohmyuniversity.core.dto.esse3.GradesResponse;
+import org.ohmyopensource.ohmyuniversity.core.dto.esse3.TranscriptResponse;
 
 /**
  * Unit tests for {@link CareerService}.
  *
  * <p>All dependencies are replaced by Mockito mocks. Tests verify the mapping logic
- * that converts Cineca raw types into OhMyU DTOs and the aggregation calculations
- * performed by the service (averages, CFU counts, percentages).
+ * that converts Cineca raw types into OhMyU DTOs and the aggregation calculations performed by the
+ * service (averages, CFU counts, percentages).
  */
 class CareerServiceTest {
-
-  private CinecaCareerClient careerClient;
-  private CinecaExamsClient examsClient;
-  private CinecaSessionStore sessionStore;
-  private UniversityRegistry universityRegistry;
-  private UniversityConnectionRepository connectionRepository;
-
-  private CareerService service;
 
   private static final String OMU_USER_ID = UUID.randomUUID().toString();
   private static final String UNIVERSITY_ID = "UNIMOL";
@@ -53,7 +46,13 @@ class CareerServiceTest {
   private static final String CINECA_JWT = "fake.cineca.jwt";
   private static final Long STU_ID = 89486L;
   private static final Long MAT_ID = 106279L;
-
+  private CinecaCareerClient careerClient;
+  private CinecaExamsClient examsClient;
+  private CinecaSessionStore sessionStore;
+  private UniversityRegistry universityRegistry;
+  private UniversityConnectionRepository connectionRepository;
+  private CachedProfiloCarrieraRepository cachedProfiloRepository;
+  private CareerService service;
   private OmuPrincipal principal;
 
   /**
@@ -66,12 +65,21 @@ class CareerServiceTest {
     sessionStore = mock(CinecaSessionStore.class);
     universityRegistry = mock(UniversityRegistry.class);
     connectionRepository = mock(UniversityConnectionRepository.class);
+    cachedProfiloRepository = mock(CachedProfiloCarrieraRepository.class);
 
     service = new CareerService(
-        careerClient, examsClient, sessionStore, universityRegistry, connectionRepository);
+        careerClient, examsClient, sessionStore, universityRegistry, connectionRepository,
+        cachedProfiloRepository);
 
     principal = new OmuPrincipal(
-        OMU_USER_ID, "TSTXXX00A00X000X", UNIVERSITY_ID, STU_ID, MAT_ID, "178026", true);
+        OMU_USER_ID,
+        "TSTXXX00A00X000X",
+        UNIVERSITY_ID,
+        STU_ID,
+        MAT_ID,
+        "178026",
+        true,
+        "test-session-id");
 
     when(sessionStore.getCinecaJwt(OMU_USER_ID, UNIVERSITY_ID))
         .thenReturn(Optional.of(CINECA_JWT));
@@ -79,6 +87,40 @@ class CareerServiceTest {
     UniversityConfig config = mock(UniversityConfig.class);
     when(config.baseUrl()).thenReturn(BASE_URL);
     when(universityRegistry.resolve(UNIVERSITY_ID)).thenReturn(Optional.of(config));
+  }
+
+  private CinecaTranscriptRow rowWith(String stato, Double voto, int lode, String dataEsa) {
+    CinecaTranscriptRow row = mock(CinecaTranscriptRow.class);
+    when(row.getStato()).thenReturn(stato);
+    when(row.getPeso()).thenReturn(6.0);
+    when(row.getAdsceId()).thenReturn(1L);
+    when(row.getAdCod()).thenReturn("411000");
+    when(row.getAdDes()).thenReturn("Test Exam");
+    when(row.getAnnoCorso()).thenReturn(1);
+
+    CinecaExamResult result = mock(CinecaExamResult.class);
+    when(result.getVoto()).thenReturn(voto);
+    when(result.getLodeFlg()).thenReturn(lode);
+    when(result.getDataEsa()).thenReturn(dataEsa);
+    when(row.getEsito()).thenReturn(result);
+
+    return row;
+  }
+
+  private CinecaTranscriptRow rowWithPeso(String stato, double peso) {
+    CinecaTranscriptRow row = mock(CinecaTranscriptRow.class);
+    when(row.getStato()).thenReturn(stato);
+    when(row.getPeso()).thenReturn(peso);
+    when(row.getEsito()).thenReturn(null);
+    return row;
+  }
+
+  private CinecaGrade cinecaGrade(String tipo, int base, double value) {
+    CinecaGrade grade = mock(CinecaGrade.class);
+    when(grade.getTipoMediaCod()).thenReturn(tipo);
+    when(grade.getBase()).thenReturn(base);
+    when(grade.getMedia()).thenReturn(value);
+    return grade;
   }
 
   /**
@@ -110,6 +152,8 @@ class CareerServiceTest {
           .isInstanceOf(CinecaAuthException.class);
     }
   }
+
+  // ============ Helpers ============
 
   /**
    * Verifies {@link CareerService#getTranscript} field mapping.
@@ -389,41 +433,5 @@ class CareerServiceTest {
       assertThat(response.getRighe().get(0).getCfu()).isEqualTo(6.0);
       assertThat(response.getRighe().get(0).getObbligatorio()).isTrue();
     }
-  }
-
-  // ============ Helpers ============
-
-  private CinecaTranscriptRow rowWith(String stato, Double voto, int lode, String dataEsa) {
-    CinecaTranscriptRow row = mock(CinecaTranscriptRow.class);
-    when(row.getStato()).thenReturn(stato);
-    when(row.getPeso()).thenReturn(6.0);
-    when(row.getAdsceId()).thenReturn(1L);
-    when(row.getAdCod()).thenReturn("411000");
-    when(row.getAdDes()).thenReturn("Test Exam");
-    when(row.getAnnoCorso()).thenReturn(1);
-
-    CinecaExamResult result = mock(CinecaExamResult.class);
-    when(result.getVoto()).thenReturn(voto);
-    when(result.getLodeFlg()).thenReturn(lode);
-    when(result.getDataEsa()).thenReturn(dataEsa);
-    when(row.getEsito()).thenReturn(result);
-
-    return row;
-  }
-
-  private CinecaTranscriptRow rowWithPeso(String stato, double peso) {
-    CinecaTranscriptRow row = mock(CinecaTranscriptRow.class);
-    when(row.getStato()).thenReturn(stato);
-    when(row.getPeso()).thenReturn(peso);
-    when(row.getEsito()).thenReturn(null);
-    return row;
-  }
-
-  private CinecaGrade cinecaGrade(String tipo, int base, double value) {
-    CinecaGrade grade = mock(CinecaGrade.class);
-    when(grade.getTipoMediaCod()).thenReturn(tipo);
-    when(grade.getBase()).thenReturn(base);
-    when(grade.getMedia()).thenReturn(value);
-    return grade;
   }
 }

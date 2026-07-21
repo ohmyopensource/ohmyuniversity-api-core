@@ -2,19 +2,19 @@ package org.ohmyopensource.ohmyuniversity.core.service.esse3;
 
 import java.util.Optional;
 import java.util.UUID;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaSessionStore;
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry;
 import org.ohmyopensource.ohmyuniversity.core.domain.entity.UniversityConnection;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityConnectionRepository;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaAuthException;
 
 /**
  * Abstract base class for all ESSE3-backed services.
  *
  * <p>Centralises session resolution logic shared across all Cineca service
- * implementations, eliminating duplication and enforcing a consistent
- * authentication model throughout the ESSE3 integration layer.
+ * implementations, eliminating duplication and enforcing a consistent authentication model
+ * throughout the ESSE3 integration layer.
  *
  * <p>Subclasses obtain credentials exclusively through the protected helpers
  * defined here — never by accessing the session store or registry directly.
@@ -36,19 +36,19 @@ public abstract class AbstractEsse3Service {
     this.connectionRepository = connectionRepository;
   }
 
-  // ============ Protected Helpers ============
+  // ============ Class Methods ============
 
   /**
    * Resolves the Cineca JWT for the authenticated user.
    *
    * @param principal authenticated OhMyU principal
    * @return Cineca JWT token
-   * @throws CinecaClient.CinecaAuthException if no valid session exists in Redis
+   * @throws CinecaAuthException if no valid session exists in Redis
    */
   protected String resolveCinecaJwt(OmuPrincipal principal) {
     return sessionStore
         .getCinecaJwt(principal.omuUserId(), principal.universityId())
-        .orElseThrow(() -> new CinecaClient.CinecaAuthException(
+        .orElseThrow(() -> new CinecaAuthException(
             "Cineca session expired — please log in again"));
   }
 
@@ -60,12 +60,12 @@ public abstract class AbstractEsse3Service {
    *
    * @param principal authenticated OhMyU principal
    * @return Cineca auth token
-   * @throws CinecaClient.CinecaAuthException if no valid token exists in Redis
+   * @throws CinecaAuthException if no valid token exists in Redis
    */
   protected String resolveCinecaAuthToken(OmuPrincipal principal) {
     return sessionStore
         .getCinecaAuthToken(principal.omuUserId(), principal.universityId())
-        .orElseThrow(() -> new CinecaClient.CinecaAuthException(
+        .orElseThrow(() -> new CinecaAuthException(
             "Cineca auth token expired — please log in again"));
   }
 
@@ -91,16 +91,16 @@ public abstract class AbstractEsse3Service {
    *
    * @param principal authenticated OhMyU principal
    * @return Cineca username associated with the active university connection
-   * @throws CinecaClient.CinecaAuthException if no matching connection is found
+   * @throws CinecaAuthException if no matching connection is found
    */
   protected String resolveUsername(OmuPrincipal principal) {
     return connectionRepository
         .findByUserId(UUID.fromString(principal.omuUserId()))
         .stream()
         .filter(c -> c.getUniversityId().equals(principal.universityId()))
-        .map(UniversityConnection::getUsernameCineca)
+        .map(UniversityConnection::getUsernameVendor)
         .findFirst()
-        .orElseThrow(() -> new CinecaClient.CinecaAuthException(
+        .orElseThrow(() -> new CinecaAuthException(
             "No Cineca connection found for university: " + principal.universityId()));
   }
 
@@ -111,12 +111,12 @@ public abstract class AbstractEsse3Service {
    *
    * @param principal authenticated OhMyU principal
    * @return Cineca person identifier
-   * @throws CinecaClient.CinecaAuthException if persId is not cached in Redis
+   * @throws CinecaAuthException if persId is not cached in Redis
    */
   protected Long resolvePersId(OmuPrincipal principal) {
     return sessionStore
         .getCinecaPersId(principal.omuUserId(), principal.universityId())
-        .orElseThrow(() -> new CinecaClient.CinecaAuthException(
+        .orElseThrow(() -> new CinecaAuthException(
             "PersId not found in session — please log in again"));
   }
 

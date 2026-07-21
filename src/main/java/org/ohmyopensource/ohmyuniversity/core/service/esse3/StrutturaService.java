@@ -27,6 +27,17 @@ public class StrutturaService extends AbstractEsse3Service {
 
   private final CinecaStrutturaClient strutturaClient;
 
+  // ============ Constructor ============
+
+  /**
+   * Constructs the service with the required Cineca client and shared ESSE3 session/registry
+   * dependencies.
+   *
+   * @param strutturaClient      ESSE3 struttura client (faculties/departments, locations)
+   * @param sessionStore         shared Cineca session store (see AbstractEsse3Service)
+   * @param universityRegistry   shared university configuration registry
+   * @param connectionRepository shared university connection repository
+   */
   public StrutturaService(
       CinecaStrutturaClient strutturaClient,
       CinecaSessionStore sessionStore,
@@ -35,6 +46,8 @@ public class StrutturaService extends AbstractEsse3Service {
     super(sessionStore, universityRegistry, connectionRepository);
     this.strutturaClient = strutturaClient;
   }
+
+  // ============ Class Methods ============
 
   /**
    * Retrieves all faculties/departments for the student's university.
@@ -67,8 +80,10 @@ public class StrutturaService extends AbstractEsse3Service {
     return sede != null ? toSedeResponse(sede) : null;
   }
 
-  // ============ Mappers ============
-
+  /**
+   * Maps a raw faculty/department to its API response shape, including nested locations and degree
+   * types.
+   */
   private StrutturaResponse toStrutturaResponse(CinecaStruttura s) {
     StrutturaResponse r = new StrutturaResponse();
     r.setFacId(s.getFacId());
@@ -99,6 +114,9 @@ public class StrutturaService extends AbstractEsse3Service {
     return r;
   }
 
+  /**
+   * Maps a raw degree program type to its API response shape.
+   */
   private TipoCorsoStrutturaResponse toTipoCorsoResponse(
       CinecaStrutturaClient.CinecaTipoCorsoStruttura t) {
     TipoCorsoStrutturaResponse r = new TipoCorsoStrutturaResponse();
@@ -109,6 +127,9 @@ public class StrutturaService extends AbstractEsse3Service {
     return r;
   }
 
+  /**
+   * Maps a raw location to its API response shape.
+   */
   private SedeResponse toSedeResponse(CinecaSede s) {
     SedeResponse r = new SedeResponse();
     r.setSedeId(s.getSedeId());

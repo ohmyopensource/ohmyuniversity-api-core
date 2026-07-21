@@ -32,6 +32,15 @@ public class InternshipsService extends AbstractEsse3Service {
 
   // ============ Constructor ============
 
+  /**
+   * Constructs the service with the required Cineca client and shared ESSE3 session/registry
+   * dependencies.
+   *
+   * @param internshipsClient    ESSE3 internships client
+   * @param sessionStore         shared Cineca session store (see AbstractEsse3Service)
+   * @param universityRegistry   shared university configuration registry
+   * @param connectionRepository shared university connection repository
+   */
   public InternshipsService(
       CinecaInternshipsClient internshipsClient,
       CinecaSessionStore sessionStore,
@@ -41,7 +50,7 @@ public class InternshipsService extends AbstractEsse3Service {
     this.internshipsClient = internshipsClient;
   }
 
-  // ============ Public Methods ============
+  // ============ Class Methods ============
 
   /**
    * Retrieves all internship applications for the authenticated student.
@@ -64,8 +73,9 @@ public class InternshipsService extends AbstractEsse3Service {
     return response;
   }
 
-  // ============ Mappers ============
-
+  /**
+   * Maps a raw internship application to its API response shape.
+   */
   private InternshipApplication toApplication(CinecaInternshipApplication a) {
     InternshipApplication app = new InternshipApplication();
     app.setDomTiroId(a.getDomTiroId());

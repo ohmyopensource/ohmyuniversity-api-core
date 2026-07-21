@@ -75,31 +75,6 @@ class SecurityConfigTest {
   static class StubController {
 
     /**
-     * Stub for {@code POST /api/v1/auth/login}.
-     */
-    @org.springframework.web.bind.annotation.PostMapping("/api/v1/auth/login")
-    ResponseEntity<Void> login(
-        @org.springframework.web.bind.annotation.RequestBody(required = false) Object b) {
-      return ResponseEntity.ok().build();
-    }
-
-    /**
-     * Stub for {@code POST /api/v1/auth/refresh}.
-     */
-    @org.springframework.web.bind.annotation.PostMapping("/api/v1/auth/refresh")
-    ResponseEntity<Void> refresh() {
-      return ResponseEntity.ok().build();
-    }
-
-    /**
-     * Stub for {@code POST /api/v1/auth/logout}.
-     */
-    @org.springframework.web.bind.annotation.PostMapping("/api/v1/auth/logout")
-    ResponseEntity<Void> logout() {
-      return ResponseEntity.ok().build();
-    }
-
-    /**
      * Stub for {@code GET /actuator/health}.
      */
     @org.springframework.web.bind.annotation.GetMapping("/actuator/health")
@@ -181,45 +156,6 @@ class SecurityConfigTest {
   @Nested
   @DisplayName("Public endpoints — must not return 401 or 403")
   class PublicEndpoints {
-
-    /**
-     * Verifies that {@code POST /api/v1/auth/login} is publicly accessible without an
-     * {@code Authorization} header.
-     */
-    @Test
-    @DisplayName("POST /api/v1/auth/login is publicly accessible")
-    void authLoginIsPublic() throws Exception {
-      mockMvc.perform(post("/api/v1/auth/login")
-              .contentType("application/json")
-              .content("{}"))
-          .andExpect(notBlocked());
-    }
-
-    /**
-     * Verifies that {@code POST /api/v1/auth/refresh} is publicly accessible without an
-     * {@code Authorization} header.
-     */
-    @Test
-    @DisplayName("POST /api/v1/auth/refresh is publicly accessible")
-    void authRefreshIsPublic() throws Exception {
-      mockMvc.perform(post("/api/v1/auth/refresh")
-              .param("refreshToken", "tok")
-              .param("universityId", "UNIMOL"))
-          .andExpect(notBlocked());
-    }
-
-    /**
-     * Verifies that {@code POST /api/v1/auth/logout} is publicly accessible without an
-     * {@code Authorization} header.
-     */
-    @Test
-    @DisplayName("POST /api/v1/auth/logout is publicly accessible")
-    void authLogoutIsPublic() throws Exception {
-      mockMvc.perform(post("/api/v1/auth/logout")
-              .param("refreshToken", "tok")
-              .param("universityId", "UNIMOL"))
-          .andExpect(notBlocked());
-    }
 
     /**
      * Verifies that {@code GET /actuator/health} is publicly accessible without an

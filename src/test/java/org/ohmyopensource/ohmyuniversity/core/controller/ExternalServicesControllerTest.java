@@ -66,7 +66,9 @@ class ExternalServicesControllerTest {
         "UNIMOL",
         89486L,
         106279L,
-        "178026", true);
+        "178026",
+        true,
+        "test-session-id");
   }
 
   /**
@@ -104,7 +106,9 @@ class ExternalServicesControllerTest {
           "Università degli Studi del Molise",
           "https://unimol.esse3.cineca.it/e3rest/api",
           "https://moodle.unimol.it",
-          "https://biblioteche.unimol.it");
+          "https://biblioteche.unimol.it",
+          null,
+          null);
 
       when(universityRegistry.resolve(any())).thenReturn(Optional.of(config));
 

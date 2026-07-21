@@ -22,7 +22,16 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Service responsible for fee-related operations against Cineca ESSE3 tasse-service-v1.
+ * Service responsible for fee-related operations against Cineca ESSE3.
+ *
+ * <p>Covers {@code tasse-service-v1}:
+ * <ul>
+ *   <li>payment status (semaforo) and detailed charges</li>
+ *   <li>issued invoices (fatture)</li>
+ *   <li>refunds (rimborsi)</li>
+ * </ul>
+ *
+ * <p>All data is fetched in real-time from Cineca; nothing is persisted locally.
  */
 @Service
 public class FeesService extends AbstractEsse3Service {
@@ -31,6 +40,17 @@ public class FeesService extends AbstractEsse3Service {
 
   private final CinecaFeesClient feesClient;
 
+  // ============ Constructor ============
+
+  /**
+   * Constructs the service with the required Cineca client and shared ESSE3 session/registry
+   * dependencies.
+   *
+   * @param feesClient           ESSE3 fees client (status, charges, invoices, refunds)
+   * @param sessionStore         shared Cineca session store (see AbstractEsse3Service)
+   * @param universityRegistry   shared university configuration registry
+   * @param connectionRepository shared university connection repository
+   */
   public FeesService(
       CinecaFeesClient feesClient,
       CinecaSessionStore sessionStore,
@@ -39,6 +59,8 @@ public class FeesService extends AbstractEsse3Service {
     super(sessionStore, universityRegistry, connectionRepository);
     this.feesClient = feesClient;
   }
+
+  // ============ Class Methods ============
 
   /**
    * Retrieves the aggregated fee status for the authenticated student.
@@ -107,8 +129,9 @@ public class FeesService extends AbstractEsse3Service {
     return response;
   }
 
-  // ============ Mappers ============
-
+  /**
+   * Maps a raw overdue/due fee item to its API response shape.
+   */
   private VoceTassa toVoceTassa(CinecaFeeItem item) {
     VoceTassa v = new VoceTassa();
     v.setFattId(item.getInvoiceId());
@@ -124,6 +147,9 @@ public class FeesService extends AbstractEsse3Service {
     return v;
   }
 
+  /**
+   * Maps a raw detailed charge to its API response shape.
+   */
   private Addebito toAddebito(CinecaCharge c) {
     Addebito a = new Addebito();
     a.setAaId(c.getAcademicYear());
@@ -149,6 +175,9 @@ public class FeesService extends AbstractEsse3Service {
     return a;
   }
 
+  /**
+   * Maps a raw invoice to its API response shape.
+   */
   private Invoice toInvoice(CinecaFeesClient.CinecaInvoice c) {
     Invoice i = new Invoice();
     i.setFattId(c.getFattId());
@@ -169,6 +198,9 @@ public class FeesService extends AbstractEsse3Service {
     return i;
   }
 
+  /**
+   * Maps a raw invoice to its API response shape.
+   */
   private Refund toRefund(CinecaRefund c) {
     Refund r = new Refund();
     r.setFattId(c.getInvoiceId());

@@ -23,6 +23,7 @@ import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaExamsClient.Cin
 import org.ohmyopensource.ohmyuniversity.core.config.OmuPrincipal;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry;
 import org.ohmyopensource.ohmyuniversity.core.config.UniversityRegistry.UniversityConfig;
+import org.ohmyopensource.ohmyuniversity.core.domain.repository.CachedProfiloCarrieraRepository;
 import org.ohmyopensource.ohmyuniversity.core.domain.repository.UniversityConnectionRepository;
 
 /**
@@ -36,6 +37,7 @@ class CareerServiceExtraTest {
   private CinecaSessionStore sessionStore;
   private UniversityRegistry universityRegistry;
   private UniversityConnectionRepository connectionRepository;
+  private CachedProfiloCarrieraRepository cachedProfiloRepository;
 
   private CareerService service;
 
@@ -55,12 +57,21 @@ class CareerServiceExtraTest {
     sessionStore = mock(CinecaSessionStore.class);
     universityRegistry = mock(UniversityRegistry.class);
     connectionRepository = mock(UniversityConnectionRepository.class);
+    cachedProfiloRepository = mock(CachedProfiloCarrieraRepository.class);
 
     service = new CareerService(
-        careerClient, examsClient, sessionStore, universityRegistry, connectionRepository);
+        careerClient, examsClient, sessionStore, universityRegistry, connectionRepository,
+        cachedProfiloRepository);
 
     principal = new OmuPrincipal(
-        OMU_USER_ID, "DLMLSS04E14L113Q", UNIVERSITY_ID, STU_ID, MAT_ID, "178026", true);
+        OMU_USER_ID,
+        "DLMLSS04E14L113Q",
+        UNIVERSITY_ID,
+        STU_ID,
+        MAT_ID,
+        "178026",
+        true,
+        "test-session-id");
 
     when(sessionStore.getCinecaJwt(OMU_USER_ID, UNIVERSITY_ID))
         .thenReturn(Optional.of(CINECA_JWT));

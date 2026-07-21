@@ -3,7 +3,8 @@ package org.ohmyopensource.ohmyuniversity.core.cineca.esse3;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaAuthException;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaUnavailableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
@@ -43,10 +44,10 @@ public class CinecaCareerClient extends AbstractCinecaClient {
         .header(authHeader(), bearer(jwt))
         .retrieve()
         .onStatus(HttpStatusCode::is4xxClientError, r ->
-            Mono.error(new CinecaClient.CinecaAuthException(
+            Mono.error(new CinecaAuthException(
                 "Unauthorized for transcript matId=" + matId)))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on transcript")))
         .bodyToFlux(CinecaTranscriptRow.class)
         .collectList()
@@ -69,10 +70,10 @@ public class CinecaCareerClient extends AbstractCinecaClient {
         .header(authHeader(), bearer(jwt))
         .retrieve()
         .onStatus(HttpStatusCode::is4xxClientError, r ->
-            Mono.error(new CinecaClient.CinecaAuthException(
+            Mono.error(new CinecaAuthException(
                 "Unauthorized for grades matId=" + matId)))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on grades")))
         .bodyToFlux(CinecaGrade.class)
         .collectList()
@@ -96,10 +97,10 @@ public class CinecaCareerClient extends AbstractCinecaClient {
         .header(authHeader(), bearer(jwt))
         .retrieve()
         .onStatus(HttpStatusCode::is4xxClientError, r ->
-            Mono.error(new CinecaClient.CinecaAuthException(
+            Mono.error(new CinecaAuthException(
                 "Unauthorized for study plan headers stuId=" + stuId)))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on study plan headers")))
         .bodyToFlux(CinecaStudyPlanHeader.class)
         .collectList()
@@ -124,10 +125,10 @@ public class CinecaCareerClient extends AbstractCinecaClient {
         .header(authHeader(), bearer(jwt))
         .retrieve()
         .onStatus(HttpStatusCode::is4xxClientError, r ->
-            Mono.error(new CinecaClient.CinecaAuthException(
+            Mono.error(new CinecaAuthException(
                 "Unauthorized for study plan detail stuId=" + stuId)))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on study plan detail")))
         .bodyToMono(CinecaStudyPlanDetail.class)
         .block();
@@ -149,6 +150,9 @@ public class CinecaCareerClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A single transcript row: exam attempt or planned activity, with its outcome if graded.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaTranscriptRow {
 
@@ -234,6 +238,9 @@ public class CinecaCareerClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * Grade/outcome detail for a graded transcript row.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaExamResult {
 
@@ -275,6 +282,9 @@ public class CinecaCareerClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * Composite key identifying an activity within a specific course and offering year.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaActivityKeyContext {
 
@@ -298,6 +308,9 @@ public class CinecaCareerClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A grade average entry (e.g. weighted, unweighted) for a career segment.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaGrade {
 
@@ -333,6 +346,9 @@ public class CinecaCareerClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * Header/summary of a student's study plan.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaStudyPlanHeader {
 
@@ -362,6 +378,9 @@ public class CinecaCareerClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * Full detail of a study plan, including all its planned activities.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaStudyPlanDetail {
 
@@ -385,6 +404,9 @@ public class CinecaCareerClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A single planned activity within a study plan, with its credits and required/elective status.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaStudyPlanActivity {
 
@@ -434,6 +456,9 @@ public class CinecaCareerClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * Activity code/description key, used as fallback when the study plan entry has no direct label.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaActivityKey {
 

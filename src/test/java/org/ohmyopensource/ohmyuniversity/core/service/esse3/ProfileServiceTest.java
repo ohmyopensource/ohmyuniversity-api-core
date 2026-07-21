@@ -11,8 +11,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaAuthException;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient.CinecaUnavailableException;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaAuthException;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaUnavailableException;
 import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaSessionStore;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaProfileClient;
 import org.ohmyopensource.ohmyuniversity.core.cineca.esse3.CinecaProfileClient.CinecaCarriera;
@@ -57,7 +57,14 @@ class ProfileServiceTest {
         profileClient, sessionStore, universityRegistry, connectionRepository);
 
     principal = new OmuPrincipal(
-        OMU_USER_ID, "DLMLSS04E14L113Q", UNIVERSITY_ID, STU_ID, MAT_ID, "178026", true);
+        OMU_USER_ID,
+        "DLMLSS04E14L113Q",
+        UNIVERSITY_ID,
+        STU_ID,
+        MAT_ID,
+        "178026",
+        true,
+        "test-session-id");
 
     when(sessionStore.getCinecaJwt(OMU_USER_ID, UNIVERSITY_ID))
         .thenReturn(Optional.of(CINECA_JWT));

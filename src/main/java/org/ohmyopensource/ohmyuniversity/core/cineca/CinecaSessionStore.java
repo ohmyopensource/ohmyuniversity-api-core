@@ -1,62 +1,42 @@
 package org.ohmyopensource.ohmyuniversity.core.cineca;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * Stores and manages Cineca and OhMyUniversity session tokens using Redis.
+ * Read-only access to vendor session data cached by the auth service.
  *
- * <p>This component acts as a transient session store:
- * - Cineca JWT and auth tokens are cached with a strict TTL - OhMyU refresh tokens are mapped to
- * internal user IDs
+ * <p>The auth service (ohmyuniversity-auth) owns all writes to this Redis keyspace —
+ * see its {@code AuthSessionStore} — issued at login and cleared at logout. This class only reads
+ * what auth has already written, using the exact same key format (including the {@code {omuUserId}}
+ * Redis Cluster hashtag) so that both services agree on where the data lives even if Redis is later
+ * sharded.
  *
- * <p>No session-related data is persisted to the database. All entries expire automatically based
- * on their TTL, ensuring alignment with Cineca session constraints and improving security.
- *
- * <p>This design enforces stateless authentication at the application level, while still
- * supporting short-lived external sessions.
+ * <p>All write/session-lifecycle methods (login, logout, refresh token management,
+ * tracked sessions) moved to the auth service entirely — this class has none of them.
  */
 @Component
 public class CinecaSessionStore {
 
-  private static final Logger log = LoggerFactory.getLogger(CinecaSessionStore.class);
-
-  private static final Duration CINECA_JWT_TTL = Duration.ofDays(30);
-  private static final Duration CINECA_AUTH_TTL = Duration.ofDays(30);
-  private static final Duration CINECA_PERS_TTL = Duration.ofDays(30);
-  private static final Duration CINECA_CAREER_TTL = Duration.ofDays(30);
-  private static final Duration OMU_REFRESH_TTL = Duration.ofDays(7);
-  private static final Duration USER_INFO_TTL = Duration.ofDays(7);
-  private static final Duration OMU_SESSION_TTL = Duration.ofDays(7);
-
-  private static final String KEY_SESSION = "omu:session:%s";
-  private static final String KEY_USER_SESSIONS = "omu:sessions:%s";
-  private static final String KEY_REFRESH_SESSION = "omu:refresh-session:%s";
-  private static final String KEY_CINECA_JWT = "cineca:jwt:%s:%s";
-  private static final String KEY_CINECA_AUTH = "cineca:auth:%s:%s";
-  private static final String KEY_CINECA_PERS = "cineca:pers:%s:%s";
-  private static final String KEY_CINECA_STU_ID = "cineca:stuid:%s:%s";
-  private static final String KEY_CINECA_MAT_ID = "cineca:matid:%s:%s";
-  private static final String KEY_CINECA_MATRICOLA = "cineca:matricola:%s:%s";
-  private static final String KEY_USER_ID = "omu:userid:%s";
-  private static final String KEY_USER_NOME = "omu:nome:%s";
-  private static final String KEY_USER_COGNOME = "omu:cognome:%s";
-  private static final String KEY_OMU_REFRESH = "omu:refresh:%s";
+  private static final String KEY_VENDOR_TOKEN = "auth:{%s}:vendor-token:%s";
+  private static final String KEY_VENDOR_AUTH = "auth:{%s}:vendor-auth:%s";
+  private static final String KEY_VENDOR_PERS_ID = "auth:{%s}:vendor-pers-id:%s";
+  private static final String KEY_STU_ID = "auth:{%s}:stu-id:%s";
+  private static final String KEY_MAT_ID = "auth:{%s}:mat-id:%s";
+  private static final String KEY_MATRICOLA = "auth:{%s}:matricola:%s";
+  private static final String KEY_USER_NOME = "auth:{%s}:nome";
+  private static final String KEY_USER_COGNOME = "auth:{%s}:cognome";
+  private static final String KEY_EXTERNAL_USER_ID = "auth:{%s}:external-user-id";
 
   private final StringRedisTemplate redis;
 
   // ============ Constructor ============
 
   /**
-   * Creates a new session store backed by Redis.
+   * Creates the store backed by the given Redis template.
    *
-   * @param redis Redis template used for all session operations
+   * @param redis Redis template used to read the vendor session keyspace
    */
   public CinecaSessionStore(StringRedisTemplate redis) {
     this.redis = redis;
@@ -65,381 +45,112 @@ public class CinecaSessionStore {
   // ============ Class Methods ============
 
   /**
-   * Stores a Cineca JWT for a specific user and university.
+   * Retrieves the cached vendor-issued JWT (e.g. Cineca JWT) for a user/university pair.
    *
-   * @param omuUserId    internal user ID
-   * @param universityId university identifier
-   * @param jwt          Cineca JWT token
-   */
-  public void storeCinecaJwt(String omuUserId, String universityId, String jwt) {
-    String key = String.format(KEY_CINECA_JWT, omuUserId, universityId);
-    redis.opsForValue().set(key, jwt, CINECA_JWT_TTL);
-    log.debug("CinecaSessionStore: stored Cineca JWT for user={} uni={}", omuUserId, universityId);
-  }
-
-  /**
-   * Retrieves the Cineca JWT for a user and university.
-   *
-   * @param omuUserId    internal user ID
-   * @param universityId university identifier
-   * @return optional JWT if present and not expired
+   * @param omuUserId    internal user identifier
+   * @param universityId university tenant identifier
+   * @return the cached JWT, or empty if none is cached or the session has expired
    */
   public Optional<String> getCinecaJwt(String omuUserId, String universityId) {
-    String key = String.format(KEY_CINECA_JWT, omuUserId, universityId);
-    return Optional.ofNullable(redis.opsForValue().get(key));
+    return Optional.ofNullable(
+        redis.opsForValue().get(String.format(KEY_VENDOR_TOKEN, omuUserId, universityId)));
   }
 
   /**
-   * Deletes the Cineca JWT for a user and university.
+   * Retrieves the cached vendor-issued legacy session token (e.g. Cineca authToken) for a
+   * user/university pair.
    *
-   * @param omuUserId    internal user ID
-   * @param universityId university identifier
-   */
-  public void deleteCinecaJwt(String omuUserId, String universityId) {
-    redis.delete(String.format(KEY_CINECA_JWT, omuUserId, universityId));
-  }
-
-  /**
-   * Stores Cineca auth/session token.
-   *
-   * @param omuUserId    internal user ID
-   * @param universityId university identifier
-   * @param authToken    Cineca session token
-   */
-  public void storeCinecaAuthToken(String omuUserId, String universityId, String authToken) {
-    String key = String.format(KEY_CINECA_AUTH, omuUserId, universityId);
-    redis.opsForValue().set(key, authToken, CINECA_AUTH_TTL);
-  }
-
-  /**
-   * Retrieves Cineca auth/session token.
-   *
-   * @param omuUserId    internal user ID
-   * @param universityId university identifier
-   * @return optional auth token if present
+   * @param omuUserId    internal user identifier
+   * @param universityId university tenant identifier
+   * @return the cached auth token, or empty if none is cached or the session has expired
    */
   public Optional<String> getCinecaAuthToken(String omuUserId, String universityId) {
-    String key = String.format(KEY_CINECA_AUTH, omuUserId, universityId);
-    return Optional.ofNullable(redis.opsForValue().get(key));
+    return Optional.ofNullable(
+        redis.opsForValue().get(String.format(KEY_VENDOR_AUTH, omuUserId, universityId)));
   }
 
   /**
-   * Stores the Cineca person identifier (persId) in Redis for a specific user and university
-   * context.
+   * Retrieves the cached vendor-side person identifier (e.g. Cineca persId) for a user/university
+   * pair.
    *
-   * <p>The value is stored as a string with a TTL to avoid persistence beyond the validity of the
-   * Cineca session. This identifier is later used to resolve student-related operations without
-   * re-querying login data.
-   *
-   * @param omuUserId    internal OhMyUniversity user identifier
-   * @param universityId target university identifier (tenant)
-   * @param persId       Cineca person identifier to store
-   */
-  public void storeCinecaPersId(String omuUserId, String universityId, Long persId) {
-    String key = String.format(KEY_CINECA_PERS, omuUserId, universityId);
-    redis.opsForValue().set(key, persId.toString(), CINECA_PERS_TTL);
-    log.debug("CinecaSessionStore: stored Cineca persId={} for user={} uni={}",
-        persId, omuUserId, universityId);
-  }
-
-  /**
-   * Retrieves the Cineca person identifier (persId) from Redis.
-   *
-   * <p>The value is parsed from its string representation back into a Long. If no value is found
-   * or
-   * the key has expired, an empty Optional is returned.
-   *
-   * @param omuUserId    internal OhMyUniversity user identifier
-   * @param universityId target university identifier (tenant)
-   * @return optional containing the Cineca persId if present
+   * @param omuUserId    internal user identifier
+   * @param universityId university tenant identifier
+   * @return the cached person identifier, or empty if none is cached
    */
   public Optional<Long> getCinecaPersId(String omuUserId, String universityId) {
-    String key = String.format(KEY_CINECA_PERS, omuUserId, universityId);
-    String value = redis.opsForValue().get(key);
-    if (value == null) {
-      return Optional.empty();
-    }
-    return Optional.of(Long.parseLong(value));
+    String value = redis.opsForValue().get(
+        String.format(KEY_VENDOR_PERS_ID, omuUserId, universityId));
+    return value == null ? Optional.empty() : Optional.of(Long.parseLong(value));
   }
 
   /**
-   * Stores the active Cineca career identifier (stuId) for JWT refresh.
+   * Retrieves the cached active career identifier (e.g. Cineca stuId) for a user/university pair.
    *
-   * <p>Persisted with the same TTL as the Cineca JWT so that the refresh endpoint
-   * can re-issue a fully populated access token without a new Cineca login.
-   *
-   * @param omuUserId    internal OhMyUniversity user identifier
-   * @param universityId target university identifier (tenant)
-   * @param stuId        Cineca student career identifier
-   */
-  public void storeStuId(String omuUserId, String universityId, Long stuId) {
-    String key = String.format(KEY_CINECA_STU_ID, omuUserId, universityId);
-    redis.opsForValue().set(key, stuId.toString(), CINECA_CAREER_TTL);
-  }
-
-  /**
-   * Retrieves the active Cineca career identifier (stuId) from Redis.
-   *
-   * @param omuUserId    internal OhMyUniversity user identifier
-   * @param universityId target university identifier (tenant)
-   * @return optional containing stuId if present and not expired
+   * @param omuUserId    internal user identifier
+   * @param universityId university tenant identifier
+   * @return the cached career identifier, or empty if none is cached
    */
   public Optional<Long> getStuId(String omuUserId, String universityId) {
-    String value = redis.opsForValue().get(
-        String.format(KEY_CINECA_STU_ID, omuUserId, universityId));
+    String value = redis.opsForValue().get(String.format(KEY_STU_ID, omuUserId, universityId));
     return value == null ? Optional.empty() : Optional.of(Long.parseLong(value));
   }
 
   /**
-   * Stores the active Cineca career segment identifier (matId) for JWT refresh.
+   * Retrieves the cached active career segment identifier (e.g. Cineca matId) for a user/university
+   * pair.
    *
-   * @param omuUserId    internal OhMyUniversity user identifier
-   * @param universityId target university identifier (tenant)
-   * @param matId        Cineca career segment identifier
-   */
-  public void storeMatId(String omuUserId, String universityId, Long matId) {
-    String key = String.format(KEY_CINECA_MAT_ID, omuUserId, universityId);
-    redis.opsForValue().set(key, matId.toString(), CINECA_CAREER_TTL);
-  }
-
-  /**
-   * Retrieves the active Cineca career segment identifier (matId) from Redis.
-   *
-   * @param omuUserId    internal OhMyUniversity user identifier
-   * @param universityId target university identifier (tenant)
-   * @return optional containing matId if present and not expired
+   * @param omuUserId    internal user identifier
+   * @param universityId university tenant identifier
+   * @return the cached career segment identifier, or empty if none is cached
    */
   public Optional<Long> getMatId(String omuUserId, String universityId) {
-    String value = redis.opsForValue().get(
-        String.format(KEY_CINECA_MAT_ID, omuUserId, universityId));
+    String value = redis.opsForValue().get(String.format(KEY_MAT_ID, omuUserId, universityId));
     return value == null ? Optional.empty() : Optional.of(Long.parseLong(value));
   }
 
   /**
-   * Stores the active student registration number (matricola) for JWT refresh.
+   * Retrieves the cached active student registration number (matricola) for a user/university
+   * pair.
    *
-   * @param omuUserId    internal OhMyUniversity user identifier
-   * @param universityId target university identifier (tenant)
-   * @param matricola    student registration number
-   */
-  public void storeMatricola(String omuUserId, String universityId, String matricola) {
-    if (matricola == null) {
-      return;
-    }
-    String key = String.format(KEY_CINECA_MATRICOLA, omuUserId, universityId);
-    redis.opsForValue().set(key, matricola.replaceAll("[\r\n]", "_"), CINECA_CAREER_TTL);
-  }
-
-  /**
-   * Retrieves the active student registration number (matricola) from Redis.
-   *
-   * @param omuUserId    internal OhMyUniversity user identifier
-   * @param universityId target university identifier (tenant)
-   * @return optional containing matricola if present and not expired
+   * @param omuUserId    internal user identifier
+   * @param universityId university tenant identifier
+   * @return the cached matricola, or empty if none is cached
    */
   public Optional<String> getMatricola(String omuUserId, String universityId) {
-    String value = redis.opsForValue().get(
-        String.format(KEY_CINECA_MATRICOLA, omuUserId, universityId));
-    return Optional.ofNullable(value);
+    return Optional.ofNullable(
+        redis.opsForValue().get(String.format(KEY_MATRICOLA, omuUserId, universityId)));
   }
 
   /**
-   * Stores a refresh token mapped to a user ID.
+   * Retrieves the cached first name for a user, shared across all their university connections.
    *
-   * @param refreshToken refresh token
-   * @param omuUserId    internal user ID
+   * @param omuUserId internal user identifier
+   * @return the cached first name, or empty if none is cached
    */
-  public void storeRefreshToken(String refreshToken, String omuUserId) {
-    String key = String.format(KEY_OMU_REFRESH, refreshToken);
-    redis.opsForValue().set(key, omuUserId, OMU_REFRESH_TTL);
-  }
-
-  /**
-   * Resolves a user ID from a refresh token.
-   *
-   * @param refreshToken refresh token
-   * @return optional user ID if token is valid
-   */
-  public Optional<String> getUserIdByRefreshToken(String refreshToken) {
-    String key = String.format(KEY_OMU_REFRESH, refreshToken);
-    return Optional.ofNullable(redis.opsForValue().get(key));
-  }
-
-  /**
-   * Deletes a refresh token, invalidating the session.
-   *
-   * @param refreshToken refresh token
-   */
-  public void deleteRefreshToken(String refreshToken) {
-    redis.delete(String.format(KEY_OMU_REFRESH, refreshToken));
-  }
-
-  /**
-   * Clears all session data for a user and university.
-   *
-   * @param omuUserId    internal user ID
-   * @param universityId university identifier
-   */
-  public void clearSession(String omuUserId, String universityId) {
-    deleteCinecaJwt(omuUserId, universityId);
-    redis.delete(String.format(KEY_CINECA_AUTH, omuUserId, universityId));
-    redis.delete(String.format(KEY_CINECA_PERS, omuUserId, universityId));
-    redis.delete(String.format(KEY_CINECA_STU_ID, omuUserId, universityId));
-    redis.delete(String.format(KEY_CINECA_MAT_ID, omuUserId, universityId));
-    redis.delete(String.format(KEY_CINECA_MATRICOLA, omuUserId, universityId));
-    log.info("CinecaSessionStore: cleared session for user={} uni={}", omuUserId, universityId);
-  }
-
-  public void storeUserNome(String omuUserId, String nome) {
-    redis.opsForValue().set(String.format(KEY_USER_NOME, omuUserId), nome, USER_INFO_TTL);
-  }
-
-  public void storeUserCognome(String omuUserId, String cognome) {
-    redis.opsForValue().set(String.format(KEY_USER_COGNOME, omuUserId), cognome, USER_INFO_TTL);
-  }
-
   public Optional<String> getUserNome(String omuUserId) {
     return Optional.ofNullable(redis.opsForValue().get(String.format(KEY_USER_NOME, omuUserId)));
   }
 
+  /**
+   * Retrieves the cached last name for a user, shared across all their university connections.
+   *
+   * @param omuUserId internal user identifier
+   * @return the cached last name, or empty if none is cached
+   */
   public Optional<String> getUserCognome(String omuUserId) {
-    return Optional.ofNullable(redis.opsForValue().get(String.format(KEY_USER_COGNOME, omuUserId)));
-  }
-
-  public void storeUserId(String omuUserId, String userId) {
-    redis.opsForValue().set(String.format(KEY_USER_ID, omuUserId), userId, USER_INFO_TTL);
-  }
-
-  public Optional<String> getUserId(String omuUserId) {
-    return Optional.ofNullable(redis.opsForValue().get(String.format(KEY_USER_ID, omuUserId)));
-  }
-
-  /**
-   * Creates a new tracked session (device/IP metadata) tied to a freshly issued refresh token.
-   *
-   * @param omuUserId    internal user ID
-   * @param sessionId    newly generated session identifier
-   * @param refreshToken refresh token issued for this session
-   * @param universityId university context active at login time
-   * @param ipAddress    client IP address at login time
-   * @param userAgent    client User-Agent header at login time
-   */
-  public void createSession(String omuUserId, String sessionId, String refreshToken,
-      String universityId, String ipAddress, String userAgent) {
-    String now = Instant.now().toString();
-    String sessionKey = String.format(KEY_SESSION, sessionId);
-
-    java.util.Map<String, String> fields = new java.util.HashMap<>();
-    fields.put("refreshToken", refreshToken);
-    fields.put("universityId", universityId);
-    fields.put("ipAddress", ipAddress == null ? "" : ipAddress);
-    fields.put("userAgent", userAgent == null ? "" : userAgent);
-    fields.put("createdAt", now);
-    fields.put("lastUsedAt", now);
-
-    redis.opsForHash().putAll(sessionKey, fields);
-    redis.expire(sessionKey, OMU_SESSION_TTL);
-
-    redis.opsForSet().add(String.format(KEY_USER_SESSIONS, omuUserId), sessionId);
-    redis.opsForValue().set(String.format(KEY_REFRESH_SESSION, refreshToken), sessionId,
-        OMU_SESSION_TTL);
-
-    log.debug("CinecaSessionStore: created session={} for user={}", sessionId, omuUserId);
-  }
-
-  /**
-   * Lists all currently valid (non-expired) sessions for a user. Session IDs whose Redis hash has
-   * already expired but still linger in the tracking Set (Sets don't expire individual members) are
-   * lazily pruned during the read.
-   *
-   * @param omuUserId internal user ID
-   * @return snapshot of currently valid sessions, unordered
-   */
-  public List<SessionRecord> getUserSessions(String omuUserId) {
-    String setKey = String.format(KEY_USER_SESSIONS, omuUserId);
-    java.util.Set<String> sessionIds = redis.opsForSet().members(setKey);
-    if (sessionIds == null || sessionIds.isEmpty()) {
-      return java.util.List.of();
-    }
-
-    java.util.List<SessionRecord> result = new java.util.ArrayList<>();
-    for (String sessionId : sessionIds) {
-      String sessionKey = String.format(KEY_SESSION, sessionId);
-      java.util.Map<Object, Object> raw = redis.opsForHash().entries(sessionKey);
-      if (raw.isEmpty()) {
-        redis.opsForSet().remove(setKey, sessionId);
-        continue;
-      }
-      result.add(new SessionRecord(
-          sessionId,
-          (String) raw.get("universityId"),
-          (String) raw.get("ipAddress"),
-          (String) raw.get("userAgent"),
-          Instant.parse((String) raw.get("createdAt")),
-          Instant.parse((String) raw.get("lastUsedAt"))));
-    }
-    return result;
-  }
-
-  /**
-   * Updates the last-used timestamp of the session tied to a refresh token. Called on token refresh
-   * so the session list reflects genuine recent activity, not just login time.
-   *
-   * @param refreshToken refresh token used in the refresh call
-   */
-  public void touchSession(String refreshToken) {
-    getSessionIdByRefreshToken(refreshToken).ifPresent(sessionId -> {
-      String sessionKey = String.format(KEY_SESSION, sessionId);
-      if (Boolean.TRUE.equals(redis.hasKey(sessionKey))) {
-        redis.opsForHash().put(sessionKey, "lastUsedAt", Instant.now().toString());
-        redis.expire(sessionKey, OMU_SESSION_TTL);
-      }
-    });
-  }
-
-  /**
-   * Resolves the session identifier tied to a given refresh token.
-   *
-   * @param refreshToken refresh token
-   * @return optional session ID if the mapping is still valid
-   */
-  public Optional<String> getSessionIdByRefreshToken(String refreshToken) {
     return Optional.ofNullable(
-        redis.opsForValue().get(String.format(KEY_REFRESH_SESSION, refreshToken)));
+        redis.opsForValue().get(String.format(KEY_USER_COGNOME, omuUserId)));
   }
 
   /**
-   * Revokes a session: deletes its metadata, removes it from the user's session set, and
-   * invalidates the associated refresh token so the device is fully logged out.
+   * Retrieves the cached vendor-side external user identifier (e.g. Cineca username) for a user,
+   * shared across all their university connections.
    *
-   * @param omuUserId internal user ID
-   * @param sessionId session identifier to revoke
+   * @param omuUserId internal user identifier
+   * @return the cached external user identifier, or empty if none is cached
    */
-  public void deleteSession(String omuUserId, String sessionId) {
-    String sessionKey = String.format(KEY_SESSION, sessionId);
-    String refreshToken = (String) redis.opsForHash().get(sessionKey, "refreshToken");
-
-    redis.delete(sessionKey);
-    redis.opsForSet().remove(String.format(KEY_USER_SESSIONS, omuUserId), sessionId);
-
-    if (refreshToken != null) {
-      redis.delete(String.format(KEY_OMU_REFRESH, refreshToken));
-      redis.delete(String.format(KEY_REFRESH_SESSION, refreshToken));
-    }
-
-    log.info("CinecaSessionStore: revoked session={} for user={}", sessionId, omuUserId);
-  }
-
-  /**
-   * Immutable snapshot of a tracked session, read from Redis.
-   */
-  public record SessionRecord(
-      String sessionId,
-      String universityId,
-      String ipAddress,
-      String userAgent,
-      Instant createdAt,
-      Instant lastUsedAt) {
-
+  public Optional<String> getUserId(String omuUserId) {
+    return Optional.ofNullable(
+        redis.opsForValue().get(String.format(KEY_EXTERNAL_USER_ID, omuUserId)));
   }
 }

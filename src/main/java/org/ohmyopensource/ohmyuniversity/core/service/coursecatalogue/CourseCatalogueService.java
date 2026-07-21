@@ -73,6 +73,18 @@ public class CourseCatalogueService extends AbstractEsse3Service {
 
   // ============ Constructor ============
 
+  /**
+   * Constructs the service with all required Cineca clients and shared ESSE3 session/registry
+   * dependencies.
+   *
+   * @param catalogueClient      Course Catalogue HTTP client
+   * @param profileClient        ESSE3 profile/carriera client, used to resolve cdsCod and cohort
+   * @param careerClient         ESSE3 career client, used to match the student's transcript against
+   *                             curriculum tracks
+   * @param sessionStore         shared Cineca session store (see AbstractEsse3Service)
+   * @param universityRegistry   shared university configuration registry
+   * @param connectionRepository shared university connection repository
+   */
   public CourseCatalogueService(
       CourseCatalogueClient catalogueClient,
       CinecaProfileClient profileClient,
@@ -347,6 +359,14 @@ public class CourseCatalogueService extends AbstractEsse3Service {
         () -> computeAllDocenti(catalogueBaseUrl, fallbackSedeId));
   }
 
+  /**
+   * Fetches and assembles the ateneo-wide professor directory (uncached — caching happens in
+   * {@link #getAllDocenti}).
+   *
+   * @param catalogueBaseUrl Course Catalogue base URL for the university
+   * @param fallbackSedeId   location to use for courses whose own sede code can't be parsed
+   * @return the assembled directory
+   */
   private DocentiListResponse computeAllDocenti(String catalogueBaseUrl, Long fallbackSedeId) {
     int currentYear = java.time.Year.now().getValue();
     String currentYearStr = String.valueOf(currentYear);
@@ -382,6 +402,13 @@ public class CourseCatalogueService extends AbstractEsse3Service {
     return response;
   }
 
+  /**
+   * Parses a location code, falling back to a default when absent or unparsable.
+   *
+   * @param sedeCod  raw location code string
+   * @param fallback location to use if parsing fails or the code is absent
+   * @return the parsed location id, or the fallback
+   */
   private Long parseSedeId(String sedeCod, Long fallback) {
     if (sedeCod != null && !sedeCod.isBlank()) {
       try {
@@ -393,6 +420,12 @@ public class CourseCatalogueService extends AbstractEsse3Service {
     return fallback;
   }
 
+  /**
+   * Maps a Course Catalogue professor entry to its API response shape.
+   *
+   * @param d professor entry to map
+   * @return the mapped summary
+   */
   private DocentiListResponse.DocenteSummary toDocenteSummary(
       CourseCatalogueClient.CatalogueDocente d) {
     DocentiListResponse.DocenteSummary s = new DocentiListResponse.DocenteSummary();
@@ -408,7 +441,10 @@ public class CourseCatalogueService extends AbstractEsse3Service {
    * professors (e.g. a generic "SEGRETERIA STUDENTI" contact, or "DA DEFINIRE DA DEFINIRE" for an
    * unassigned teaching slot). Identified by known sentinel matricola values and name patterns —
    * matricola alone can't be used as "blank = fake" since some real professors also have an empty
-   * matricola (observed: NOVIELLO NICOLA).
+   * matricola.
+   *
+   * @param d professor entry to check
+   * @return {@code true} if this is a real professor, not a placeholder
    */
   private boolean isRealProfessor(CourseCatalogueClient.CatalogueDocente d) {
     String des = d.getDes();
@@ -428,6 +464,9 @@ public class CourseCatalogueService extends AbstractEsse3Service {
 
   /**
    * Same placeholder-filtering logic as isRealProfessor, adapted for CorsoOffertaDocente.
+   *
+   * @param des professor display name to check
+   * @return {@code true} if this name is a known administrative placeholder
    */
   private boolean isPlaceholderName(String des) {
     if (des == null || des.isBlank()) {
@@ -442,6 +481,7 @@ public class CourseCatalogueService extends AbstractEsse3Service {
    * catalogue base URL, the cohort year (parsed from the student's immatricolazione date), the
    * Course Catalogue course code, and the specific curriculum track(s) relevant to this student.
    *
+   * @param principal authenticated OhMyU principal
    * @return the resolved context, or {@code null} if any piece could not be resolved
    */
   private CourseCatalogueContext resolveContext(OmuPrincipal principal) {
@@ -489,6 +529,11 @@ public class CourseCatalogueService extends AbstractEsse3Service {
    * Retrieves the set of ESSE3 activity codes ({@code adCod}) the student actually has in their
    * transcript — a reliable signal of which specific curriculum track they follow, independent of
    * any Course Catalogue identifier.
+   *
+   * @param esse3BaseUrl ESSE3 base URL for the university
+   * @param jwt          Cineca JWT token
+   * @param matId        student career segment identifier
+   * @return set of known activity codes; empty if the transcript could not be fetched
    */
   private Set<String> fetchKnownAdCods(String esse3BaseUrl, String jwt, Long matId) {
     try {
@@ -515,6 +560,10 @@ public class CourseCatalogueService extends AbstractEsse3Service {
    * <p>When only one non-shared track exists, or when the student has no
    * transcript yet to match against (e.g. first-year enrollment before any exam), falls back to the
    * first available track rather than failing — best effort over no data.
+   *
+   * @param percorsi    all curriculum tracks returned by the Course Catalogue
+   * @param knownAdCods activity codes known from the student's transcript
+   * @return the single best-matching track, or all tracks if none can be resolved
    */
   private List<CinecaPercorso> selectRelevantPercorsi(
       List<CinecaPercorso> percorsi, Set<String> knownAdCods) {
@@ -547,6 +596,10 @@ public class CourseCatalogueService extends AbstractEsse3Service {
 
   /**
    * Counts how many of the percorso's activities match the student's known exam codes.
+   *
+   * @param percorso    the curriculum track to score
+   * @param knownAdCods activity codes known from the student's transcript
+   * @return number of matching activities
    */
   private int countMatchingActivities(CinecaPercorso percorso, Set<String> knownAdCods) {
     if (knownAdCods.isEmpty() || percorso.getAnni() == null) {
@@ -574,6 +627,9 @@ public class CourseCatalogueService extends AbstractEsse3Service {
   /**
    * Parses the cohort year out of a Cineca date string in {@code DD/MM/YYYY HH24:MI:SS} format
    * (e.g. {@code "06/09/2023 00:00:00"}).
+   *
+   * @param dataImm raw Cineca immatricolazione date string
+   * @return the parsed cohort year, or {@code null} if unparsable
    */
   private Integer parseCohortYear(String dataImm) {
     try {
@@ -587,6 +643,10 @@ public class CourseCatalogueService extends AbstractEsse3Service {
 
   /**
    * Compares two "aa" year strings, treating unparsable values (e.g. "altreAttivita") as oldest.
+   *
+   * @param a first year string
+   * @param b second year string
+   * @return standard {@link Integer#compare} result, or {@code 0} if either is unparsable
    */
   private int compareYearDesc(String a, String b) {
     try {
@@ -604,6 +664,9 @@ public class CourseCatalogueService extends AbstractEsse3Service {
    * redundantly and consistently with the bucket. Non-numeric buckets (e.g. Molise's
    * {@code "altreAttivita"} — shared electives cross-listed from other degree programs, not part of
    * this student's own curriculum) are skipped entirely.
+   *
+   * @param percorsi curriculum tracks to flatten
+   * @return every activity paired with its bucket year, across all given tracks
    */
   private List<FlatEntry> flattenActivities(List<CinecaPercorso> percorsi) {
     List<FlatEntry> flat = new ArrayList<>();
@@ -638,6 +701,9 @@ public class CourseCatalogueService extends AbstractEsse3Service {
   /**
    * Parses {@code anno} into a positive curriculum year, or {@code null} for non-numeric buckets
    * such as Molise's {@code "altreAttivita"}.
+   *
+   * @param anno raw bucket year string
+   * @return the parsed year, or {@code null} if not a positive integer
    */
   private Integer parseCurriculumYear(String anno) {
     if (anno == null) {
@@ -651,6 +717,12 @@ public class CourseCatalogueService extends AbstractEsse3Service {
     }
   }
 
+  /**
+   * Maps a flattened plan entry to its API response shape.
+   *
+   * @param flatEntry the entry and its resolved bucket year
+   * @return the mapped exam
+   */
   private CoursePlanExam toCoursePlanExam(FlatEntry flatEntry) {
     CinecaCoursePlanEntry entry = flatEntry.entry();
     CoursePlanExam exam = new CoursePlanExam();
@@ -667,6 +739,13 @@ public class CourseCatalogueService extends AbstractEsse3Service {
     return exam;
   }
 
+  /**
+   * Populates the syllabus response's prerequisites and per-module CFU breakdown from the
+   * activity's raw Course Catalogue detail.
+   *
+   * @param response the response to populate
+   * @param detail   raw activity detail from the Course Catalogue
+   */
   private void populateSyllabus(CourseSyllabusResponse response, CinecaInsegnamentoDetail detail) {
     if (detail.getTestiTotali() == null) {
       return;
@@ -722,6 +801,13 @@ public class CourseCatalogueService extends AbstractEsse3Service {
     response.setCfuBreakdown(breakdown);
   }
 
+  /**
+   * Checks whether a raw text field carries real content, filtering out Cineca's own "see
+   * integrated course" placeholder text.
+   *
+   * @param raw raw (possibly HTML) text field
+   * @return {@code true} if the field has meaningful content
+   */
   private boolean isMeaningful(String raw) {
     String stripped = stripHtml(raw);
     return stripped != null && !stripped.isBlank()
@@ -732,6 +818,9 @@ public class CourseCatalogueService extends AbstractEsse3Service {
   /**
    * Strips the HTML markup ({@code <p>}, {@code <span>}, inline styles) that the Course Catalogue
    * wraps every text field in, leaving plain text.
+   *
+   * @param html raw HTML-wrapped text
+   * @return plain text, or {@code null} if the input was {@code null} or blank after stripping
    */
   private String stripHtml(String html) {
     if (html == null) {

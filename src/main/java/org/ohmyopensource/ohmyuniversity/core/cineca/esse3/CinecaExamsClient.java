@@ -4,7 +4,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.Map;
-import org.ohmyopensource.ohmyuniversity.core.cineca.CinecaClient;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaAuthException;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaBookingException;
+import org.ohmyopensource.ohmyuniversity.core.exception.CinecaUnavailableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
@@ -78,11 +80,11 @@ public class CinecaExamsClient extends AbstractCinecaClient {
         .onStatus(HttpStatusCode::is4xxClientError, r ->
             r.bodyToMono(String.class).flatMap(body -> {
               log.error("CinecaExamsClient: sessions 4xx body: {}", body);
-              return Mono.error(new CinecaClient.CinecaAuthException(
+              return Mono.error(new CinecaAuthException(
                   "Unauthorized for sessions: " + body));
             }))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on sessions")))
         .bodyToFlux(CinecaExamSession.class)
         .collectList()
@@ -120,11 +122,11 @@ public class CinecaExamsClient extends AbstractCinecaClient {
         .onStatus(HttpStatusCode::is4xxClientError, r ->
             r.bodyToMono(String.class).flatMap(body -> {
               log.error("CinecaExamsClient: bookable sessions 4xx body: {}", body);
-              return Mono.error(new CinecaClient.CinecaAuthException(
+              return Mono.error(new CinecaAuthException(
                   "Unauthorized for bookable sessions matId=" + matId));
             }))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on bookable sessions")))
         .bodyToFlux(CinecaBookableSession.class)
         .collectList()
@@ -153,11 +155,11 @@ public class CinecaExamsClient extends AbstractCinecaClient {
         .onStatus(HttpStatusCode::is4xxClientError, r ->
             r.bodyToMono(String.class).flatMap(body -> {
               log.error("CinecaExamsClient: all libretto sessions 4xx body: {}", body);
-              return Mono.error(new CinecaClient.CinecaAuthException(
+              return Mono.error(new CinecaAuthException(
                   "Unauthorized for all libretto sessions matId=" + matId));
             }))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on all libretto sessions")))
         .bodyToFlux(CinecaBookableSession.class)
         .collectList()
@@ -192,11 +194,11 @@ public class CinecaExamsClient extends AbstractCinecaClient {
         .onStatus(HttpStatusCode::is4xxClientError, r ->
             r.bodyToMono(String.class).flatMap(body -> {
               log.error("CinecaExamsClient: bookings 4xx body: {}", body);
-              return Mono.error(new CinecaClient.CinecaAuthException(
+              return Mono.error(new CinecaAuthException(
                   "Unauthorized for bookings matId=" + matId));
             }))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on bookings")))
         .bodyToFlux(CinecaBooking.class)
         .collectList()
@@ -229,19 +231,17 @@ public class CinecaExamsClient extends AbstractCinecaClient {
         .onStatus(HttpStatusCode::is4xxClientError, r ->
             r.bodyToMono(String.class).flatMap(body -> {
               log.error("CinecaExamsClient: legacy bookings 4xx body: {}", body);
-              return Mono.error(new CinecaClient.CinecaAuthException(
+              return Mono.error(new CinecaAuthException(
                   "Unauthorized for legacy bookings matId=" + matId));
             }))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on legacy bookings")))
         .bodyToFlux(CinecaLegacyBooking.class)
         .collectList()
         .block();
     return result != null ? result : List.of();
   }
-
-  // ============ DTOs ============
 
   /**
    * Retrieves teaching evaluation surveys from {@code questionari-service-v1}.
@@ -268,11 +268,11 @@ public class CinecaExamsClient extends AbstractCinecaClient {
         .onStatus(HttpStatusCode::is4xxClientError, r ->
             r.bodyToMono(String.class).flatMap(body -> {
               log.error("CinecaExamsClient: surveys 4xx body: {}", body);
-              return Mono.error(new CinecaClient.CinecaAuthException(
+              return Mono.error(new CinecaAuthException(
                   "Unauthorized for surveys matId=" + matId));
             }))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on surveys")))
         .bodyToFlux(CinecaSurveyRow.class)
         .collectList()
@@ -294,9 +294,8 @@ public class CinecaExamsClient extends AbstractCinecaClient {
    * @param adId     teaching activity identifier
    * @param appId    exam session identifier
    * @param adsceId  libretto row identifier (activity context)
-   * @throws CinecaClient.CinecaBookingException     if Cineca rejects the booking (e.g. survey not
-   *                                                 filled)
-   * @throws CinecaClient.CinecaUnavailableException if Cineca is unreachable
+   * @throws CinecaBookingException     if Cineca rejects the booking (e.g. survey not filled)
+   * @throws CinecaUnavailableException if Cineca is unreachable
    */
   public void bookExam(
       String baseUrl, String username, String password,
@@ -316,10 +315,10 @@ public class CinecaExamsClient extends AbstractCinecaClient {
         .onStatus(HttpStatusCode::is4xxClientError, r ->
             r.bodyToMono(String.class).flatMap(body -> {
               log.error("CinecaExamsClient: bookExam 4xx body: {}", body);
-              return Mono.error(new CinecaClient.CinecaBookingException(body));
+              return Mono.error(new CinecaBookingException(body));
             }))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on bookExam")))
         .bodyToMono(Void.class)
         .block();
@@ -339,8 +338,8 @@ public class CinecaExamsClient extends AbstractCinecaClient {
    * @param adId     teaching activity identifier
    * @param appId    exam session identifier
    * @param stuId    student career identifier
-   * @throws CinecaClient.CinecaBookingException     if Cineca rejects the cancellation
-   * @throws CinecaClient.CinecaUnavailableException if Cineca is unreachable
+   * @throws CinecaBookingException     if Cineca rejects the cancellation
+   * @throws CinecaUnavailableException if Cineca is unreachable
    */
   public void cancelBooking(
       String baseUrl, String username, String password,
@@ -360,10 +359,10 @@ public class CinecaExamsClient extends AbstractCinecaClient {
         .onStatus(HttpStatusCode::is4xxClientError, r ->
             r.bodyToMono(String.class).flatMap(body -> {
               log.error("CinecaExamsClient: cancelBooking 4xx body: {}", body);
-              return Mono.error(new CinecaClient.CinecaBookingException(body));
+              return Mono.error(new CinecaBookingException(body));
             }))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on cancelBooking")))
         .bodyToMono(Void.class)
         .block();
@@ -398,11 +397,11 @@ public class CinecaExamsClient extends AbstractCinecaClient {
         .onStatus(HttpStatusCode::is4xxClientError, r ->
             r.bodyToMono(String.class).flatMap(body -> {
               log.error("CinecaExamsClient: survey unit 4xx body: {}", body);
-              return Mono.error(new CinecaClient.CinecaAuthException(
+              return Mono.error(new CinecaAuthException(
                   "Unauthorized for survey unit adsceId=" + adsceId));
             }))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on survey unit")))
         .bodyToMono(CinecaSurveyUnit.class)
         .block();
@@ -425,14 +424,15 @@ public class CinecaExamsClient extends AbstractCinecaClient {
    * @param questConfigId  questionnaire configuration identifier
    * @param tags           the {@code tagsValdid} pipe-separated tag string
    * @return the first questionnaire page
-   * @throws CinecaClient.CinecaBookingException     if Cineca rejects the request
-   * @throws CinecaClient.CinecaUnavailableException if Cineca is unreachable
+   * @throws CinecaBookingException     if Cineca rejects the request
+   * @throws CinecaUnavailableException if Cineca is unreachable
    */
   public CinecaSurveyPage startSurvey(
       String baseUrl, String jwt,
       Long stuId, Long adsceId, Long questionarioId, Long questConfigId, String tags) {
     log.debug(
-        "CinecaExamsClient: PUT start survey stuId={} adsceId={} questionarioId={} questConfigId={}",
+        "CinecaExamsClient: PUT start survey stuId={} adsceId={} questionarioId={} "
+            + "questConfigId={}",
         stuId, adsceId, questionarioId, questConfigId);
     return webClient.put()
         .uri(uriBuilder -> uriBuilder
@@ -450,10 +450,10 @@ public class CinecaExamsClient extends AbstractCinecaClient {
         .onStatus(HttpStatusCode::is4xxClientError, r ->
             r.bodyToMono(String.class).flatMap(body -> {
               log.error("CinecaExamsClient: startSurvey 4xx body: {}", body);
-              return Mono.error(new CinecaClient.CinecaBookingException(body));
+              return Mono.error(new CinecaBookingException(body));
             }))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on startSurvey")))
         .bodyToMono(CinecaSurveyPage.class)
         .block();
@@ -472,8 +472,8 @@ public class CinecaExamsClient extends AbstractCinecaClient {
    * @param questCompId    compilation session identifier
    * @param pageId         page identifier
    * @param answers        the answers to save
-   * @throws CinecaClient.CinecaBookingException     if Cineca rejects the answers
-   * @throws CinecaClient.CinecaUnavailableException if Cineca is unreachable
+   * @throws CinecaBookingException     if Cineca rejects the answers
+   * @throws CinecaUnavailableException if Cineca is unreachable
    */
   public void saveSurveyPage(
       String baseUrl, String jwt, Long stuId, Long questionarioId,
@@ -496,10 +496,10 @@ public class CinecaExamsClient extends AbstractCinecaClient {
         .onStatus(HttpStatusCode::is4xxClientError, r ->
             r.bodyToMono(String.class).flatMap(body -> {
               log.error("CinecaExamsClient: saveSurveyPage 4xx body: {}", body);
-              return Mono.error(new CinecaClient.CinecaBookingException(body));
+              return Mono.error(new CinecaBookingException(body));
             }))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on saveSurveyPage")))
         .bodyToMono(Void.class)
         .block();
@@ -521,7 +521,7 @@ public class CinecaExamsClient extends AbstractCinecaClient {
    * @param userCompId     user session identifier
    * @param direction      {@code "next"} or {@code "prev"}
    * @return the adjacent page, or {@code null} if there is none
-   * @throws CinecaClient.CinecaUnavailableException if Cineca is unreachable
+   * @throws CinecaUnavailableException if Cineca is unreachable
    */
   public CinecaSurveyPage getAdjacentSurveyPage(
       String baseUrl, String jwt, Long stuId, Long adsceId, Long questionarioId,
@@ -547,10 +547,10 @@ public class CinecaExamsClient extends AbstractCinecaClient {
         .onStatus(HttpStatusCode::is4xxClientError, r ->
             r.bodyToMono(String.class).flatMap(body -> {
               log.error("CinecaExamsClient: getAdjacentSurveyPage 4xx body: {}", body);
-              return Mono.error(new CinecaClient.CinecaBookingException(body));
+              return Mono.error(new CinecaBookingException(body));
             }))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on getAdjacentSurveyPage")))
         .bodyToMono(CinecaSurveyPage.class)
         .block();
@@ -559,6 +559,14 @@ public class CinecaExamsClient extends AbstractCinecaClient {
   /**
    * Retrieves a specific questionnaire page by id via {@code questionari-service-v1}.
    *
+   * @param baseUrl        Cineca ESSE3 base URL
+   * @param jwt            Cineca JWT token
+   * @param stuId          student career identifier
+   * @param adsceId        booklet activity identifier
+   * @param questionarioId questionnaire identifier
+   * @param questCompId    compilation session identifier
+   * @param pageId         page identifier
+   * @param userCompId     user session identifier
    * @return the page, or {@code null} if not found
    */
   public CinecaSurveyPage getSurveyPage(
@@ -582,10 +590,10 @@ public class CinecaExamsClient extends AbstractCinecaClient {
         .onStatus(HttpStatusCode::is4xxClientError, r ->
             r.bodyToMono(String.class).flatMap(body -> {
               log.error("CinecaExamsClient: getSurveyPage 4xx body: {}", body);
-              return Mono.error(new CinecaClient.CinecaBookingException(body));
+              return Mono.error(new CinecaBookingException(body));
             }))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on getSurveyPage")))
         .bodyToMono(CinecaSurveyPage.class)
         .block();
@@ -604,8 +612,8 @@ public class CinecaExamsClient extends AbstractCinecaClient {
    * @param questCompId    compilation session identifier
    * @param questConfigId  questionnaire configuration identifier
    * @param userCompId     user session identifier
-   * @throws CinecaClient.CinecaBookingException     if Cineca rejects the confirmation
-   * @throws CinecaClient.CinecaUnavailableException if Cineca is unreachable
+   * @throws CinecaBookingException     if Cineca rejects the confirmation
+   * @throws CinecaUnavailableException if Cineca is unreachable
    */
   public void confirmSurvey(
       String baseUrl, String jwt, Long stuId, Long adsceId, Long questionarioId,
@@ -627,10 +635,10 @@ public class CinecaExamsClient extends AbstractCinecaClient {
         .onStatus(HttpStatusCode::is4xxClientError, r ->
             r.bodyToMono(String.class).flatMap(body -> {
               log.error("CinecaExamsClient: confirmSurvey 4xx body: {}", body);
-              return Mono.error(new CinecaClient.CinecaBookingException(body));
+              return Mono.error(new CinecaBookingException(body));
             }))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on confirmSurvey")))
         .bodyToMono(Void.class)
         .block();
@@ -639,6 +647,14 @@ public class CinecaExamsClient extends AbstractCinecaClient {
   /**
    * Retrieves the compilation summary via {@code questionari-service-v1}.
    *
+   * @param baseUrl        Cineca ESSE3 base URL
+   * @param jwt            Cineca JWT token
+   * @param stuId          student career identifier
+   * @param adsceId        booklet activity identifier
+   * @param questionarioId questionnaire identifier
+   * @param questCompId    compilation session identifier
+   * @param questConfigId  questionnaire configuration identifier
+   * @param userCompId     user session identifier
    * @return the summary, or {@code null} if not available
    */
   public CinecaSurveySummary getSurveySummary(
@@ -661,14 +677,16 @@ public class CinecaExamsClient extends AbstractCinecaClient {
         .onStatus(HttpStatusCode::is4xxClientError, r ->
             r.bodyToMono(String.class).flatMap(body -> {
               log.error("CinecaExamsClient: getSurveySummary 4xx body: {}", body);
-              return Mono.error(new CinecaClient.CinecaBookingException(body));
+              return Mono.error(new CinecaBookingException(body));
             }))
         .onStatus(HttpStatusCode::is5xxServerError, r ->
-            Mono.error(new CinecaClient.CinecaUnavailableException(
+            Mono.error(new CinecaUnavailableException(
                 "Cineca error on getSurveySummary")))
         .bodyToMono(CinecaSurveySummary.class)
         .block();
   }
+
+  // ============ DTOs ============
 
   /**
    * Shared value wrapper for Cineca enum-like fields.
@@ -684,6 +702,9 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A bookable/booked exam session from calesa-service, with location and booking status.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaExamSession {
 
@@ -767,6 +788,10 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A bookable exam session from libretto-service, richer than CinecaExamSession — includes
+   * registration window and live enrollment count.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaBookableSession {
 
@@ -906,6 +931,9 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * An active exam booking/registration for a student.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaBooking {
 
@@ -1013,6 +1041,9 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * Outcome of a booked exam (passed/withdrawn/absent, grade, judgment).
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaBookingResult {
 
@@ -1054,6 +1085,9 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * An exam booking retrieved via the legacy calesa-service Basic Auth endpoint.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaLegacyBooking {
 
@@ -1173,6 +1207,9 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * Outcome of a legacy-endpoint exam booking.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaLegacyBookingResult {
 
@@ -1220,6 +1257,9 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A single row in the teaching evaluation survey list, one per bookable/booked exam.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaSurveyRow {
 
@@ -1279,6 +1319,9 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * Questionnaire metadata for a booklet activity, required to start a compilation session.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaSurveyUnit {
 
@@ -1343,6 +1386,9 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A single teaching unit entry within a survey unit, carrying the tagsValdid string.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaSurveyUnitTag {
 
@@ -1409,6 +1455,9 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A single page within a questionnaire compilation session.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaSurveyPage {
 
@@ -1486,6 +1535,9 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A paragraph grouping one or more questions within a survey page.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaSurveyParagraph {
 
@@ -1533,6 +1585,9 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A single question within a survey paragraph.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaSurveyQuestion {
 
@@ -1592,6 +1647,9 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A selectable answer option for a survey question.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaSurveyAnswer {
 
@@ -1645,6 +1703,9 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * Summary of a completed questionnaire compilation, grouped by page.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaSurveySummary {
 
@@ -1680,6 +1741,9 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A single page within a questionnaire summary.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaSummaryPage {
 
@@ -1697,6 +1761,9 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A paragraph within a summary page, listing its questions and given answers.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaSummaryParagraph {
 
@@ -1726,6 +1793,9 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A question as shown in the compilation summary.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaSummaryQuestion {
 
@@ -1743,6 +1813,9 @@ public class CinecaExamsClient extends AbstractCinecaClient {
     }
   }
 
+  /**
+   * A given answer as shown in the compilation summary, including free-text if provided.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class CinecaSummaryAnswer {
 
